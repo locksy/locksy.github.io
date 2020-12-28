@@ -16,3 +16,8 @@ I went with "fixed," but "absolute" positioning also works, depending on the app
 	position: fixed;
 	z-index: -1;
 }
+
+background {
+  background-image: url('bg.png');
+  background-repeat: repeat;
+}
