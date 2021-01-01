@@ -3,15 +3,13 @@
 <head>
 <meta charset="utf-8">
 <title>loot</title>
-<script language="javascript">
-  <!--
-  if(!window.location.search.substring(1) == "full=true") { // do not redirect if querystring is ?full=true
-    if (navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/iPad/i) || navigator.userAgent.match(/Android/i) || navigator.userAgent.match(/Blackberry/i) || navigator.userAgent.match(/WebOs/i)) { // detect mobile browser
-      window.location.replace("https://locksy.github.io/mobile/examples/pages/mobile.html"); // redirect if mobile browser detected
-    }
-  }
-  -->
-</script>
+<script type="text/javascript">
+<!--
+if (screen.width <= 699) {
+document.location = "https://locksy.github.io/mobile/examples/pages/mobile.html";
+}
+//-->
+</script>    
 <link href="jquerysctipttop.css" rel="stylesheet" type="text/css">
 <link href="mouseparallax.css" rel="stylesheet" type="text/css">
 
