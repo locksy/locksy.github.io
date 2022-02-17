@@ -1,75 +1,37 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
-<title>loot</title>
-<script type="text/javascript">
-<!--
-if (screen.width <= 699) {
-document.location = "https://locksy.github.io/mobile/examples/pages/mobile.html";
-}
-//-->
-</script>    
-<link href="jquerysctipttop.css" rel="stylesheet" type="text/css">
-<link href="mouseparallax.css" rel="stylesheet" type="text/css">
-
-<style>
-body, html {
-height: 100%;
-}
-.mouse-bg {
-left: 0;
-right: 0;
-bottom: 0;
-top: 0;
-position: fixed;
-}
-#background {
-background-image: url('bg.png');
-}
-#foreground {
-background-image: url('one.png');
-}
-#fore-foreground {
-background-image: url('two.png');
-}   
-#fore-fore-foreground {
-background-image: url('three.png');
-}
-</style>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="styles.css">
+  <title>portfolio of daniel pedersen</title>
 </head>
-
-<body>
-<div id="background" class="mouse-bg"></div>
-<div id="foreground" class="mouse-bg"></div>
-<div id="fore-foreground"  class="mouse-bg"></div>
-<div id="fore-fore-foreground"  class="mouse-bg"></div>
-<script src="jquery.min.js"></script>
-<script src="mouse.parallax.js"></script>
-<script>
-$(document).ready(function() {
-				$('#background').mouseParallax({ moveFactor: 13 });
-				$('#foreground').mouseParallax({ moveFactor: 21 });
-				$('#fore-foreground').mouseParallax({ moveFactor: 34 });
-				$('#fore-fore-foreground').mouseParallax({ moveFactor: 55 });
-				
-				$('body').height(3000);
-			});
-</script>
-<script type="text/javascript">
-
-  var _gaq = _gaq || [];
-  _gaq.push(['_setAccount', 'UA-36251023-1']);
-  _gaq.push(['_setDomainName', 'jqueryscript.net']);
-  _gaq.push(['_trackPageview']);
-
-  (function() {
-    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-  })();
-
-</script>
-
+<body background="/images/bg.jpg">
+  <main>
+    <div class="slider">
+      <div class="slider-inner">
+        <div class="item">
+          <div class="image"></div>
+        </div>
+        <div class="item">
+          <div class="image"></div>
+        </div>
+        <div class="item">
+          <div class="image"></div>
+        </div>
+        <div class="item">
+          <div class="image"></div>
+        </div>
+        <div class="item">
+          <div class="image"></div>
+        </div>
+        <div class="item">
+          <div class="image"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script src='app.js'></script>
 </body>
 </html>
