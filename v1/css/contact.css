@@ -1,0 +1,114 @@
+.left-box {
+position: relative;
+float: left;
+ font-family: rigid-square,sans-serif;
+font-weight: 400;
+width: 25%;
+background-color: rgba(7, 206, 206, 0.4);
+top: 5.5rem;
+padding: 1rem;
+}
+
+.pronoun {
+    font-size: .83333rem;
+    font-style: italic;
+}
+
+.main-box {
+font-family: rigid-square,sans-serif;
+font-weight: 400;
+width: 65%;
+padding: 1rem;
+position: relative;
+float: right;
+top: 4.5rem;
+}
+
+
+.main-box a:link {
+ color: #000000;
+ text-decoration: none;
+ font-weight: bold;
+}
+
+.main-box a:hover {
+ color: #07CECE;   .
+ font-weight: bold;
+ text-decoration: none;
+}
+
+.main-box a:active {
+ color: #000000;
+ text-decoration: none;
+ font-weight: bold;
+}
+
+.main-box a:visited {
+ color: #000000;
+ text-decoration: none;
+ font-weight: bold;
+}
+
+.avatar {
+    float: left;
+    margin-right: 1.5rem;
+    margin-bottom: 1rem;
+   
+}
+
+.artist {
+ background-color: rgba(7, 206, 206, 0.4);   
+    
+}
+
+.statement {
+    font-style: italic;
+}
+
+#contact-left {
+font-family: novecento-sans,sans-serif;
+font-weight: 400;
+font-style: normal;
+}
+
+#contact-left div {
+	width: 30%;
+	float: left;
+}
+
+#contact-left li {
+	list-style-type: none;
+	color: white;
+}
+
+#contact-left a:link {
+	
+	 color: #000000;
+	 text-align: center;
+	 text-decoration: none;
+	 font-size: .8333rem;
+	     }
+
+#contact-left a:hover {
+	
+	color: #07CECE;
+	text-align: center;
+	text-decoration: none;
+	font-size: .8333rem;
+}
+
+#contact-left a:active {
+	
+	color: #000000;
+	text-align: center;
+	text-decoration: none;
+	font-size: .8333rem;
+		 }   
+
+#nav-left a:visited {
+	
+	color: #000000;
+	text-align: center;
+	text-decoration: none;
+	font-size: .8333rem;
+                    }

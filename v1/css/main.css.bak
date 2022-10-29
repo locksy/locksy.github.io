@@ -1,0 +1,93 @@
+#site-container {
+display: flex;
+flex-direction: column;
+}
+
+.body-container {
+
+  margin-top: 10px;
+  padding: 0;
+
+  background-color: #3c3c3c;
+}
+
+.service-header {
+      font-size: 1.5rem;
+      text-align: center;
+      padding: .5rem;
+   font-family: "Helvetica", "Verdana", "Arial", sans-serif;  
+   font-size: 1.5rem;
+    line-height: 2rem;
+      font-weight: bold;
+letter-spacing: .125rem;
+   background-color: #FFFFFF;
+    
+}
+
+/*
+.services h2 
+  {
+      font-size: 1.5rem;
+      text-align: center;
+      padding: .5rem;
+   font-family: "Helvetica", "Verdana", "Arial", sans-serif;  
+   font-size: 1.5rem;
+    line-height: 2rem;
+      font-weight: bold;
+letter-spacing: .125rem;
+   background-color: #FFFFFF;
+  }
+  
+  */
+.services {
+    
+  width: 70%;
+  margin: .5rem;
+  padding: 0;
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  align-content: space-between;
+
+}
+
+  
+  /*
+.service-ico img {
+ width: 15%;
+ height: 15%;
+ overflow: hidden;
+ z-index: 1;
+ margin-left: 10%;
+ margin-right: 10%;
+} */
+  
+#service-ico-01
+{
+   background-image: url("img/services/camera.png");
+}
+
+#service-ico-01 p {
+  font-family: Helvetica, Verdana, Arial, sans-serif;  
+}
+
+#service-ico-02
+{
+background-image: url("img/services/design.png");
+}
+
+#service-ico-02 p {
+  font-family: Helvetica, Verdana, Arial, sans-serif;  
+}
+
+#service-ico-03
+{
+   background-image: url("img/services/generated.png")
+ 
+}
+
+#service-ico-03 p {
+  font-family: Helvetica, Verdana, Arial, sans-serif;  
+}

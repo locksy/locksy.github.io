@@ -1,0 +1,82 @@
+#site-container {
+display: flex;
+flex-direction: column;
+}
+
+.body-container {
+
+  margin-top: 10px;
+  padding: 0;
+
+  background-color: #3c3c3c;
+}
+
+.service-header {
+      font-size: 1.5rem;
+      text-align: center;
+      padding: .5rem;
+   font-family: "Helvetica", "Verdana", "Arial", sans-serif;  
+   font-size: 1.5rem;
+    line-height: 2rem;
+      font-weight: bold;
+letter-spacing: .125rem;
+   background-color: #FFFFFF;
+    
+}
+
+/*
+.services h2 
+  {
+      font-size: 1.5rem;
+      text-align: center;
+      padding: .5rem;
+   font-family: "Helvetica", "Verdana", "Arial", sans-serif;  
+   font-size: 1.5rem;
+    line-height: 2rem;
+      font-weight: bold;
+letter-spacing: .125rem;
+   background-color: #FFFFFF;
+  }
+  
+  */
+.services {
+    
+  width: 70%;
+  margin: .5rem;
+  padding: 0;
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-end;
+
+
+}
+
+
+.service-01 {
+ margin-left: 1rem;
+ margin-right: 1rem;
+ background: url(../img/services/camera.png);
+ width: 230px;
+ height: 150px;
+}
+
+
+
+.service-02 {
+ margin-left: 1rem;
+ margin-right: 1rem;
+  background: url(../img/services/design.png);
+ width: 230px;
+ height: 150px;
+}
+
+.service-03 {
+ margin-left: 1rem;
+ margin-right: 1rem;
+ background: url(../img/services/generated.png);
+ width: 230px;
+ height: 150px;
+}

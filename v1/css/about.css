@@ -1,0 +1,47 @@
+.left-box {
+position: relative;
+float: left;
+ font-family: rigid-square,sans-serif;
+font-weight: 400;
+width: 25%;
+background-color: rgba(7, 206, 206, 0.4);
+top: 5.5rem;
+padding: 1rem;
+}
+
+
+
+.main-box {
+font-family: rigid-square,sans-serif;
+font-weight: 400;
+width: 65%;
+padding: 1rem;
+position: relative;
+float: right;
+top: 4rem;
+}
+
+
+.main-box a:link {
+ color: #000000;
+ text-decoration: none;
+ font-weight: bold;
+}
+
+.main-box a:hover {
+ color: #07CECE;   
+ font-weight: bold;
+ text-decoration: none;
+}
+
+.main-box a:active {
+ color: #000000;
+ text-decoration: none;
+ font-weight: bold;
+}
+
+.main-box a:visited {
+ color: #000000;
+ text-decoration: none;
+ font-weight: bold;
+}

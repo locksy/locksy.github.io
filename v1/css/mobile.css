@@ -1,0 +1,149 @@
+
+
+
+body {
+  --color-bg: #faebd7;
+  --color-text: #24221f;
+  --color-link: #a5271b;
+  --color-link-hover: #69140c;
+  font-family: 'Josefin Slab', serif;
+}
+
+a:hover,
+a:focus {
+  text-decoration: underline;
+}
+
+.frame {
+  color: #a5271b;
+  font-weight: 500;
+}
+
+.frame__title,
+.frame {
+  font-size: 5.2vw;
+  color:#f06565;
+  font-family: 'Josefin Slab', serif;
+  font-weight: 900;
+}
+
+
+
+.content__headline {
+  font-size: 5.3vw;
+  margin: 2rem 0 1rem;
+  font-weight: 700;
+  text-transform: full-width;
+  color:#dadada;
+  font-family: Righteous, serif;
+}
+
+.content__type_mobile {
+  font-size: 7.3vw; 
+  margin: 3rem auto 5rem;
+  line-height: 1.25;
+  font-family: 'Josefin Slab', serif;
+  font-weight: 555;
+  color: rgb(128, 171, 209);
+  backface-visibility: hidden;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: -moz-none;
+  -o-user-select: none;
+  user-select: none;
+  background-size: 80%;
+}
+
+.content__type {
+  font-size: 5.3vw;
+  margin: 3rem auto 5rem;
+  line-height: 1.25;
+  font-family: 'Josefin Slab', serif;
+  font-weight: 555;
+  color: rgb(128, 171, 209);
+  backface-visibility: hidden;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: -moz-none;
+  -o-user-select: none;
+  user-select: none;
+  background-size: 80%;
+}
+
+.content__img {
+  max-width: 100%;
+  display: block;
+  margin: 0 auto 5rem;
+  backface-visibility: hidden;
+}
+
+/* Effect Styles */
+
+.folds {
+  position: relative;
+  transform-style: preserve-3d;
+}
+
+.fold-3d {
+  position: absolute;
+  left: 0;
+  right: 0;
+  perspective: 100vh;
+  transform-style: preserve-3d;
+}
+
+.fold-3d-top {
+  bottom: 100%;
+  perspective-origin: 25% 100%;
+}
+.fold-3d-bottom {
+  top: 100%;
+  /* Origin at the top of the bottom wrapper, the bottom of the center fold. */
+  perspective-origin: 50% 0%;
+}
+.debug .fold-top {
+  background: #dadada;
+}
+.debug .fold-bottom {
+  background: #dadada;
+}
+.debug .test-center {
+  background: #bababa;
+}
+.fold-bottom {
+  height: 5 0vh;
+  width: 100%;
+  /* background: #ff000090; */
+  transform-origin: top center;
+}
+.fold-top {
+  height: 30vh;
+  width: 100%;
+  /* background: #ff000090; */
+  transform-origin: bottom center;
+}
+.fold-top .fold-scroller {
+  transform-origin: top center;
+}
+.fold-bottom .fold-scroller {
+  transform-origin: top center;
+}
+.fold-center {
+  height: 50vh;
+  width: 50vw;
+}
+
+.fold {
+  overflow: hidden;
+  //border: 1px solid #000;
+  border-top: 0;
+  border-bottom: 0;
+}
+.fold-scroller {
+  display: flex;
+  flex-direction: column;
+}
+
+.fold-content {
+  padding: 0 2rem;
+}

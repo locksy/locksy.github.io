@@ -1,0 +1,179 @@
+
+
+/*--- ScrollFade Specific ---*/
+
+.scrollFade {
+	opacity: 1;
+	pointer-events: all;
+}
+
+.scrollFade--hidden {
+	opacity: 0;
+	pointer-events: none;
+}
+
+.scrollFade--visible {
+	opacity: 1;
+	pointer-events: all;
+}
+
+.scrollFade--animate {
+	transition: opacity 0.4s ease-in-out;
+}
+
+/*------*/
+
+@media(max-width: 750px) {
+	body {
+		padding: 100px 25px;
+	}
+
+	.items {
+		grid-template-columns: repeat(1, 1fr);
+	}
+
+	.item--wide {
+		grid-column: 1;
+	}
+}
+
+
+
+#site-container {
+display: flex;
+flex-direction: column;
+}
+
+.body-container {
+
+  margin-top: 10%;
+  padding: 0;
+
+  background-color: #3c3c3c;
+}
+
+/* Text Styles */
+
+.title {
+  color:black
+  mix-blend-mode: lighten;
+  z-index: 1;
+
+}
+
+.row {
+text-align: center;
+margin: auto;
+}
+
+h1 {
+
+font-family: novecento-sans-wide, sans-serif;
+font-weight: 700;
+font-style: normal;
+font-size: 1.75rem;
+}
+
+h2 {
+font-family: novecento-sans-wide, sans-serif;
+font-weight: 500;
+font-style: normal;
+font-size: 1.5rem;
+}
+
+h3 {
+font-family: novecento-sans-wide, sans-serif;
+font-weight: 550;
+font-size: 1.3333rem;
+}
+
+p {
+font-family: novecento-sans-wide, sans-serif;
+font-weight: 400;
+font-size: 1rem;
+}
+
+li {
+font-family: novecento-sans-wide, sans-serif;
+font-weight: 400;
+font-size: 1rem;
+}
+
+.service-header {
+      font-size: 1.5rem;
+      text-align: center;
+      padding: .5rem;
+font-family: novecento-sans-wide, sans-serif;
+font-weight: 600;
+font-style: normal;
+font-size: 1.5rem;
+line-height: 2rem;
+    
+letter-spacing: .125rem;
+   background-color: #FFFFFF;
+    
+}
+
+
+.services {
+    
+  width: 70%;
+  margin: .5rem;
+  padding: 0;
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-end;
+
+
+}
+
+
+.service-01 {
+ margin-left: 1rem;
+ margin-right: 1rem;
+ background: url(../img/services/camera.png);
+ width: 230px;
+ height: 150px;
+ color: rgba(0, 0, 0, 0);
+ text-align: center;
+}
+
+.service-01:hover {
+background: rgba(0, 0, 0, 0);
+color: rgba(0, 0, 0, 1);
+}
+
+.service-02 {
+ margin-left: 1rem;
+ margin-right: 1rem;
+  background: url(../img/services/design.png);
+ width: 230px;
+ height: 150px;
+ color: rgba(0, 0, 0, 0);
+  text-align: center;
+}
+
+
+.service-02:hover {
+background: rgba(0, 0, 0, 0);
+color: rgba(0, 0, 0, 1);
+}
+
+.service-03 {
+ margin-left: 1rem;
+ margin-right: 1rem;
+ background: url(../img/services/generated.png);
+ width: 230px;
+ height: 150px;
+ color: rgba(0, 0, 0, 0);
+  text-align: center;
+}
+
+
+.service-03:hover {
+background: rgba(0, 0, 0, 0);
+color: rgba(0, 0, 0, 1);
+}
