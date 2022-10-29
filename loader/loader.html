@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>
+        video
+    </title>
+    <style>
+        #background {
+            position: relative;
+            background-color: black;
+            width: 100%;
+            height: 100%;
+        }
+        
+        video {
+            width: 100%;
+        }
+        
+        @mixin center() {
+            -webkit-transform: translate(-50%, -50%);
+            -ms-transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%);
+            left: 50%;
+            top: 50%;
+        }
+        
+        @import url(https://fonts.googleapis.com/css?family=Raleway:400,,800,900);
+        html {
+            width: 100%;
+            height: 100%;
+        }
+        
+        body {
+            background: -webkit-linear-gradient(rgb(235, 236, 231), rgb(255, 255, 255));
+            background: linear-gradient(rgb(235, 236, 231), rgb(255, 255, 255));
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            font-family: 'Raleway', sans-serif;
+        }
+        
+        #container {
+            position: absolute;
+            left: 5%;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            height: 15%;
+            margin: auto;
+            color: rgb(243, 133, 0);
+            font-size: 60pt;
+            text-align: center;
+            mix-blend-mode: difference;
+            @include center();
+        }
+        
+        .title {
+            font-weight: 800;
+            color: transparent;
+            font-size: 120px;
+            background: url("https://www.synnatschke.com/images/iotm/cracked-mud.jpg") repeat;
+            background-position: 40% 50%;
+            -webkit-background-clip: text;
+            position: relative;
+            text-align: center;
+            letter-spacing: -8px;
+        }
+        
+        .subtitle {
+            display: block;
+            text-align: center;
+            padding-top: 10px;
+            font-size: 1.7rem;
+        }
+    </style>
+</head>
+
+<body style="margin: 0px">
+    <div id="background">
+        <div id="container">
+            <div class="subtitle">loading... </div>
+            <div class="title">danielpedersen</div>
+
+        </div>
+        <div id="video">
+            <span>loading<br> danielpedersen.net</span>
+            <video width="100%" height="100%" autoplay muted preload="auto">
+          <source src="loader.mp4" type='video/mp4; codecs="avc1.42E01E, mp4a.40.2"'>
+          </video>
+        </div>
+        <div id="content" visibility="hidden">
+
+            <p> this is the next content</p>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.1.min.js"></script>
+    <script src="https://code.jquery.com/color/jquery.color.plus-names-2.2.0.min.js"></script>
+    <script>
+        jQuery(document).ready(function() {
+            $("#content").hide();
+            $('#video video').bind('ended', function() {
+                $("#background").fadeOut();
+
+                $(this).parent().fadeOut(function() {
+
+                    $("#content").fadeIn(2000);
+                });
+            });
+        })
+    </script>
+    <script>
+        $(document).ready(function() {
+            var mouseX, mouseY;
+            var ww = $(window).width();
+            var wh = $(window).height();
+            var traX, traY;
+            $(document).mousemove(function(e) {
+                mouseX = e.pageX;
+                mouseY = e.pageY;
+                traX = ((4 * mouseX) / 570) + 40;
+                traY = ((4 * mouseY) / 570) + 50;
+                console.log(traX);
+                $(".title").css({
+                    "background-position": traX + "%" + traY + "%"
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>
