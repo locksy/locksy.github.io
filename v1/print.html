@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="https://use.typekit.net/izk4cgm.css">
+<link rel="stylesheet" href="main.css">
+
+<!-- Script for menu/header on scroll -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="js/menu.js"></script>
+</head>
+<body>
+<script>
+$(document).scroll(function() {
+  if($(document).scrollTop() > 0 ) {
+    $('.base h2').addClass('rotateback');
+    $('.base h3').addClass('rotateback');
+  } else {
+    $('.base h2').removeClass('rotateback');
+    $('.base h3').removeClass('rotateback');
+  }
+});
+</script>
+<!-- Empty div for first background image -->
+
+<div class="base">
+<h2>Sawwave Media</h2>
+<div>
+<h3><a href="#" onclick="siteMenu()" class="dropbtn">Menu</a></h3>
+</div>
+<ul class="menu" id="content">
+<li><a href="index.html">Home</a></li>
+<li><a href="design.html">Design Services</a></li>
+<li><a href="print.html">Artwork</a></li>
+<li><a href="blog.html">Blog</a></li>
+<li><a href="about.html">About</a></li>
+<li><a href="contact.html">Contact</a></li>
+</ul>
+
+</div>
+<div class="bgimg-1">
+</div>
+
+  <div class="caption">
+  <span class="border"><img id="logo" src="img/layout/logo_hybrid.png" alt="Sawwave Logo" /></span>
+  <h1>Featured Works</h1>
+  </div>
+  <button id="close" style="display: none;">Close</button>
+<div id="img-container" style="display: none;">
+</div>
+
+<div class="scroll-01" id="gallery-container">
+<ul class="grid">
+<li>
+<div class="overlay">
+<button id="enlarge-01">View More</button>
+</div>
+<span class="art-title">Gazebo, Golden Gate Park</span>
+<img src="img/photos/image0000-0.png" />
+</li>
+<li>
+<div class="overlay">
+<button id="enlarge-02">View More</button>
+</div>
+<span class="art-title">Singer</span>
+<img src="img/photos/image0001-0.png" /></li>
+<li>
+<div class="overlay">
+<button id="enlarge-03">View More</button>
+</div>
+<span class="art-title">Ruined Pier from Train Window</span>
+<img src="img/photos/image0005-0.png" /></li>
+<li>
+<div class="overlay">
+<button id="enlarge-04">View More</button>
+</div>
+<span class="art-title">Abstract Texture 00001</span>
+<img src="img/photos/image0029-0.png" />
+</li>
+<li>
+<div class="overlay">
+<button id="enlarge-05">View More</button>
+</div>
+<span class="art-title">Orchids (In Honour of Audrey III)</span>
+<img src="img/photos/image0087-0.png" /></li>
+<li>
+<div class="overlay">
+<button id="enlarge-06">View More</button>
+</div>
+<span class="art-title">IR Stones</span>
+<img src="img/photos/image0091-0.png" /></li>
+<li>
+<div class="overlay">
+<button id="enlarge-07">View More</button>
+</div>
+<span class="art-title">Ocean Beach (Distance)</span>
+<img src="img/photos/image0110_2-0.png" />
+</li>
+<li>
+<div class="overlay">
+<button id="enlarge-08">View More</button>
+</div>
+<span class="art-title">Trapped in a Cellar</span>
+<img src="img/photos/image0089-0.png" /></li>
+<li>
+<div class="overlay">
+<button id="enlarge-09">View More</button>
+</div>
+<span class="art-title">Construction (Looking in Forbidden Places)</span>
+<img src="img/photos/image0092_1-0.png" /></li>
+<li>
+<div class="overlay">
+<button id="enlarge-10">View More</button>
+</div>
+<span class="art-title">The Secret Garden</span>
+<img src="img/photos/image0087_1-0.png" />
+</li>
+<li>
+<div class="overlay">
+<button id="enlarge-11">View More</button>
+</div>
+<span class="art-title">Iraq War Protester (Faith in Futility)</span>
+<img src="img/photos/image0030-0.png" /></li>
+<li>
+<div class="overlay">
+<button id="enlarge-12">View More</button>
+</div>
+<span class="art-title">Girl at Sunset, Ocean Beach, SF</span>
+<img src="img/photos/image0120-0.png" /></li>
+</ul>
+
+<!-- Script to enlarge/show details on images.  DO NOT EDIT!  Parameters can be changed in the accompanying text files -->
+
+<script type="text/javascript">
+// Enlarges images and shows details, referencing external text files
+
+$("#enlarge-01").click(function(){
+
+        $("#img-container").css('display', 'flex');
+         $("#close").css('display', 'flex');
+       $.ajax({
+        url : "galleries/gallery01.txt",
+        dataType: "text",
+        success : function (data) {
+            $('#img-container').html(data);
+        }
+    }); 
+   
+});
+
+$("#enlarge-02").click(function(){
+
+        $("#img-container").css('display', 'flex');
+         $("#close").css('display', 'flex');
+       $.ajax({
+        url : "galleries/gallery02.txt",
+        dataType: "text",
+        success : function (data) {
+            $('#img-container').html(data);
+        }
+    }); 
+   
+});
+  
+$("#enlarge-03").click(function(){
+
+        $("#img-container").css('display', 'flex');
+         $("#close").css('display', 'flex');
+       $.ajax({
+        url : "galleries/gallery03.txt",
+        dataType: "text",
+        success : function (data) {
+            $('#img-container').html(data);
+        }
+    }); 
+   
+});
+
+$("#enlarge-04").click(function(){
+
+        $("#img-container").css('display', 'flex');
+         $("#close").css('display', 'flex');
+       $.ajax({
+        url : "galleries/gallery04.txt",
+        dataType: "text",
+        success : function (data) {
+            $('#img-container').html(data);
+        }
+    }); 
+   
+});
+
+$("#enlarge-05").click(function(){
+
+        $("#img-container").css('display', 'flex');
+         $("#close").css('display', 'flex');
+       $.ajax({
+        url : "galleries/gallery05.txt",
+        dataType: "text",
+        success : function (data) {
+            $('#img-container').html(data);
+        }
+    }); 
+   
+});
+
+$("#enlarge-06").click(function(){
+
+        $("#img-container").css('display', 'flex');
+         $("#close").css('display', 'flex');
+       $.ajax({
+        url : "galleries/gallery06.txt",
+        dataType: "text",
+        success : function (data) {
+            $('#img-container').html(data);
+        }
+    }); 
+   
+});
+
+$("#enlarge-07").click(function(){
+
+        $("#img-container").css('display', 'flex');
+         $("#close").css('display', 'flex');
+       $.ajax({
+        url : "galleries/gallery07.txt",
+        dataType: "text",
+        success : function (data) {
+            $('#img-container').html(data);
+        }
+    }); 
+   
+});
+
+$("#enlarge-08").click(function(){
+
+        $("#img-container").css('display', 'flex');
+         $("#close").css('display', 'flex');
+       $.ajax({
+        url : "galleries/gallery08.txt",
+        dataType: "text",
+        success : function (data) {
+            $('#img-container').html(data);
+        }
+    }); 
+   
+});
+ 
+ $("#enlarge-09").click(function(){
+
+        $("#img-container").css('display', 'flex');
+         $("#close").css('display', 'flex');
+       $.ajax({
+        url : "galleries/gallery09.txt",
+        dataType: "text",
+        success : function (data) {
+            $('#img-container').html(data);
+        }
+    }); 
+   
+});
+
+$("#enlarge-10").click(function(){
+
+        $("#img-container").css('display', 'flex');
+         $("#close").css('display', 'flex');
+       $.ajax({
+        url : "galleries/gallery10.txt",
+        dataType: "text",
+        success : function (data) {
+            $('#img-container').html(data);
+        }
+    }); 
+   
+});
+
+$("#enlarge-11").click(function(){
+
+        $("#img-container").css('display', 'flex');
+         $("#close").css('display', 'flex');
+       $.ajax({
+        url : "galleries/gallery11.txt",
+        dataType: "text",
+        success : function (data) {
+            $('#img-container').html(data);
+        }
+    }); 
+   
+});
+
+$("#enlarge-12").click(function(){
+
+        $("#img-container").css('display', 'flex');
+         $("#close").css('display', 'flex');
+       $.ajax({
+        url : "galleries/gallery12.txt",
+        dataType: "text",
+        success : function (data) {
+            $('#img-container').html(data);
+        }
+    }); 
+   
+});
+  
+// Script for the "close" button
+$("#close").click(function(){   
+ $("#img-container").css('display', 'none');
+ $("#close").css('display', 'none');
+});
+</script>
+
+</div>
+
+<div class="bgimg-2">
+  <div class="caption">
+  <span class="border"><h1 class="blend">Art Prints for Sale</h1></span>
+  </div>
+</div>
+
+<div class="scroll-02">
+<div class="text">
+<h3>Print information</h3>
+<p>
+In addition to unique physical media, many of our artists' works are available as art prints.
+</p><br />
+<p>We offer art glic&eacute;e prints of featured works, on either stretched canvas or matted and framed high-quality photo paper.  Framing services are provided by <a href="https://thepaint-chip.com">The Paint Chip</a> in Davis.  Dye-sublimation prints on other media can be made via special order.</p><br />
+<p>All prints are made in extremely limited editions, and are hand-signed and numbered by the original artist, using archival stable inks.</p>
+
+
+</div>
+<h3>Sizing, Medium, and Framing Options<sup class="note">1</sup></h3>
+<div class="options">
+<table>
+<tr>
+<th>&nbsp;</th><th class="col-odd">Framed Canvas</th><th>Unframed Canvas</th><th class="col-odd">Framed Print</th>
+</tr>
+<tr>
+<td class="size">11"x14"<sup class="note">2</sup></td><td class="col-odd">$275</td><td>$225</td><td class="col-odd">$170</td>
+</tr>
+<tr>
+<td class="size">16"x20"</td><td class="col-odd">$350</td><td>$275</td><td class="col-odd">$200</td>
+</tr>
+<tr>
+<td class="size">20"x30"</td><td class="col-odd">Unavailable</td><td>$350</td><td class="col-odd">$275</td>
+</tr>
+</table>
+</div>
+
+</div>
+
+<div class="bgimg-3">
+  <div class="caption">
+  <h2>Additional information regarding print services.</h2>
+ 
+  </div>
+</div>
+
+<div class="scroll-03">
+ <div class="note">
+<p>1 Prices listed do not include tax (8.25%), shipping, or handling.</p>
+<p>2 Actual dimensions may vary.  Sizing is based upon the longest side of the print (whether vertical or horizontal), and the other dimension is constrained by the format and crop of the original image.</p>
+<p>2 Prices listed do not include tax, shipping, or handling.
+</div>
+</div>
+
+<div class="bgimg-4">
+  <div class="caption">
+  <span class="border">Sawwave Media LLC 2022</span>
+  </div>
+</div>
+
+</body>
+</html>

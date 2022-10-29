@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>3D Folded Layout | Demo 4 | Codrops</title>
+    <link rel="shortcut icon" href="img/favicon.png">
+    <link rel="stylesheet" type="text/css" media="only screen and (max-device-width: 480px)" href="mobile.css" />
+    <link rel="stylesheet" href="https://use.typekit.net/grh5akv.css">
+    <link rel="stylesheet" type="text/css" href="css/base.css" />
+    <link rel="stylesheet" type="text/css" href="css/follow.css" />
+    <link rel="stylesheet" type="text/css" href="css/videoscroll.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Josefin+Slab:wght@600&display=swap" rel="stylesheet">
+    <script>var vid = document.getElementById("bgvid");
+        var pauseButton = document.querySelector("#polina button");
+        
+        if (window.matchMedia('(prefers-reduced-motion)').matches) {
+            vid.removeAttribute("autoplay");
+            vid.pause();
+            pauseButton.innerHTML = "Paused";
+        }
+        
+        function vidFade() {
+          vid.classList.add("stopfade");
+        }
+        
+        vid.addEventListener('ended', function()
+        {
+        // only functional if "loop" is removed 
+        vid.pause();
+        // to capture IE10
+        vidFade();
+        }); 
+        
+        
+        pauseButton.addEventListener("click", function() {
+          vid.classList.toggle("stopfade");
+          if (vid.paused) {
+            vid.play();
+            pauseButton.innerHTML = "Pause";
+          } else {
+            vid.pause();
+            pauseButton.innerHTML = "Paused";
+          }
+        })
+        
+        </script>
+    
+    <script>
+    document.documentElement.className = "js";
+    var supportsCssVars = function() {
+        var e,
+            t = document.createElement("style");
+        return (
+            (t.innerHTML = "root: { --tmp-var: bold; }"),
+            document.head.appendChild(t),
+            (e = !!(
+                window.CSS &&
+                window.CSS.supports &&
+                window.CSS.supports("font-weight", "var(--tmp-var)")
+            )),
+            t.parentNode.removeChild(t),
+            e
+        );
+    };
+    supportsCssVars() ||
+        alert(
+            "Please view this demo in a modern browser that supports CSS Variables."
+        );
+    </script>
+
+<script src="./js/jquery.fillcolor.js"></script>
+<script>
+    (function ($) {
+        'use strict';
+        $(function () {
+            $('.js-fillcolor').fillColor();
+        });
+    })(jQuery);
+</script>
+</head>
+
+<body class="demo-4 loading js-fillcolor" style="background-image: url('img/dan/bg.jpg');">
+    <main>
+        <div class="message">Some message for mobile (if needed).</div>
+        <div class="frame">
+            <h1 class="frame__title">a selection of work by daniel pedersen</h1>
+            
+           
+        </div>
+        <div class="content js-fillcolor;">
+            <div class="fold-content js-fillcolor;" id="base-content">
+                <!-- CONTENT INSIDE HERE -->
+               
+                <h2 class="content__headline">portfolio of daniel pedersen</h2>
+                <p class="content__type">
+                    Early explorations of MS Paint, I entered the world of digital art around 1997.
+                    Invokingepic space battles pixel by pixel on bitmap images of the international space station in orbit.
+             From there I expanded my tool set to include Adobe Photoshop, Dreamweaver, Flash, HTML and JavaScript, 
+             in the pursuit of a higher fidelity expression.
+                </p>
+                
+                <h2 class="content__headline">previous work</h2>
+                <p class="content__type">
+                    I spent the early years making stylized text graphics for the headers of never to be built websites.
+                    Always with an eye toward the esoteric ASCII graffiti crews that represented the various hacker/cracker crews of the era.
+                    After a summer internship at a graphic design firm in Denmark where I attended highschool, my concept of design began to mature and expand. 
+                    At the intersection of the imagined and itsdigitally represented counterpart there is a liminal space that has always fascinated me.
+                    The trusted keyboard and mouse feel to be often creatively constraining with its narrow and archaic input methods.
+                    I am interested in finding novel approaches to user interaction and co-creation. 
+                    Particularly through the exploration of fresh, exponentially unfolding AI models for previously unconsidered masterpieces.
+                    The flow state which exists naturally between people engaged in collaborative art or expression is a phenomenon that I feel intuitively is not limited to human - human interaction.  With the latest AI models, the potency of human - AI  interaction and collaboration is the most awe inspiring thing to me since first considering the internet.  These are the areas I draw inspiration from when looking to create functional design
+                   
+                </p>
+                <img class="content__img" src="img/dan/1.jpg" alt="Kiva Lost Farm" />
+                <h2 class="content__headline">Kiva Lost Farm </h2>
+                <p class="content__type">
+                    Promotional graphic for cannabis fruit chews from Kiva for People's Kush.
+                </p>
+                <img class="content__img" src="img/dan/2.jpg" alt="From Beyond the Rave" />
+                <h2 class="content__headline">From Beyond the Rave</h2>
+                <p class="content__type">
+                    This is a flier I did for an event that I played music at for Halloween 2021
+                </p>
+                <img class="content__img" src="img/dan/3.jpg" alt="Treebeard Camp Sticker 2021" />
+                <h2 class="content__headline">Treebeard Camp Sticker 2021</h2>
+                <p class="content__type">
+                    The sticker that I designed and printed for Camp Treebeard for the renegade that wasn't burning man.
+                      And we didn't end up going, so there are just 50 of them floating around somewhere.  I feel like this was appropriate for the burning man that wasn't.  
+                      Shitting in a bucket all week = shitting man.
+                      We missed out big time.
+                </p>
+                <img class="content__img" src="img/dan/4.jpg" alt="Minutia and Locksy" />
+                <h2 class="content__headline">Minutia and Locksy</h2>
+                <p class="content__type">
+                    A flier I made for an event that I djed at with a friend.
+                </p>
+                <img class="content__img" src="img/dan/5.jpg" alt="KDVS Fundraiser" />
+                <h2 class="content__headline">KDVS Fundraiser Landing Page</h2>
+                <p class="content__type">
+                    Graphic I desinged for KDVS 90.3 FM fundraiser in 2010 or something like that.
+                </p>
+                <img class="content__img" src="img/dan/6.jpg" alt="Westeros Side Story" />
+                <h2 class="content__headline">Westeros Side Story</h2>
+                <p class="content__type">
+                    This is a poster I designed for the Bike City Theatre Company for their production of Westeros Side Story. 
+                    5 full movie poster size prints were made.
+                </p>
+            </div>
+            <div class="screen">
+                <div class="folds" id="folds">
+                    <div class="fold fold-center" id="fold-center"></div>
+                    <div class="fold-3d fold-3d-top top-wrapper">
+                        <div class="fold fold-top" id="fold-top"></div>
+                    </div>
+                    <div class="fold-3d fold-3d-bottom bottom-wrapper">
+                        <div class="fold fold-bottom" id="fold-bottom"></div>
+                    </div>
+                </div>
+            </div>
+            <button class="btn-debug" id="btn-debug">See Planes</button>
+        </div>
+    </main>
+    <script src="./js/imagesloaded.pkgd.min.js"></script>
+    <script src="./js/follow.js"></script>
+    <script src=".js/demo.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mustache.js/3.0.1/mustache.min.js"></script>
+    <script src=".js/color-thief.umd.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>Sawwave Art and Media</title>
+
+<!-- Loads icon library for "hamburger" menu for small screens -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+<!-- Loads External Fonts -->
+<link rel="stylesheet" href="https://use.typekit.net/izk4cgm.css">
+
+<!-- Loads styles for menu element -->
+<link rel="stylesheet" href="css/menu.css">
+
+<!-- Loads styles for site overall -->
+<link rel="stylesheet" href="css/main.css">
+
+<!-- Loads style for footer element -->
+<link rel="stylesheet" href="css/footer.css">
+
+
+
+<!-- Loads style for hover mask -->
+<link rel="stylesheet" href="css/style.css">
+
+
+
+<script>
+	document.addEventListener("touchstart", function() {}, true);
+	</script>
+	
+</head>
+
+<body>
+
+<!-- Container for entire site -->
+<div id="site-container">
+
+<!-- Container for header section -->
+
+<div class="topnavgallery">
+
+</div>
+
+
+<!-- CONTENT GOES HERE -->
+
+<div class="flex-container">
+    <div class="row"> 
+		<ul>
+			<li><a href="#">home</a></li>
+			<li><a href="#">services</a></li>
+			<li><a href="#">gallery</a></li>
+			<li><a href="#">about</a></li>
+			<li><a href="#">contact</a></li>
+		  </ul>
+		
+        <div class="flex-item titlelogo"><h1> sawwave art and media</h1></div>
+  
+	</div>
+</div>
+
+<script>
+	document.addEventListener("touchstart", function() {}, true);
+</script>
+
+
+<div class="column">
+	<section class="background">
+		<div class="background_overlay">
+		  <div class="background_overlay__inner fsm">
+			<a href="#">
+			<h1 class="background_overlay__header fsm">Will Marshall</h1>
+			</a>
+		  </div>
+		</div>
+	  </section>
+	  
+	  <section class="background1">
+		<div class="background_overlay">
+		  <div class="background_overlay__inner">
+			<a href="dan.html">
+			<h1 class="background_overlay__header">Dan Pedersen</h1>
+			</a>
+		  </div>
+		</div>
+	  </section>
+	  </div>
+
+	
+	
+
+ <!-- END BODY CONTAINER -->
+ 	<footer id="container-foot">
+		
+		<div id="nav-left">
+			<ul id="nav-left">
+				<li><a href="#">home</a></li>
+				<li><a href="#">galleries</a></li>
+				<li><a href="#">blog</a></li>
+				<li><a href="#">about</a></li>
+				<li><a href="#">contact</a></li>
+			</ul>
+		</div>
+		<div id="bottom-centre">
+			<h3>Sawwave Art and Media</h3>
+			<p>Copyright 2022 <a href="https://sawwave.art">sawwave.art</a></p>
+		</div>
+		<div id="nav-right">
+		
+		<!-- replace email icon before any commercial use -->
+		<a href="#"><img src="img/icons/github.png" alt="Github"></a><a href="#"><img src="img/icons/mastadon.png" alt="Mastadon"></a><a href="email.png"><img src="img/icons/email.png" alt="email"></a>
+		</div>
+	</footer>
+
+
+</div>
+<script>
+	jQuery(document).ready(function($) {
+
+$("#target").load(function(){
+
+	// Dominant Color
+	var dominantColor = getDominantColor($(this));
+
+	//change background
+	$("body").css("background-color", "rgb("+dominantColor+")");
+});        
+});
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.0/jquery.min.js'></script>
+<script  src="./js/script.js"></script>
+<script src="./js/color-thief.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mustache.js/3.0.1/mustache.min.js"></script>
+<script src="./js/demo.js"></script>
+</body>
+
+</html>
+
+
+
+
+
+
