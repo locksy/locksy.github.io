@@ -11,7 +11,16 @@
     <link rel="stylesheet" href="https://use.typekit.net/yxd7izj.css">
 
 
-
+    <script type="text/javascript">
+        function script(url) {
+            var s = document.createElement('script');
+            s.type = 'text/javascript';
+            s.async = true;
+            s.src = url;
+            var x = document.getElementsByTagName('head')[0];
+            x.appendChild(s);
+        }
+    </script>
 
 
     <style>
@@ -507,11 +516,13 @@
 
         </div>
     </main>
+    <script>
+        script('./js/script1.js');
+        script('./js/imagesloaded.pkgd.min.js');
+        script('./js/split.js');
+    </script>
 
 
-    <script src="js/script1.js"></script>
-    <script src="./js/imagesloaded.pkgd.min.js"></script>
-    <script src="./js/split.js"></script>
 </body>
 
 </html>
