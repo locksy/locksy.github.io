@@ -1,84 +1,527 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+
 
 <head>
-    <meta charset="utf-8">
-    <title>- l o o t -</title>
-    <link href="http://www.jqueryscript.net/css/jquerysctipttop.css" rel="stylesheet" type="text/css">
-    <link href="mouseparallax.css" rel="stylesheet" type="text/css">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dan Pedersen - Sawwave Art and Media</title>
 
+    <meta name="author" content="Codrops" />
+    <link rel="shortcut icon" href="img/favicon.png">
+    <link rel="stylesheet" href="https://use.typekit.net/yxd7izj.css">
+
+
+    <script type="text/javascript">
+        function script(url) {
+            var s = document.createElement('script');
+            s.type = 'text/javascript';
+            s.async = true;
+            s.src = url;
+            var x = document.getElementsByTagName('head')[0];
+            x.appendChild(s);
+        }
+    </script>
+
+    <script>
+        script('./js/script1.js');
+        script('./js/imagesloaded.pkgd.min.js');
+        script('./js/split.js');
+    </script>
     <style>
-        body,
-        html {
+        body {
+            width: 100%;
+            height: 100vh;
+            background-color: #000;
+            background-image: radial-gradient(circle at top right, rgba(121, 68, 154, 0.13), transparent), radial-gradient(circle at 20% 80%, rgba(41, 196, 255, 0.13), transparent);
+        }
+        
+        canvas {
+            position: fixed;
+            width: 100%;
             height: 100%;
         }
         
-        .mouse-bg {
+        a {
+            position: absolute;
+            bottom: 2vmin;
+            right: 2vmin;
+            color: rgba(255, 255, 255, 0.2);
+            text-decoration: none;
+        }
+        
+        a:hover {
+            color: #fff;
+        }
+        
+        *,
+        *::after,
+        *::before {
+            box-sizing: border-box;
+        }
+        
+         :root {}
+        
+        .container {
+            position: relative;
+            text-align: center;
+        }
+        
+        .centered {
+            position: absolute;
+            top: 45%;
+            left: 53%;
+            transform: translate(-50%, -50%);
+            font-size: 17vw;
+            color: rgb(235, 181, 149);
+            display: block;
+            margin: 0 auto;
+            text-align: center;
+            font-family: condor-compressed, sans-serif;
+            font-weight: 222;
+            text-transform: uppercase;
+        }
+        
+        a {
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            justify-content: flex-start;
+            align-items: center;
+        }
+        
+        a:hover {}
+        
+        a:active {}
+        
+        body {
+            margin: 0;
+            color: blanchedalmond;
+            --color-bg: #fff;
+            --color-link: #aaa;
+            --color-link-hover: #000;
+            color: var(--color-text);
+            font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        h1 {
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+            font-size: 4rem;
+            color: #fff;
+            line-height: 1;
+            position: absolute;
+            top: 10px;
+        }
+        
+        .screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100vh;
+            pointer-events: none;
+        }
+        
+        .fold-scroller {
+            height: 100%;
+        }
+        
+        .fold-content {
+            pointer-events: all;
+            width: 100%;
+        }
+        
+        .fold-size-fix {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .fold-before .fold-size-fix {
+            transform-origin: bottom center;
+        }
+        
+        .fold-after .fold-size-fix {
+            transform-origin: top center;
+        }
+        
+        #base-content {
+            display: none;
+        }
+        /*  Debug */
+        
+        .debug .fold:nth-child(2n) {
+            background: #dadada;
+        }
+        
+        .debug .fold:nth-child(2n + 1) {
+            background: #bababa;
+        }
+        
+        .btn-debug {
+            position: fixed;
+            top: 10px;
+            padding: 1rem;
+            font-size: 16px;
+            text-transform: uppercase;
+            right: 10px;
+            cursor: pointer;
+            z-index: 100;
+            display: none;
+        }
+        
+        .square {
+            width: 100%;
+            padding-bottom: 100%;
+            background: coral;
+        }
+        
+        .rectangle {
+            width: 100%;
+            padding-bottom: 50%;
+            background: coral;
+            box-shadow: 1px 0 coral, 0 1px coral;
+        }
+        /* Page Loader */
+        
+        .js .loading::before,
+        .js .loading::after {
+            content: '';
+            position: fixed;
+            z-index: 1000;
+        }
+        
+        .js .loading::before {
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--color-bg);
+        }
+        
+        .js .loading::after {
+            top: 50%;
+            left: 50%;
+            width: 60px;
+            height: 60px;
+            margin: -30px 0 0 -30px;
+            border-radius: 50%;
+            opacity: 0.4;
+            background: var(--color-link);
+            animation: loaderAnim 0.7s linear infinite alternate forwards;
+        }
+        
+        @keyframes loaderAnim {
+            to {
+                opacity: 1;
+                transform: scale3d(0.5, 0.5, 1);
+            }
+        }
+        
+        a {
+            text-decoration: none;
+            color: var(--color-link);
+            outline: none;
+        }
+        
+        a:hover,
+        a:focus {
+            color: var(--color-link-hover);
+            outline: none;
+        }
+        
+        .message {
+            background: var(--color-text);
+            color: var(--color-bg);
+            padding: 1rem;
+            text-align: center;
+            display: none;
+        }
+        
+        .frame {
+            padding: 3rem 5vw;
+            text-align: center;
+            position: relative;
+            z-index: 1000;
+        }
+        
+        .frame__title {
+            font-size: 1rem;
+            margin: 0 0 1rem;
+            font-weight: normal;
+        }
+        
+        .frame__links {
+            display: inline;
+        }
+        
+        .frame__links a:not(:last-child),
+        .frame__demos a:not(:last-child) {
+            margin-right: 1rem;
+        }
+        
+        .frame__demos {
+            margin: 1rem 0;
+        }
+        
+        .frame__demo--current,
+        .frame__demo--current:hover {
+            color: var(--color-text);
+        }
+        
+        .content {
+            display: flex;
+            flex-direction: column;
+            width: 100vw;
+            height: calc(100vh - 13rem);
+            position: relative;
+            justify-content: flex-start;
+            align-items: center;
+        }
+        
+        @media screen and (min-width: 53em) {
+            .message {
+                display: none;
+            }
+            .frame {
+                position: fixed;
+                text-align: left;
+                z-index: 100;
+                top: 0;
+                left: 0;
+                display: grid;
+                align-content: space-between;
+                width: 100%;
+                max-width: none;
+                height: 100vh;
+                padding: 3rem;
+                pointer-events: none;
+                grid-template-columns: 50% 50%;
+                grid-template-rows: auto auto auto;
+                grid-template-areas: 'title links' '... ...' '... demos';
+            }
+            .frame__title-wrap {
+                grid-area: title;
+                display: flex;
+            }
+            .frame__title {
+                margin: 0;
+            }
+            .frame__tagline {
+                position: relative;
+                margin: 0 0 0 1rem;
+                padding: 0 0 0 1rem;
+                opacity: 0.5;
+            }
+            .frame__demos {
+                margin: 0;
+                grid-area: demos;
+                justify-self: end;
+            }
+            .frame__links {
+                grid-area: links;
+                padding: 0;
+                justify-self: end;
+            }
+            .frame a {
+                pointer-events: auto;
+            }
+            .content {
+                height: 100vh;
+                justify-content: center;
+            }
+        }
+        
+        .content_header {
+            font-size: 9vw;
+            color: rgb(235, 181, 149);
+            display: block;
+            margin: 0 auto;
+            text-align: center;
+            font-family: condor-compressed, sans-serif;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .content_headertop {
+            left: 45%;
+            font-size: 5vw;
+            color: rgb(235, 181, 149);
+            display: block;
+            margin: 0 auto;
+            text-align: center;
+            font-family: condor-compressed, sans-serif;
+            font-weight: 222;
+            text-transform: uppercase;
+        }
+        
+        .content__type {
+            font-size: 6vw;
+            color: rgb(235, 181, 149);
+            margin: 0 auto;
+            text-align: justify;
+            font-family: condor-compressed, sans-serif;
+            font-weight: 500;
+            text-transform: uppercase;
+            padding: 5rem 0;
+            line-height: 1;
+            backface-visibility: hidden;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: -moz-none;
+            -o-user-select: none;
+            user-select: none;
+            background-size: 80%;
+        }
+        
+        .content__type-special {
+            display: block;
+            margin: 0 auto;
+            text-align: center;
+        }
+        
+        .content__img {
+            width: 100%;
+            display: block;
+            backface-visibility: hidden;
+        }
+        /* Effect Styles */
+        
+        .fold-scroller {
+            /* Twice the fold's width */
+            width: 60vw;
+        }
+        
+        .fold {
+            overflow: hidden;
+            height: 60vh;
+            /*  half the fold-scroller width */
+            width: 30vw;
+        }
+        /* center fold + both side folds need to add up to 100vh  */
+        
+        .fold-before,
+        .fold-after {
+            height: 20vh;
+        }
+        
+        .side-left .fold-before-1 {
+            transform: skewX(40deg);
+        }
+        
+        .side-left .fold-after-1 {
+            transform: skewX(-40deg);
+        }
+        
+        .side-right .fold-before-1 {
+            transform: skewX(-40deg);
+        }
+        
+        .side-right .fold-after-1 {
+            transform: skewX(40deg);
+        }
+        /* Required a is for the effect */
+        
+        .wrapper-3d {
+            position: relative;
+            perspective: 250px;
+            transform-style: preserve-3d;
+        }
+        
+        .fold-after {
+            position: absolute;
+            transform-origin: top center;
+            right: 0;
+            left: 0;
+            top: calc(100%);
+        }
+        
+        .fold-before {
+            position: absolute;
+            transform-origin: bottom center;
             left: 0;
             right: 0;
-            bottom: 0;
-            top: 0;
-            position: fixed;
-        }
-        
-        #background {
-            background-image: url('bg.png');
-        }
-        
-        #foreground {
-            background-image: url('one.png');
-        }
-        
-        #fore-foreground {
-            background-image: url('two.png');
-        }
-        
-        #fore-fore-foreground {
-            background-image: url('three.png');
+            bottom: calc(100%);
         }
     </style>
 </head>
 
-<body>
-    <div id="background" class="mouse-bg"></div>
-    <div id="foreground" class="mouse-bg"></div>
-    <div id="fore-foreground" class="mouse-bg"></div>
-    <div id="fore-fore-foreground" class="mouse-bg"></div>
-    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
-    <script src="mouse.parallax.js"></script>
-    <script>
-        $(document).ready(function() {
-            $('#background').mouseParallax({
-                moveFactor: 5
-            });
-            $('#foreground').mouseParallax({
-                moveFactor: 10
-            });
-            $('#fore-foreground').mouseParallax({
-                moveFactor: 15
-            });
-            $('#fore-fore-foreground').mouseParallax({
-                moveFactor: 20
-            });
 
-            $('body').height(3000);
-        });
-    </script>
-    <script type="text/javascript">
-        var _gaq = _gaq || [];
-        _gaq.push(['_setAccount', 'UA-36251023-1']);
-        _gaq.push(['_setDomainName', 'jqueryscript.net']);
-        _gaq.push(['_trackPageview']);
+<body class="demo-4 loading">
 
-        (function() {
-            var ga = document.createElement('script');
-            ga.type = 'text/javascript';
-            ga.async = true;
-            ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-            var s = document.getElementsByTagName('script')[0];
-            s.parentNode.insertBefore(ga, s);
-        })();
-    </script>
+    <main>
+        <canvas></canvas>
+        <!-- partial -->
+
+        <div class="message">Some message for mobile (if needed).</div>
+
+        <div class="content items">
+
+            <div class="fold-content" id="base-content">
+                <!-- CONTENT INSIDE HERE -->
+
+                <span class="content_headertop">a selection of work by:</span>
+                <p class="content__type">
+
+                    <div class="container content__type-special">
+                        <img src="img/eye.png" alt="eye" style="width:100%;">
+                        <div class="centered">
+                            <span class="content__type-special">Daniel Pedersen</span>
+                        </div>
+                    </div>
+
+                    <p></p>
+                    <img class="content__img item scrollFade" src="img/dan/1.jpg" alt="Kiva Lost Farm" />
+                </p>
+
+                <span class="content_header">Kiva Lost Farm Fruit Chews </span>
+                <p class="content__type">
+                    Promotional graphic for cannabis fruit chews from Kiva for People's Kush.
+                </p>
+
+                <a href="./loot/loot/index.html" class="content__img">
+                    <img class="content__img item scrollFade" src="img/loot.png" alt="loot" />
+                </a>
+                <h2 class="content_header">loot</h2>
+                <p class="content__type">
+                    This is an experiment with parallax using mouse location. Eventually I want to get this to respond to input from a webcam using tensorflow instead of the mouse input.
+                </p>
+
+                <img class="content__img item scrollFade" src="img/dan/2.jpg" alt="From Beyond the Rave" />
+                <h2 class="content_header">From Beyond the Rave</h2>
+                <p class="content__type">
+                    This is a flier I did for an event that I played music at for Halloween 2021
+                </p>
+
+                <img class="content__img item scrollFade" src="img/dan/3.jpg" alt="Treebeard Camp Sticker 2021" />
+                <h2 class="content_header">Treebeard Camp Sticker 2021</h2>
+                <p class="content__type">
+                    The sticker that I designed and printed for Camp Treebeard for the renegade that wasn't burning man. And we didn't end up going, so there are just 50 of them floating around somewhere. I feel like this was appropriate for the burning man that wasn't.
+                    Shitting in a bucket all week = shitting man. We missed out big time.
+                </p>
+
+                <img class="content__img item scrollFade" src="img/dan/4.jpg" alt="Minutia and Locksy" />
+                <h2 class="content_header">Minutia and Locksy</h2>
+                <p class="content__type">
+                    This is a flier I made for a DJ event that I performed at with a friend.
+                </p>
+
+            </div>
+
+            <div class="screen" id="fold-wrapper"></div>
+            <button class="btn-debug" id="btn-debug">See Planes</button>
+
+        </div>
+    </main>
+
+
 
 </body>
 
