@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Panolens.js 360 Panorama Viewer</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+    #panorama-container {
+      width: 100%;
+      height: 100vh;
+    }
+  </style>
+</head>
+<body>
+  <div id="panorama-container"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/panolens@1.9.3/build/panolens.min.js"></script>
+  <script>
+    window.addEventListener('DOMContentLoaded', function() {
+      var panoramaContainer = document.getElementById('panorama-container');
+
+      // Create a Panolens viewer
+      var viewer = new PANOLENS.Viewer({ container: panoramaContainer });
+
+      // Create an image panorama
+      var imagePanorama = new PANOLENS.ImagePanorama('image.jpg');
+      
+      // Add the image panorama to the viewer
+      viewer.add(imagePanorama);
+
+      // Enable device motion controls
+      viewer.enableControl(PANOLENS.Controls.DEVICE_ORIENTATION);
+
+      // Handle window resize
+      window.addEventListener('resize', function() {
+        viewer.onWindowResize();
+      });
+    });
+  </script>
+</body>
+</html>
