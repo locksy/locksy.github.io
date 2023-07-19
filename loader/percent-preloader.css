@@ -1,0 +1,116 @@
+/*!
+ * Percent-Preloader CSS - v1
+ * @author JDM Digital - https://jdmdigital.co
+ * Copyright (c) 2022
+ */
+
+.preloader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    margin: auto;
+    width: 100vw;
+    height: 100vh;
+    background: #ff109f74;
+    opacity: 44%;
+    background-blend-mode: difference;
+    -webkit-transition: all 0.3s ease;
+    -moz-transition: all 0.3s ease;
+    transition: all 0.3s ease;
+    transition-duration: 500ms;
+    -webkit-transition-duration: 500ms;
+    transition-timing-function: cubic-bezier(0.86, 0, 0.07, 1);
+    -webkit-transition-timing-function: cubic-bezier(0.86, 0, 0.07, 1);
+    z-index: 99;
+    transition-delay: 0.65s;
+}
+
+.preloader .inner {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.preloader:before {
+    content: "";
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 200px 100vh 0;
+    border-color: transparent #797979 transparent transparent;
+    position: absolute;
+    left: -200px;
+    top: 0;
+}
+
+.preloader:after {
+    content: "";
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 100vh 0 0 200px;
+    border-color: transparent transparent transparent #797979;
+    position: absolute;
+    right: -200px;
+    top: 0;
+}
+
+.preloader * {
+    -webkit-transition: all 0.3s ease;
+    -moz-transition: all 0.3s ease;
+    transition: all 0.3s ease;
+    transition-duration: 500ms;
+    -webkit-transition-duration: 500ms;
+    transition-timing-function: cubic-bezier(0.86, 0, 0.07, 1);
+    -webkit-transition-timing-function: cubic-bezier(0.86, 0, 0.07, 1);
+}
+
+.transition-overlay {
+    width: 100vw;
+    height: 100vh;
+    position: fixed;
+    right: calc(-100% - 200px);
+    bottom: 0;
+    background: #797979;
+    z-index: 9999;
+    -webkit-transition: all 0.3s ease;
+    -moz-transition: all 0.3s ease;
+    transition: all 0.3s ease;
+    transition-duration: 500ms;
+    -webkit-transition-duration: 500ms;
+    transition-timing-function: cubic-bezier(0.86, 0, 0.07, 1);
+    -webkit-transition-timing-function: cubic-bezier(0.86, 0, 0.07, 1);
+    visibility: hidden;
+}
+
+.preloader .inner .percentage {
+    width: 100%;
+    font-size: 28vw;
+    line-height: 1;
+    font-weight: 800;
+    color: #fff;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    text-align: center;
+    opacity: 0.2;
+    transition-delay: 0.10s;
+}
+
+.navigation__transparent.navbar {
+    visibility: hidden;
+}
+
+.page-loaded .preloader .percentage {
+    margin-left: 100px;
+    opacity: 0;
+}
+
+.page-loaded .preloader {
+    left: calc(-100% - 200px);
+    visibility: hidden;
+}

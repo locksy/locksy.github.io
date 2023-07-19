@@ -141,6 +141,9 @@
             width: 100%;
             height: 100vh;
             pointer-events: none;
+            background-image: url(./img/durgayantratransparency.png);
+            background-position: 50% 50%;
+            background-repeat: no-repeat;
         }
         
         .fold-scroller {
@@ -463,6 +466,14 @@
             right: 0;
             bottom: calc(100%);
         }
+        
+        div.sticky {
+            position: -webkit-sticky;
+            position: sticky;
+            top: 0;
+            font-size: 3rem;
+            padding: 40px;
+        }
     </style>
 </head>
 
@@ -478,6 +489,7 @@
         <div class="content items">
 
             <div class="fold-content" id="base-content">
+
                 <!-- CONTENT INSIDE HERE -->
 
                 <span class="content_headertop">a selection of work by:</span>
@@ -486,7 +498,9 @@
                     <div class="container content__type-special">
                         <img src="img/eye.png" alt="eye" style="width:100%;">
                         <div class="centered">
+
                             <span class="content__type-special">Daniel Pedersen</span>
+
                         </div>
                     </div>
 
