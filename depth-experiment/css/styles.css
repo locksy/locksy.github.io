@@ -1,0 +1,26 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: black;
+}
+
+#zoom-container {
+    width: 100%;
+    height: 100vh;
+    position: relative;
+}
+
+.zoom-image {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    opacity: 0;
+    transition: opacity 1s ease-in-out;
+}
+
+.zoom-image.visible {
+    opacity: 1;
+}
