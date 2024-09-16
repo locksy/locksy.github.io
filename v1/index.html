@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -6,33 +7,25 @@
 
     <meta name="author" content="Codrops" />
     <link rel="shortcut icon" href="img/favicon.png">
-    
-    <!-- Import Fonts -->
     <style>
         @import url("https://p.typekit.net/p.css?s=1&k=yxd7izj&ht=tk&f=30282&a=1494256&app=typekit&e=css");
         @font-face {
             font-family: "condor-compressed";
-            src: url("https://use.typekit.net/af/30a272/00000000000000003b9ae491/27/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n3&v=3") format("woff2"), 
-                 url("https://use.typekit.net/af/30a272/00000000000000003b9ae491/27/d?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n3&v=3") format("woff"), 
-                 url("https://use.typekit.net/af/30a272/00000000000000003b9ae491/27/a?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n3&v=3") format("opentype");
+            src: url("https://use.typekit.net/af/30a272/00000000000000003b9ae491/27/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n3&v=3") format("woff2"),
+                url("https://use.typekit.net/af/30a272/00000000000000003b9ae491/27/d?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n3&v=3") format("woff"),
+                url("https://use.typekit.net/af/30a272/00000000000000003b9ae491/27/a?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n3&v=3") format("opentype");
             font-display: auto;
             font-style: normal;
             font-weight: 300;
+            font-stretch: normal;
         }
-        
+
         .tk-condor-compressed {
             font-family: "condor-compressed", sans-serif;
         }
     </style>
 
-    <!-- Load Scripts After DOM is Ready -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            script('./js/script1.js');
-            script('./js/imagesloaded.pkgd.min.js');
-            script('./js/split.js');
-        });
-        
+    <script type="text/javascript">
         function script(url) {
             var s = document.createElement('script');
             s.type = 'text/javascript';
@@ -42,28 +35,50 @@
             x.appendChild(s);
         }
     </script>
-    
-    <!-- CSS Styles -->
+
+    <script>
+        script('./js/script1.js');
+        script('./js/imagesloaded.pkgd.min.js');
+        script('./js/split.js');
+    </script>
     <style>
         body {
             width: 100%;
             height: 100vh;
             background-color: #000;
             background-image: radial-gradient(circle at top right, rgba(121, 68, 154, 0.13), transparent),
-                              radial-gradient(circle at 20% 80%, rgba(41, 196, 255, 0.13), transparent);
+                radial-gradient(circle at 20% 80%, rgba(41, 196, 255, 0.13), transparent);
         }
-        
+
         canvas {
             position: fixed;
             width: 100%;
             height: 100%;
         }
-        
+
+        a {
+            position: absolute;
+            bottom: 2vmin;
+            right: 2vmin;
+            color: rgba(255, 255, 255, 0.2);
+            text-decoration: none;
+        }
+
+        a:hover {
+            color: #fff;
+        }
+
+        *,
+        *::after,
+        *::before {
+            box-sizing: border-box;
+        }
+
         .container {
             position: relative;
             text-align: center;
         }
-        
+
         .centered {
             position: absolute;
             top: 45%;
@@ -79,49 +94,67 @@
             text-transform: uppercase;
         }
 
-        .content {
+        a {
             display: flex;
             flex-direction: column;
-            width: 100vw;
-            height: calc(100vh - 13rem);
             position: relative;
             justify-content: flex-start;
             align-items: center;
         }
 
-        .content_header {
-            font-size: 9vw;
-            color: rgb(235, 181, 149);
-            display: block;
-            margin: 0 auto;
-            text-align: center;
-            font-family: condor-compressed, sans-serif;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
+        a:hover {}
 
-        .content__img {
+        a:active {}
+
+        body {
+            margin: 0;
+            color: blanchedalmond;
+            --color-bg: #fff;
+            --color-link: #aaa;
+            --color-link-hover: #000;
+            color: var(--color-text);
+            font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            position: relative;
             width: 100%;
-            display: block;
+            height: 100vh;
+            overflow-x: hidden;
         }
 
-        .message {
-            background: var(--color-text);
-            color: var(--color-bg);
-            padding: 1rem;
-            text-align: center;
-            display: none;
+        h1 {
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+            font-size: 4rem;
+            color: #fff;
+            line-height: 1;
+            position: absolute;
+            top: 10px;
+        }
+
+        .screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100vh;
+            pointer-events: none;
+            background-image: url(./img/durgayantratransparency.png);
+            background-position: 50% 50%;
+            background-repeat: no-repeat;
         }
     </style>
 </head>
 
+
 <body class="demo-4 loading">
 
     <main>
-        <!-- Starfield Canvas -->
         <canvas></canvas>
+        <!-- partial -->
 
-        <!-- Content -->
         <div class="message">tilt your phone to move the stars</div>
 
         <div class="content items">
@@ -131,11 +164,8 @@
                     <span class="content__type-special">Daniel Pedersen</span>
                 </div>
             </div>
-
-            <!-- Example of content -->
-            <img class="content__img item scrollFade" src="img/dan/8.jpg" alt="People's Kush" />
-            <h2 class="content_header">People's Kush Logo/Branding</h2>
         </div>
     </main>
 </body>
+
 </html>
