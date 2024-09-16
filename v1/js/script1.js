@@ -28,11 +28,10 @@ generate();
 resize();
 step();
 
-window.onresize = resize;
-canvas.onmousemove = onMouseMove;
-canvas.ontouchmove = onTouchMove;
-canvas.ontouchend = onMouseLeave;
-document.onmouseleave = onMouseLeave;
+window.addEventListener('mousemove', onMouseMove);
+window.addEventListener('touchmove', onTouchMove);
+window.addEventListener('touchend', onMouseLeave);
+window.addEventListener('mouseleave', onMouseLeave);
 
 function generate() {
 
@@ -223,3 +222,8 @@ function onMouseLeave() {
     pointerY = null;
 
 }
+window.addEventListener('load', () => {
+    pointerX = width / 2;
+    pointerY = height / 2;
+    velocity = { x: 0, y: 0, tx: 0, ty: 0, z: 0.0005 };
+});
