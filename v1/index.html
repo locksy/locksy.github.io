@@ -36,11 +36,12 @@
     </script>
 
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    window.onload = function() {
         script('./js/script1.js');
         script('./js/imagesloaded.pkgd.min.js');
         script('./js/split.js');
-    });
+        document.querySelector('.content').style.display = 'block';
+    };
 </script>
     
     <style>
