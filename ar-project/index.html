@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AR.js Marker-Based AR Demo</title>
+  <!-- Include A-Frame library -->
+  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+  <!-- Include AR.js library -->
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; }
+  </style>
+</head>
+<body>
+  <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
+    <!-- Define the marker using your custom .patt file -->
+    <a-marker type="pattern" url="pattern-marker.patt">
+      <!-- Add a 3D object to display when the marker is detected -->
+      <a-box position='0 0.5 0' material='color: yellow;'></a-box>
+    </a-marker>
+    <!-- Optionally, add a camera -->
+    <a-entity camera></a-entity>
+  </a-scene>
+</body>
+</html>
