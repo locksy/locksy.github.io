@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Meta tags and fonts -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dan Pedersen - Sawwave Art and Media</title>
+
+    <!-- Link to external CSS -->
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- Script to load external JS files -->
+    <script type="text/javascript">
+        function script(url) {
+            var s = document.createElement('script');
+            s.type = 'text/javascript';
+            s.async = true;
+            s.src = url;
+            var x = document.getElementsByTagName('head')[0];
+            x.appendChild(s);
+        }
+    </script>
+
+    <!-- Load scripts -->
+    <script>
+        script('./js/script1.js');
+        script('./js/imagesloaded.pkgd.min.js');
+        script('./js/split.js');
+    </script>
+</head>
+
+<body class="demo-4 loading">
+
+    <main>
+        <canvas></canvas>
+        <!-- partial -->
+
+        <div class="message">tilt your phone to move the stars</div>
+
+        <div class="content items">
+
+            <div class="fold-content" id="base-content">
+
+                <!-- CONTENT INSIDE HERE -->
+                <span class="content_headertop">a selection of work by:</span>
+                <p class="content__type">
+                    <div class="container content__type-special">
+                        <img src="img/eye.png" alt="eye" style="width:100%;">
+                        <div class="centered">
+                            <span class="content__type-special">Daniel Pedersen</span>
+                        </div>
+                    </div>
+
+                    <img class="content__img item scrollFade" src="img/dan/8.jpg" alt="People's Kush" />
+                    <br>
+                    <h2 class="content_header">People's Kush Logo/Branding</h2>
+                    <p class="content__type">
+                        Created the logo and graphics for a variety of print, web, and promotional items. Below is the business card with functional tear-off crutches.
+                    </p>
+                    <img class="content__img item scrollFade" src="img/dan/9.jpg" alt="People's Kush" />
+                    <br><br>
+                    <h2 class="content_header">meow.</h2>
+                    <img class="content__img item scrollFade" src="img/dan/1.jpg" alt="Kiva Lost Farm" />
+                </p>
+
+                <span class="content_header">Kiva Lost Farm Promotional Graphic </span>
+                <p class="content__type">
+                    Promotional graphic for cannabis fruit chews from Kiva for People's Kush.
+                </p>
+                <br>
+                <img class="content__img item scrollFade" src="img/dan/5.jpg" alt="KDVS" />
+                <br>
+                <h2 class="content_header">KDVS 90.3FM Fundraiser Poster</h2>
+                <p class="content__type">Designed a flier for my local radio station's annual fundraiser.</p>
+
+                <br><br>
+                <a href="./loot/index.html" class="content__img">
+                    <img class="content__img item scrollFade" src="img/loot.png" alt="loot" />
+                </a>
+                <br>
+                <h2 class="content_header">loot</h2>
+                <p class="content__type">
+                    This is an experiment with parallax using mouse location. Eventually, I want to get this to respond to input from a webcam using TensorFlow instead of mouse input.
+                </p>
+
+                <img class="content__img item scrollFade" src="img/dan/2.jpg" alt="From Beyond the Rave" />
+                <br>
+                <h2 class="content_header">From Beyond the Rave</h2>
+                <p class="content__type">
+                    This is a flier I did for an event that I played music at for Halloween 2021.
+                </p>
+
+                <img class="content__img item scrollFade" src="img/dan/3.jpg" alt="Treebeard Camp Sticker 2021" />
+                <br>
+                <h2 class="content_header">Treebeard Camp Sticker 2021</h2>
+                <p class="content__type">
+                    The sticker that I designed and printed for Camp Treebeard for the renegade that wasn't Burning Man. We missed out big time.
+                </p>
+                <img class="content__img item scrollFade" src="img/dan/7.jpg" alt="Treebeard Camp Sticker 2021" />
+                <br><br><br>
+                <img class="content__img item scrollFade" src="img/dan/4.jpg" alt="Minutia and Locksy" />
+                <h2 class="content_header">Minutia and Locksy</h2>
+                <p class="content__type">This is a flier I made for a DJ event that I performed at with a friend.</p>
+            </div>
+
+            <div class="screen" id="fold-wrapper"></div>
+            <button class="btn-debug" id="btn-debug">See Planes</button>
+
+        </div>
+    </main>
+
+</body>
+</html>
