@@ -1,9 +1,3 @@
-/*          *     .        *  .    *    *   . 
- .  *  move your mouse to over the stars   .
- *  .  .   change these values:   .  *
-   .      * .        .          * .       */
-const STAR_COLOR = '#fff';
-const STAR_SIZE = 3;
 const STAR_MIN_SCALE = 0.2;
 const OVERFLOW_THRESHOLD = 50;
 const STAR_COUNT = (window.innerWidth + window.innerHeight) / 8;
@@ -140,16 +134,26 @@ function render() {
     stars.forEach(star => {
         context.beginPath();
         context.lineCap = 'round';
+
+        // Calculate the star's trail length based on velocity
+        let trailLength = STAR_SIZE * star.z * scale;
+
+        // Calculate Doppler color shift
+        let speedFactor = (velocity.x * star.x + velocity.y * star.y) / (width + height);
+        let red = Math.min(255, 255 + speedFactor * 100);
+        let blue = Math.max(0, 255 - speedFactor * 100);
+        let starColor = `rgb(${Math.round(red)}, ${Math.round(255)}, ${Math.round(blue)})`;
+
+        context.strokeStyle = starColor;
         context.lineWidth = STAR_SIZE * star.z * scale;
         context.globalAlpha = 0.5 + 0.5 * Math.random();
-        context.strokeStyle = STAR_COLOR;
 
         context.moveTo(star.x, star.y);
 
-        let tailX = velocity.x * 2,
-            tailY = velocity.y * 2;
+        let tailX = velocity.x * trailLength;
+        let tailY = velocity.y * trailLength;
 
-        // stroke() wont work on an invisible line
+        // Ensure tail is visible
         if (Math.abs(tailX) < 0.1) tailX = 0.5;
         if (Math.abs(tailY) < 0.1) tailY = 0.5;
 
@@ -185,5 +189,4 @@ function onTouchMove(event) {
 function onMouseLeave() {
     pointerX = null;
     pointerY = null;
-}
 }
