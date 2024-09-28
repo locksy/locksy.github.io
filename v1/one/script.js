@@ -1,3 +1,5 @@
+console.log('script.js is loaded and running');
+
 // Ensure the code runs after the DOM is ready
 $(document).ready(function() {
     // WebGL Shader Background
