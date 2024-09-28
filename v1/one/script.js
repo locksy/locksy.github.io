@@ -103,11 +103,14 @@ $(document).ready(function() {
         var x = (gamma + 90) / 180;
         var y = (beta + 180) / 360;
 
+        // Update WebGL shader uniforms
         uniforms.mouse.value.x = x;
         uniforms.mouse.value.y = y;
 
         // Update starfield
-        updateStarfieldOrientation(x, y);
+        if (starfield && typeof starfield.updateStarOrientation === 'function') {
+            starfield.updateStarOrientation(x, y);
+        }
     }
 
     // Starfield
@@ -242,10 +245,8 @@ $(document).ready(function() {
         // Initialize the starfield
         starfield = new Starfield($('.starfield')[0], {});
 
-        // Expose updateStarfieldOrientation globally
-        window.updateStarfieldOrientation = function(x, y) {
-            starfield.updateStarOrientation(x, y);
-        };
-
     })(jQuery, window, document);
+
+    // Initialize device orientation at the end
+    initializeDeviceOrientation();
 });
