@@ -123,8 +123,8 @@ let texture, bg;
 loader.setCrossOrigin("anonymous");
 
 // Paths to your texture images
-const noiseTextureURL = 'textures/noise.png';
-const bgTextureURL = 'textures/clouds-1-tile.jpg';
+const noiseTextureURL = './textures/noise.png';
+const bgTextureURL = './textures/clouds-1-tile.jpg';
 
 // Load the textures
 loader.load(
