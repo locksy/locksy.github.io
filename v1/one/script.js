@@ -106,7 +106,7 @@ $(document).ready(function() {
     }
   
     function handleDeviceOrientation(event) {
-      console.log('Device orientation event:', event);
+      // Handle device orientation
       var gamma = event.gamma; // Left to right tilt in degrees, between -90 and 90
       var beta = event.beta;   // Front to back tilt in degrees, between -180 and 180
   
@@ -119,18 +119,55 @@ $(document).ready(function() {
     }
   
     // Star Field Overlay
-(function($, window, document, undefined) { 
-    var Starfield = function(el, options) {
-      this.el = el;
-      this.$el = $(el);
-      this.options = options;
+    (function($, window, document) {
+      var Starfield = function(el, options) {
+        this.el = el;
+        this.$el = $(el);
+        this.options = options;
   
-      var that = this;
+        this.defaults = {
+          starColor: "rgba(255,255,255,1)",
+          bgColor: "rgba(0,0,0,0)", /* Transparent background */
+          mouseMove: true,
+          mouseColor: "rgba(0,0,0,0.2)",
+          mouseSpeed: 20,
+          fps: 60,
+          speed: 3,
+          quantity: 512,
+          ratio: 256,
+          divclass: "starfield"
+        };
   
-      // (Rest of your Starfield code goes here, ensure that 'that' is correctly used)
+        this.settings = $.extend({}, this.defaults, this.options);
   
-      // In your move function, make sure 'that' is correctly referenced
-      this.move = function() {
+        this.init();
+      };
+  
+      Starfield.prototype.init = function() {
+        // Initialization code...
+        // (Ensure that variables are properly scoped)
+        var that = this;
+  
+        // Rest of the initialization code...
+  
+        // Start the animation
+        this.start();
+      };
+  
+      Starfield.prototype.start = function() {
+        // Animation code...
+        var that = this;
+  
+        // Rest of the start code...
+  
+        // Handle movement
+        if (this.settings.mouseMove) {
+          this.move();
+        }
+      };
+  
+      Starfield.prototype.move = function() {
+        var that = this;
         var doc = document.documentElement;
   
         if (this.orientationSupport && !this.desktop) {
@@ -159,15 +196,15 @@ $(document).ready(function() {
         }
       };
   
+      // Other prototype methods...
+  
       // Initialize the starfield
-      this.start();
-    };
+      $(document).ready(function() {
+        $('.starfield').each(function() {
+          new Starfield(this, {});
+        });
+      });
   
-    // Initialize the starfield
-    $('.starfield').each(function() {
-      new Starfield(this, {}).start();
-    });
-  
-  })(jQuery, window, document);
-  
+    })(jQuery, window, document);
+  });
   
