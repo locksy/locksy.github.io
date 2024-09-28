@@ -119,56 +119,55 @@ $(document).ready(function() {
     }
   
     // Star Field Overlay
-    (function($, window, document, undefined) {
-      var Starfield = function(el, options) {
-        this.el = el;
-        this.$el = $(el);
-        this.options = options;
+(function($, window, document, undefined) { 
+    var Starfield = function(el, options) {
+      this.el = el;
+      this.$el = $(el);
+      this.options = options;
   
-        var that = this;
+      var that = this;
   
-        // (Rest of your Starfield code goes here, ensure that 'that' is correctly used)
+      // (Rest of your Starfield code goes here, ensure that 'that' is correctly used)
   
-        // In your move function, make sure 'that' is correctly referenced
-        this.move = function() {
-          var doc = document.documentElement;
+      // In your move function, make sure 'that' is correctly referenced
+      this.move = function() {
+        var doc = document.documentElement;
   
-          if (this.orientationSupport && !this.desktop) {
-            window.addEventListener('deviceorientation', handleOrientation, false);
-          } else {
-            window.addEventListener('mousemove', handleMousemove, false);
+        if (this.orientationSupport && !this.desktop) {
+          window.addEventListener('deviceorientation', handleOrientation, false);
+        } else {
+          window.addEventListener('mousemove', handleMousemove, false);
+        }
+  
+        function handleOrientation(event) {
+          if (event.beta !== null && event.gamma !== null) {
+            var gamma = event.gamma; // Left to right tilt in degrees, between -90 and 90
+            var beta = event.beta;   // Front to back tilt in degrees, between -180 and 180
+  
+            // Normalize gamma and beta to screen coordinates
+            var x = ((gamma || 0) + 90) / 180 * that.w;
+            var y = ((beta || 0) + 180) / 360 * that.h;
+  
+            that.cursor_x = x;
+            that.cursor_y = y;
           }
+        }
   
-          function handleOrientation(event) {
-            if (event.beta !== null && event.gamma !== null) {
-              var gamma = event.gamma; // Left to right tilt in degrees, between -90 and 90
-              var beta = event.beta;   // Front to back tilt in degrees, between -180 and 180
-  
-              // Normalize gamma and beta to screen coordinates
-              var x = ((gamma || 0) + 90) / 180 * that.w;
-              var y = ((beta || 0) + 180) / 360 * that.h;
-  
-              that.cursor_x = x;
-              that.cursor_y = y;
-            }
-          }
-  
-          function handleMousemove(event) {
-            that.cursor_x = event.pageX || event.clientX + doc.scrollLeft - doc.clientLeft;
-            that.cursor_y = event.pageY || event.clientY + doc.scrollTop - doc.clientTop;
-          }
-        };
-  
-        // Initialize the starfield
-        this.start();
-      });
+        function handleMousemove(event) {
+          that.cursor_x = event.pageX || event.clientX + doc.scrollLeft - doc.clientLeft;
+          that.cursor_y = event.pageY || event.clientY + doc.scrollTop - doc.clientTop;
+        }
+      };
   
       // Initialize the starfield
-      $('.starfield').each(function() {
-        new Starfield(this, {}).start();
-      });
+      this.start();
+    };
   
-    })(jQuery, window, document);
+    // Initialize the starfield
+    $('.starfield').each(function() {
+      new Starfield(this, {}).start();
+    });
   
-  });
+  })(jQuery, window, document);
+  
   
