@@ -107,12 +107,12 @@ $(document).ready(function() {
   
     function handleDeviceOrientation(event) {
       console.log('Device orientation event:', event);
-      const gamma = event.gamma; // Left to right tilt in degrees, between -90 and 90
-      const beta = event.beta;   // Front to back tilt in degrees, between -180 and 180
+      var gamma = event.gamma; // Left to right tilt in degrees, between -90 and 90
+      var beta = event.beta;   // Front to back tilt in degrees, between -180 and 180
   
       // Normalize gamma and beta to values between 0 and window dimensions
-      const x = ((gamma || 0) + 90) / 180 * window.innerWidth;
-      const y = ((beta || 0) + 180) / 360 * window.innerHeight;
+      var x = ((gamma || 0) + 90) / 180 * window.innerWidth;
+      var y = ((beta || 0) + 180) / 360 * window.innerHeight;
   
       uniforms.mouse.value.x = x;
       uniforms.mouse.value.y = renderer.domElement.height - y;
@@ -125,51 +125,12 @@ $(document).ready(function() {
         this.$el = $(el);
         this.options = options;
   
-        that = this;
-      };
+        var that = this;
   
-      var that;
-      var isPlaying;
-      var isInited = false;
-      var canCanvas = false;
-      var animId;
+        // (Rest of your Starfield code goes here, ensure that 'that' is correctly used)
   
-      Starfield.prototype = {
-        defaults: {
-          starColor: "rgba(255,255,255,1)",
-          bgColor: "rgba(0,0,0,0)", /* Transparent background */
-          mouseMove: true,
-          mouseColor: "rgba(0,0,0,0.2)",
-          mouseSpeed: 20,
-          fps: 60,
-          speed: 3,
-          quantity: 512,
-          ratio: 256,
-          divclass: "starfield"
-        },
-  
-        resizer: function() {
-          // Resizer code...
-          // (Same as your original code)
-        },
-  
-        init: function() {
-          // Initialization code...
-          // (Same as your original code)
-        },
-  
-        anim: function() {
-          // Animation code...
-          // (Same as your original code)
-        },
-  
-        loop: function() {
-          this.anim();
-  
-          animId = window.requestAnimationFrame(function() { that.loop(); });
-        },
-  
-        move: function() {
+        // In your move function, make sure 'that' is correctly referenced
+        this.move = function() {
           var doc = document.documentElement;
   
           if (this.orientationSupport && !this.desktop) {
@@ -196,48 +157,18 @@ $(document).ready(function() {
             that.cursor_x = event.pageX || event.clientX + doc.scrollLeft - doc.clientLeft;
             that.cursor_y = event.pageY || event.clientY + doc.scrollTop - doc.clientTop;
           }
-        },
+        };
   
-        stop: function() {
-          window.cancelAnimationFrame(animId);
+        // Initialize the starfield
+        this.start();
+      });
   
-          isPlaying = false;
-        },
+      // Initialize the starfield
+      $('.starfield').each(function() {
+        new Starfield(this, {}).start();
+      });
   
-        start: function() {
-          if (!isInited) {
-            isInited = true;
-            this.init();
-          }
-  
-          if (!isPlaying) {
-            isPlaying = true;
-            this.loop();
-          }
-  
-          window.addEventListener('resize', function() { that.resizer(); }, false);
-          window.addEventListener('orientationchange', function() { that.resizer(); }, false);
-  
-          if (this.settings.mouseMove) {
-            this.move();
-          }
-  
-          return this;
-        }
-      };
-  
-      Starfield.defaults = Starfield.prototype.defaults;
-  
-      $.fn.starfield = function(options) {
-        return this.each(function() {
-          new Starfield(this, options).start();
-        });
-      };
-  
-      window.Starfield = Starfield;
     })(jQuery, window, document);
   
-    // Initialize the starfield
-    $('.starfield').starfield();
   });
   
