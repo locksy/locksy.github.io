@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Interactive Starfield and Shader</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Container for the WebGL Shader Background -->
+  <div id="container"></div>
+  <!-- Div for the Starfield Overlay -->
+  <div class="starfield"></div>
+  <!-- Button for requesting device orientation permission on iOS -->
+  <button id="requestPermissionButton">Enable Motion Control</button>
+
+  <!-- Include Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- Vertex Shader -->
+  <script id="vertexShader" type="x-shader/x-vertex">
+    varying vec2 vUv;
+
+    void main() {
+      vUv = uv;
+      gl_Position = vec4(position, 1.0);
+    }
+  </script>
+
+  <!-- Fragment Shader -->
+  <script id="fragmentShader" type="x-shader/x-fragment">
+    #ifdef GL_ES
+    precision mediump float;
+    #endif
+
+    #extension GL_OES_standard_derivatives : enable
+
+    uniform float time;
+    uniform vec2 mouse;
+    uniform vec2 resolution;
+
+    varying vec2 vUv;
+
+    void main(void) {
+      vec2 uv = vUv;
+      vec2 p = gl_FragCoord.xy / resolution.xy;
+      float d = dot(uv, uv);
+      float a = atan(uv.y, uv.x);
+      vec3 color = vec3(0.0);
+
+      p -= 0.5;
+      p.x *= resolution.x / resolution.y;
+
+      float z = time; 
+      float l = length(p);
+
+      for (int i = 0; i < 3; i++) {
+        uv = p;
+        z -= 0.1;
+        float dist = distance(gl_FragCoord.xy / resolution.xy, mouse / resolution);
+        uv += p / l * (tan(z * 0.1) + log(z)) * abs(sin(l * 5.0 - z * 0.1)) * (1.0 / (dist * 5.0 + 1.0));
+
+        color[i] = 0.0031 / abs(uv.y * uv.x + cos(z * 0.05)) * 2.0 + 0.001 / abs(uv.y * uv.x) * 2.0;
+      }
+
+      gl_FragColor = vec4(color / l, 1.0);
+    }
+  </script>
+
+  <!-- Include Your Script -->
+  <script src="script.js"></script>
+</body>
+</html>
