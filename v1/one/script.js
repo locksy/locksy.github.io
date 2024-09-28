@@ -6,207 +6,246 @@ $(document).ready(function() {
     var container;
     var camera, scene, renderer;
     var uniforms;
-  
+
     init();
     animate();
-  
+
     function init() {
-      container = document.getElementById('container');
-  
-      camera = new THREE.Camera();
-      camera.position.z = 1;
-  
-      scene = new THREE.Scene();
-  
-      var geometry = new THREE.PlaneBufferGeometry(2, 2);
-  
-      uniforms = {
-        time: { value: 1.0 },
-        resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
-        mouse: { value: new THREE.Vector2() }
-      };
-  
-      var material = new THREE.ShaderMaterial({
-        uniforms: uniforms,
-        vertexShader: document.getElementById('vertexShader').textContent,
-        fragmentShader: document.getElementById('fragmentShader').textContent
-      });
-  
-      var mesh = new THREE.Mesh(geometry, material);
-      scene.add(mesh);
-  
-      renderer = new THREE.WebGLRenderer();
-      renderer.setPixelRatio(window.devicePixelRatio);
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      container.appendChild(renderer.domElement);
-  
-      onWindowResize();
-      window.addEventListener('resize', onWindowResize, false);
-  
-      // Mouse move event for desktop interaction
-      window.addEventListener('mousemove', onMouseMove, false);
-  
-      // Initialize device orientation
-      initializeDeviceOrientation();
-    }
-  
-    function onWindowResize(event) {
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      uniforms.resolution.value.x = renderer.domElement.width;
-      uniforms.resolution.value.y = renderer.domElement.height;
-    }
-  
-    function onMouseMove(event) {
-      uniforms.mouse.value.x = event.clientX;
-      uniforms.mouse.value.y = renderer.domElement.height - event.clientY;
-    }
-  
-    function animate() {
-      requestAnimationFrame(animate);
-      render();
-    }
-  
-    function render() {
-      uniforms.time.value += 0.05;
-      renderer.render(scene, camera);
-    }
-  
-    /* Device Orientation Integration */
-  
-    function initializeDeviceOrientation() {
-      // Check if DeviceOrientationEvent is available
-      if (window.DeviceOrientationEvent) {
-        // For iOS 13+ devices
-        if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-          console.log('DeviceOrientationEvent.requestPermission is available');
-          $('#requestPermissionButton').show();
-          $('#requestPermissionButton').on('click', function() {
-            DeviceOrientationEvent.requestPermission()
-              .then(function(response) {
-                console.log('DeviceOrientationEvent.requestPermission response:', response);
-                if (response === 'granted') {
-                  $('#requestPermissionButton').hide();
-                  window.addEventListener('deviceorientation', handleDeviceOrientation, false);
-                } else {
-                  alert('Permission not granted for Device Orientation');
-                }
-              })
-              .catch(function(error) {
-                console.error('Error requesting device orientation permission:', error);
-              });
-          });
-        } else {
-          // Non-iOS or older iOS versions
-          console.log('DeviceOrientationEvent.requestPermission is not required');
-          $('#requestPermissionButton').hide();
-          window.addEventListener('deviceorientation', handleDeviceOrientation, false);
-        }
-      } else {
-        console.log('DeviceOrientationEvent is not supported in your browser.');
-        $('#requestPermissionButton').hide();
-      }
-    }
-  
-    function handleDeviceOrientation(event) {
-      // Handle device orientation
-      var gamma = event.gamma; // Left to right tilt in degrees, between -90 and 90
-      var beta = event.beta;   // Front to back tilt in degrees, between -180 and 180
-  
-      // Normalize gamma and beta to values between 0 and window dimensions
-      var x = ((gamma || 0) + 90) / 180 * window.innerWidth;
-      var y = ((beta || 0) + 180) / 360 * window.innerHeight;
-  
-      uniforms.mouse.value.x = x;
-      uniforms.mouse.value.y = renderer.domElement.height - y;
-    }
-  
-    // Star Field Overlay
-    (function($, window, document) {
-      var Starfield = function(el, options) {
-        this.el = el;
-        this.$el = $(el);
-        this.options = options;
-  
-        this.defaults = {
-          starColor: "rgba(255,255,255,1)",
-          bgColor: "rgba(0,0,0,0)", /* Transparent background */
-          mouseMove: true,
-          mouseColor: "rgba(0,0,0,0.2)",
-          mouseSpeed: 20,
-          fps: 60,
-          speed: 3,
-          quantity: 512,
-          ratio: 256,
-          divclass: "starfield"
+        container = document.getElementById('container');
+
+        camera = new THREE.Camera();
+        camera.position.z = 1;
+
+        scene = new THREE.Scene();
+
+        var geometry = new THREE.PlaneBufferGeometry(2, 2);
+
+        uniforms = {
+            time: { value: 1.0 },
+            resolution: { value: new THREE.Vector2() },
+            mouse: { value: new THREE.Vector2() }
         };
-  
-        this.settings = $.extend({}, this.defaults, this.options);
-  
-        this.init();
-      };
-  
-      Starfield.prototype.init = function() {
-        // Initialization code...
-        // (Ensure that variables are properly scoped)
-        var that = this;
-  
-        // Rest of the initialization code...
-  
-        // Start the animation
-        this.start();
-      };
-  
-      Starfield.prototype.start = function() {
-        // Animation code...
-        var that = this;
-  
-        // Rest of the start code...
-  
-        // Handle movement
-        if (this.settings.mouseMove) {
-          this.move();
-        }
-      };
-  
-      Starfield.prototype.move = function() {
-        var that = this;
-        var doc = document.documentElement;
-  
-        if (this.orientationSupport && !this.desktop) {
-          window.addEventListener('deviceorientation', handleOrientation, false);
-        } else {
-          window.addEventListener('mousemove', handleMousemove, false);
-        }
-  
-        function handleOrientation(event) {
-          if (event.beta !== null && event.gamma !== null) {
-            var gamma = event.gamma; // Left to right tilt in degrees, between -90 and 90
-            var beta = event.beta;   // Front to back tilt in degrees, between -180 and 180
-  
-            // Normalize gamma and beta to screen coordinates
-            var x = ((gamma || 0) + 90) / 180 * that.w;
-            var y = ((beta || 0) + 180) / 360 * that.h;
-  
-            that.cursor_x = x;
-            that.cursor_y = y;
-          }
-        }
-  
-        function handleMousemove(event) {
-          that.cursor_x = event.pageX || event.clientX + doc.scrollLeft - doc.clientLeft;
-          that.cursor_y = event.pageY || event.clientY + doc.scrollTop - doc.clientTop;
-        }
-      };
-  
-      // Other prototype methods...
-  
-      // Initialize the starfield
-      $(document).ready(function() {
-        $('.starfield').each(function() {
-          new Starfield(this, {});
+
+        var material = new THREE.ShaderMaterial({
+            uniforms: uniforms,
+            vertexShader: document.getElementById('vertexShader').textContent,
+            fragmentShader: document.getElementById('fragmentShader').textContent
         });
-      });
-  
+
+        var mesh = new THREE.Mesh(geometry, material);
+        scene.add(mesh);
+
+        renderer = new THREE.WebGLRenderer();
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        onWindowResize();
+        window.addEventListener('resize', onWindowResize, false);
+
+        // Mouse move event for desktop interaction
+        window.addEventListener('mousemove', onMouseMove, false);
+
+        // Initialize device orientation
+        initializeDeviceOrientation();
+    }
+
+    function onWindowResize() {
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        uniforms.resolution.value.x = renderer.domElement.width;
+        uniforms.resolution.value.y = renderer.domElement.height;
+    }
+
+    function onMouseMove(event) {
+        uniforms.mouse.value.x = event.clientX / window.innerWidth;
+        uniforms.mouse.value.y = 1 - (event.clientY / window.innerHeight);
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        render();
+    }
+
+    function render() {
+        uniforms.time.value += 0.05;
+        renderer.render(scene, camera);
+    }
+
+    /* Device Orientation Integration */
+
+    function initializeDeviceOrientation() {
+        if (window.DeviceOrientationEvent) {
+            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                $('#requestPermissionButton').show().on('click', function() {
+                    DeviceOrientationEvent.requestPermission()
+                        .then(permissionState => {
+                            if (permissionState === 'granted') {
+                                $('#requestPermissionButton').hide();
+                                window.addEventListener('deviceorientation', handleDeviceOrientation);
+                            } else {
+                                alert('Permission to access device orientation was denied');
+                            }
+                        })
+                        .catch(console.error);
+                });
+            } else {
+                window.addEventListener('deviceorientation', handleDeviceOrientation);
+            }
+        } else {
+            console.log('Device orientation is not supported');
+        }
+    }
+
+    function handleDeviceOrientation(event) {
+        var gamma = event.gamma; // Left to right tilt in degrees, range: -90 to 90
+        var beta = event.beta;   // Front to back tilt in degrees, range: -180 to 180
+
+        // Normalize gamma and beta to values between 0 and 1
+        var x = (gamma + 90) / 180;
+        var y = (beta + 180) / 360;
+
+        uniforms.mouse.value.x = x;
+        uniforms.mouse.value.y = y;
+
+        // Update starfield
+        updateStarfieldOrientation(x, y);
+    }
+
+    // Starfield
+    var starfield;
+
+    (function($, window, document) {
+        var Starfield = function(el, options) {
+            this.el = el;
+            this.$el = $(el);
+            this.options = options;
+
+            this.defaults = {
+                starColor: "rgba(255,255,255,1)",
+                bgColor: "rgba(0,0,0,0)",
+                mouseMove: true,
+                mouseColor: "rgba(0,0,0,0.2)",
+                mouseSpeed: 20,
+                fps: 60,
+                speed: 3,
+                quantity: 512,
+                ratio: 256,
+                divclass: "starfield"
+            };
+
+            this.settings = $.extend({}, this.defaults, this.options);
+
+            this.init();
+        };
+
+        Starfield.prototype.init = function() {
+            this.stars = [];
+            this.canvas = null;
+            this.context = null;
+            this.reqAnimationFrame = window.requestAnimationFrame || 
+                                     window.mozRequestAnimationFrame ||
+                                     window.webkitRequestAnimationFrame || 
+                                     window.msRequestAnimationFrame;
+            this.canvasWidth = 0;
+            this.canvasHeight = 0;
+
+            this.createCanvas();
+            this.createStars();
+            this.start();
+        };
+
+        Starfield.prototype.createCanvas = function() {
+            var canvas = document.createElement('canvas');
+            this.canvas = canvas;
+            this.context = canvas.getContext('2d');
+            this.$el.append(canvas);
+
+            this.updateCanvasSize();
+            
+            window.addEventListener('resize', this.updateCanvasSize.bind(this), false);
+        };
+
+        Starfield.prototype.updateCanvasSize = function() {
+            this.canvasWidth = window.innerWidth;
+            this.canvasHeight = window.innerHeight;
+            this.canvas.width = this.canvasWidth;
+            this.canvas.height = this.canvasHeight;
+        };
+
+        Starfield.prototype.createStars = function() {
+            var quantity = this.settings.quantity;
+            for (var i = 0; i < quantity; i++) {
+                this.stars.push(new Star(this));
+            }
+        };
+
+        Starfield.prototype.start = function() {
+            this.reqAnimationFrame.call(window, this.render.bind(this));
+        };
+
+        Starfield.prototype.render = function() {
+            this.context.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
+            for (var i = 0, len = this.stars.length; i < len; i++) {
+                this.stars[i].render(this.context);
+            }
+            this.reqAnimationFrame.call(window, this.render.bind(this));
+        };
+
+        Starfield.prototype.updateStarOrientation = function(x, y) {
+            var centerX = this.canvasWidth / 2;
+            var centerY = this.canvasHeight / 2;
+            var maxDistance = Math.max(centerX, centerY);
+            
+            for (var i = 0, len = this.stars.length; i < len; i++) {
+                var star = this.stars[i];
+                var distanceX = star.x - centerX;
+                var distanceY = star.y - centerY;
+                
+                star.x += (x - 0.5) * (distanceX / maxDistance) * 10;
+                star.y += (y - 0.5) * (distanceY / maxDistance) * 10;
+                
+                if (star.x < 0) star.x = this.canvasWidth;
+                if (star.x > this.canvasWidth) star.x = 0;
+                if (star.y < 0) star.y = this.canvasHeight;
+                if (star.y > this.canvasHeight) star.y = 0;
+            }
+        };
+
+        function Star(starfield) {
+            this.starfield = starfield;
+            this.reset();
+        }
+
+        Star.prototype.reset = function() {
+            this.x = Math.random() * this.starfield.canvasWidth;
+            this.y = Math.random() * this.starfield.canvasHeight;
+            this.size = Math.random() * 2;
+            this.speed = Math.random() * 0.5 + 0.1;
+        };
+
+        Star.prototype.render = function(context) {
+            context.beginPath();
+            context.arc(this.x, this.y, this.size, 0, 2 * Math.PI);
+            context.fillStyle = this.starfield.settings.starColor;
+            context.fill();
+
+            this.update();
+        };
+
+        Star.prototype.update = function() {
+            this.y += this.speed;
+            if (this.y > this.starfield.canvasHeight) {
+                this.reset();
+                this.y = 0;
+            }
+        };
+
+        // Initialize the starfield
+        starfield = new Starfield($('.starfield')[0], {});
+
+        // Expose updateStarfieldOrientation globally
+        window.updateStarfieldOrientation = function(x, y) {
+            starfield.updateStarOrientation(x, y);
+        };
+
     })(jQuery, window, document);
-  });
-  
+});
