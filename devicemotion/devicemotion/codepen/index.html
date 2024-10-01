@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Starfield Visuals</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div id="container"></div>
+  <div class="starfield"></div>
+
+  <!-- Vertex Shader -->
+  <script id="vertexShader" type="x-shader/x-vertex">
+    varying vec2 vUv;
+    void main() {
+        vUv = uv;
+        gl_Position = vec4(position, 1.0);
+    }
+  </script>
+
+  <!-- Fragment Shader -->
+  <script id="fragmentShader" type="x-shader/x-fragment">
+    #ifdef GL_ES
+    precision mediump float;
+    #endif
+    uniform float time;
+    uniform vec2 mouse;
+    uniform vec2 resolution;
+    varying vec2 vUv;
+
+    void main(void) {
+        vec2 uv = vUv;
+        vec3 color = vec3(0.0);
+        float d = dot(uv, uv);
+        float l = length(uv - mouse / resolution);
+        color.r += sin(time + l) * 0.5 + 0.5;
+        gl_FragColor = vec4(color, 1.0);
+    }
+  </script>
+
+  <!-- Main Script -->
+  <script src="./script.js"></script>
+</body>
+</html>
