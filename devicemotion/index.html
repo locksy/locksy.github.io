@@ -3,19 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebGL Shader with Starfield</title>
-    <link rel="stylesheet" href="./styles.css"> <!-- Correct relative path for the stylesheet -->
+    <title>Device Orientation</title>
+    <style>
+        /* Add any required CSS here */
+    </style>
 </head>
 <body>
-    <div id="container"></div>
-    <div class="starfield"></div>
+    <canvas id="canvas"></canvas>
 
-    <!-- Include Libraries from CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r89/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/stats.js/r17/Stats.min.js"></script>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
 
-    <!-- Correct relative path for the main.js file -->
-    <script src="./main.js"></script>
+        let isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        let mouseX = canvas.width / 2;
+        let mouseY = canvas.height / 2;
+
+        // Function to request device orientation access on iOS
+        function requestDeviceOrientationPermission() {
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission()
+                    .then(permissionState => {
+                        if (permissionState === 'granted') {
+                            window.addEventListener('deviceorientation', handleOrientation);
+                        }
+                    })
+                    .catch(console.error);
+            } else {
+                // Handle non-iOS devices
+                window.addEventListener('deviceorientation', handleOrientation);
+            }
+        }
+
+        // Handle orientation event
+        function handleOrientation(event) {
+            const alpha = event.alpha;  // Rotation around z-axis
+            const beta = event.beta;    // Rotation around x-axis (front to back)
+            const gamma = event.gamma;  // Rotation around y-axis (left to right)
+
+            // Map orientation values to canvas coordinates or other interactions
+            mouseX = canvas.width / 2 + gamma * 5;  // Adjust for sensitivity
+            mouseY = canvas.height / 2 + beta * 5;  // Adjust for sensitivity
+
+            draw();
+        }
+
+        // Fallback for mouse interaction (if not on mobile)
+        canvas.addEventListener('mousemove', function (event) {
+            if (!isMobile) {
+                mouseX = event.clientX;
+                mouseY = event.clientY;
+                draw();
+            }
+        });
+
+        // Drawing function (replace this with your own drawing logic)
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+
+            // Example: Drawing a circle that follows mouse or orientation
+            ctx.beginPath();
+            ctx.arc(mouseX, mouseY, 30, 0, Math.PI * 2);
+            ctx.fillStyle = 'blue';
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        // Initialize on mobile
+        if (isMobile) {
+            document.body.addEventListener('click', requestDeviceOrientationPermission, { once: true });
+        }
+
+        // Initial draw
+        draw();
+
+    </script>
 </body>
 </html>
