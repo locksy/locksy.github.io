@@ -22,15 +22,3 @@ body, html, #container, .starfield {
     z-index: 2; /* Star Field Overlay */
     background: transparent;
 }
-
-#error-log {
-    position: fixed;
-    top: 10px;
-    left: 10px;
-    background-color: rgba(255, 0, 0, 0.8);
-    color: white;
-    padding: 10px;
-    border-radius: 5px;
-    z-index: 1000;
-    display: none;
-}
