@@ -6,9 +6,24 @@
     <title>Device Orientation</title>
     <style>
         /* Add any required CSS here */
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+        }
+        #message {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            top: 50%;
+            color: white;
+            font-size: 24px;
+        }
     </style>
 </head>
 <body>
+    <div id="message">Tap to enable motion controls</div>
     <canvas id="canvas"></canvas>
 
     <script>
@@ -16,13 +31,15 @@
         const ctx = canvas.getContext('2d');
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
-
+        
+        let messageDiv = document.getElementById('message');
         let isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         let mouseX = canvas.width / 2;
         let mouseY = canvas.height / 2;
 
         // Function to request device orientation access on iOS
         function requestDeviceOrientationPermission() {
+            messageDiv.style.display = 'none';  // Hide the message
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
                 DeviceOrientationEvent.requestPermission()
                     .then(permissionState => {
@@ -78,7 +95,6 @@
 
         // Initial draw
         draw();
-
     </script>
 </body>
 </html>
