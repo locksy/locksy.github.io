@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGL + Device Orientation Interaction</title>
+    <link rel="stylesheet" href="./style.css"> <!-- Your CSS for styling -->
+    
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/89/three.min.js"></script>
+
+    <!-- Inline shaders (if not loading them from external files) -->
+    <script id="vertexShader" type="x-shader/x-vertex">
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            gl_Position = vec4(position, 1.0);
+        }
+    </script>
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        #ifdef GL_ES
+        precision mediump float;
+        #endif
+        #extension GL_OES_standard_derivatives : enable
+
+        uniform float time;
+        uniform vec2 mouse;
+        uniform vec2 resolution;
+        varying vec2 vUv;
+
+        void main(void) {
+            vec2 uv = vUv;
+            vec2 p = gl_FragCoord.xy / resolution.xy;
+            float d = dot(uv, uv);
+            float a = atan(uv.y, uv.x);
+            vec3 color = vec3(0.0);
+
+            p -= 0.5;
+            p.x *= resolution.x / resolution.y;
+
+            float z = time;
+            float l = length(p);
+
+            for (int i = 0; i < 3; i++) {
+                uv = p;
+                z -= 0.1;
+                float dist = distance(gl_FragCoord.xy / resolution.xy, mouse / resolution);
+                uv += p / l * (tan(z * 0.1) + log(z)) * abs(sin(l * 5.0 - z * 0.1)) * (1.0 / (dist * 5.0 + 1.0));
+
+                color[i] = 0.0031 / abs(uv.y * uv.x + cos(z * 0.05)) * 2.0 + 0.001 / abs(uv.y * uv.x) * 2.0;
+            }
+
+            gl_FragColor = vec4(color / l, 1.0);
+        }
+    </script>
+</head>
+<body>
+    <!-- WebGL Container for Visuals -->
+    <div id="container"></div>
+    <div class="starfield"></div> <!-- Optional Starfield Overlay -->
+
+    <!-- External Scripts -->
+    <script src="./script.js"></script> <!-- Your combined script -->
+</body>
+</html>
