@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Orientation</title>
+    <style>
+        /* Add any required CSS here */
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+        }
+        #message {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            top: 50%;
+            color: white;
+            font-size: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div id="message">Tap to enable motion controls</div>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        let messageDiv = document.getElementById('message');
+        let isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        let mouseX = canvas.width / 2;
+        let mouseY = canvas.height / 2;
+
+        // Function to request device orientation access on iOS
+        function requestDeviceOrientationPermission() {
+            messageDiv.style.display = 'none';  // Hide the message
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission()
+                    .then(permissionState => {
+                        if (permissionState === 'granted') {
+                            window.addEventListener('deviceorientation', handleOrientation);
+                        }
+                    })
+                    .catch(console.error);
+            } else {
+                // Handle non-iOS devices
+                window.addEventListener('deviceorientation', handleOrientation);
+            }
+        }
+
+        // Handle orientation event
+        function handleOrientation(event) {
+            const alpha = event.alpha;  // Rotation around z-axis
+            const beta = event.beta;    // Rotation around x-axis (front to back)
+            const gamma = event.gamma;  // Rotation around y-axis (left to right)
+
+            // Map orientation values to canvas coordinates or other interactions
+            mouseX = canvas.width / 2 + gamma * 5;  // Adjust for sensitivity
+            mouseY = canvas.height / 2 + beta * 5;  // Adjust for sensitivity
+
+            draw();
+        }
+
+        // Fallback for mouse interaction (if not on mobile)
+        canvas.addEventListener('mousemove', function (event) {
+            if (!isMobile) {
+                mouseX = event.clientX;
+                mouseY = event.clientY;
+                draw();
+            }
+        });
+
+        // Drawing function (replace this with your own drawing logic)
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+
+            // Example: Drawing a circle that follows mouse or orientation
+            ctx.beginPath();
+            ctx.arc(mouseX, mouseY, 30, 0, Math.PI * 2);
+            ctx.fillStyle = 'blue';
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        // Initialize on mobile
+        if (isMobile) {
+            document.body.addEventListener('click', requestDeviceOrientationPermission, { once: true });
+        }
+
+        // Initial draw
+        draw();
+    </script>
+</body>
+</html>
