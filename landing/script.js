@@ -51,24 +51,38 @@ function requestDeviceOrientationPermission() {
         DeviceOrientationEvent.requestPermission().then(permissionState => {
             if (permissionState === 'granted') {
                 window.addEventListener('deviceorientation', handleOrientation, false);
+            } else {
+                console.error("Device Orientation permission denied.");
             }
         }).catch(console.error);
     } else {
+        // For browsers that don't require permissions
         window.addEventListener('deviceorientation', handleOrientation, false);
     }
 }
 
 function handleOrientation(event) {
     var gamma = event.gamma;  // Rotation around y-axis (left to right)
-    var beta = event.beta;    // Rotation around x-axis (front to back)
+    var beta = event.beta - 45;  // Adjust for typical 45-degree phone holding angle
 
-    // Adjust the values to work well with WebGL coordinates
-    mouseX = window.innerWidth / 2 + gamma * 5; 
+    // Log orientation data for debugging
+    console.log('Gamma:', gamma, 'Beta:', beta);
+
+    // Normalize beta and gamma across browsers
+    beta = Math.max(Math.min(beta, 90), -90); // Limit to avoid extreme tilting
+    gamma = Math.max(Math.min(gamma, 90), -90); 
+
+    // Adjust the values to work with WebGL coordinates
+    mouseX = window.innerWidth / 2 + gamma * 5;
     mouseY = window.innerHeight / 2 + beta * 5;
 
-    // Update the mouse uniform
+    // Update the mouse uniform (starfield)
     uniforms.mouse.value.x = mouseX;
     uniforms.mouse.value.y = mouseY;
+
+    // If lens flare has a separate shader or rendering logic, update it similarly
+    // For example:
+    // lensflare.position.set(mouseX, mouseY, 0); // Update lens flare position based on orientation
 }
 
 function onMouseMove(event) {
@@ -84,6 +98,10 @@ function onWindowResize() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     uniforms.resolution.value.x = renderer.domElement.width;
     uniforms.resolution.value.y = renderer.domElement.height;
+
+    // Ensure starting values are centered
+    uniforms.mouse.value.x = window.innerWidth / 2;
+    uniforms.mouse.value.y = window.innerHeight / 2;
 }
 
 function animate() {
