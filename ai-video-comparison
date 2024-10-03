@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Video Models Comparison</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            color: #333;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: auto;
+            padding: 20px;
+        }
+        h1, h2 {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .model-section {
+            display: flex;
+            flex-direction: column;
+            margin: 20px 0;
+        }
+        .model-description {
+            padding: 10px;
+        }
+        .model-image {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 10px;
+            text-align: center;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AI Video Models Comparison</h1>
+
+        <!-- Runway Gen-3 -->
+        <div class="model-section">
+            <h2>Runway Gen-3</h2>
+            <div class="model-description">
+                <p>Runway Gen-3 is a text-to-video model offering advanced video quality and smooth transitions. Best suited for professional video creators looking for high-quality and intuitive UI.</p>
+            </div>
+            <img src="runway-gen3-render.jpg" alt="Runway Gen-3 Video Render" class="model-image">
+            <table>
+                <tr>
+                    <th>Feature</th>
+                    <th>Details</th>
+                </tr>
+                <tr>
+                    <td>Video Quality</td>
+                    <td>High</td>
+                </tr>
+                <tr>
+                    <td>Ease of Use</td>
+                    <td>User-friendly</td>
+                </tr>
+                <tr>
+                    <td>Pricing</td>
+                    <td>Premium</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Kling -->
+        <div class="model-section">
+            <h2>Kling AI</h2>
+            <div class="model-description">
+                <p>Kling AI excels in lifelike character animations and real-world scenes. It's known for its ability to generate dynamic movement and realistic figures.</p>
+            </div>
+            <img src="kling-ai-render.jpg" alt="Kling AI Video Render" class="model-image">
+            <table>
+                <tr>
+                    <th>Feature</th>
+                    <th>Details</th>
+                </tr>
+                <tr>
+                    <td>Video Quality</td>
+                    <td>Very High (Best for Animation)</td>
+                </tr>
+                <tr>
+                    <td>Ease of Use</td>
+                    <td>Moderate</td>
+                </tr>
+                <tr>
+                    <td>Pricing</td>
+                    <td>Competitive</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Dream Machine -->
+        <div class="model-section">
+            <h2>Dream Machine</h2>
+            <div class="model-description">
+                <p>Dream Machine specializes in artistic video creations, perfect for stylized and imaginative scenes.</p>
+            </div>
+            <img src="dream-machine-render.jpg" alt="Dream Machine Video Render" class="model-image">
+            <table>
+                <tr>
+                    <th>Feature</th>
+                    <th>Details</th>
+                </tr>
+                <tr>
+                    <td>Video Quality</td>
+                    <td>Artistic/Medium</td>
+                </tr>
+                <tr>
+                    <td>Ease of Use</td>
+                    <td>Easy</td>
+                </tr>
+                <tr>
+                    <td>Pricing</td>
+                    <td>Affordable</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Adobe's New Model -->
+        <div class="model-section">
+            <h2>Adobe's New AI Model</h2>
+            <div class="model-description">
+                <p>Adobe's model integrates seamlessly into their suite, making it ideal for professionals already using Premiere Pro and After Effects.</p>
+            </div>
+            <img src="adobe-ai-render.jpg" alt="Adobe AI Video Render" class="model-image">
+            <table>
+                <tr>
+                    <th>Feature</th>
+                    <th>Details</th>
+                </tr>
+                <tr>
+                    <td>Video Quality</td>
+                    <td>Very High (Professional)</td>
+                </tr>
+                <tr>
+                    <td>Ease of Use</td>
+                    <td>High for Adobe Users</td>
+                </tr>
+                <tr>
+                    <td>Pricing</td>
+                    <td>Premium</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Open-Source Model: Text2Video-Zero -->
+        <div class="model-section">
+            <h2>Open-Source: Text2Video-Zero</h2>
+            <div class="model-description">
+                <p>An open-source option that can be run locally, offering decent quality but requiring more technical expertise to operate.</p>
+            </div>
+            <img src="text2video-zero-render.jpg" alt="Text2Video-Zero Render" class="model-image">
+            <table>
+                <tr>
+                    <th>Feature</th>
+                    <th>Details</th>
+                </tr>
+                <tr>
+                    <td>Video Quality</td>
+                    <td>Medium</td>
+                </tr>
+                <tr>
+                    <td>Ease of Use</td>
+                    <td>Requires Technical Expertise</td>
+                </tr>
+                <tr>
+                    <td>Pricing</td>
+                    <td>Free (Open-Source)</td>
+                </tr>
+            </table>
+        </div>
+
+    </div>
+</body>
+</html>
