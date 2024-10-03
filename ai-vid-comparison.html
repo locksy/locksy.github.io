@@ -5,49 +5,92 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Video Models Comparison</title>
     <style>
+        /* General styling */
         body {
             font-family: Arial, sans-serif;
             color: #333;
             line-height: 1.6;
             margin: 0;
             padding: 0;
+            background: linear-gradient(135deg, #f0f4f8, #dfe7ee);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
         }
+
+        /* Dynamic gradient animation */
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Container for page content */
         .container {
             max-width: 1200px;
             margin: auto;
             padding: 20px;
         }
+
         h1, h2 {
             text-align: center;
             margin: 20px 0;
+            color: #2C3E50;
         }
+
         .model-section {
             display: flex;
             flex-direction: column;
-            margin: 20px 0;
+            margin: 30px 0;
+            padding: 20px;
+            background-color: #ffffff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
         }
+
         .model-description {
             padding: 10px;
         }
+
         .model-image {
             width: 100%;
             max-width: 600px;
             margin: 0 auto;
+            border-radius: 8px;
         }
+
         table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
         }
+
         table, th, td {
             border: 1px solid #ddd;
         }
+
         th, td {
             padding: 10px;
             text-align: center;
         }
+
         th {
             background-color: #f4f4f4;
+        }
+
+        /* Button Styling */
+        .subscribe-button {
+            background-color: #3498db;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            border-radius: 5px;
+            display: inline-block;
+            margin-top: 20px;
+            text-decoration: none;
+        }
+
+        .subscribe-button:hover {
+            background-color: #2980b9;
         }
     </style>
 </head>
@@ -61,7 +104,7 @@
             <div class="model-description">
                 <p>Runway Gen-3 is a text-to-video model offering advanced video quality and smooth transitions. Best suited for professional video creators looking for high-quality and intuitive UI.</p>
             </div>
-            <img src="runway-gen3-render.jpg" alt="Runway Gen-3 Video Render" class="model-image">
+            <img src="https://example.com/runway-gen3-render.jpg" alt="Runway Gen-3 Video Render" class="model-image">
             <table>
                 <tr>
                     <th>Feature</th>
@@ -77,18 +120,19 @@
                 </tr>
                 <tr>
                     <td>Pricing</td>
-                    <td>Premium</td>
+                    <td>$1 per 5 seconds of video</td>
                 </tr>
             </table>
+            <a href="https://www.runwayml.com" class="subscribe-button">Subscribe to Runway Gen-3</a>
         </div>
 
-        <!-- Kling -->
+        <!-- Kling AI -->
         <div class="model-section">
             <h2>Kling AI</h2>
             <div class="model-description">
                 <p>Kling AI excels in lifelike character animations and real-world scenes. It's known for its ability to generate dynamic movement and realistic figures.</p>
             </div>
-            <img src="kling-ai-render.jpg" alt="Kling AI Video Render" class="model-image">
+            <img src="https://example.com/kling-ai-render.jpg" alt="Kling AI Video Render" class="model-image">
             <table>
                 <tr>
                     <th>Feature</th>
@@ -104,9 +148,10 @@
                 </tr>
                 <tr>
                     <td>Pricing</td>
-                    <td>Competitive</td>
+                    <td>$0.40 per 5 seconds of video</td>
                 </tr>
             </table>
+            <a href="https://www.kling.ai" class="subscribe-button">Subscribe to Kling AI</a>
         </div>
 
         <!-- Dream Machine -->
@@ -115,7 +160,7 @@
             <div class="model-description">
                 <p>Dream Machine specializes in artistic video creations, perfect for stylized and imaginative scenes.</p>
             </div>
-            <img src="dream-machine-render.jpg" alt="Dream Machine Video Render" class="model-image">
+            <img src="https://example.com/dream-machine-render.jpg" alt="Dream Machine Video Render" class="model-image">
             <table>
                 <tr>
                     <th>Feature</th>
@@ -131,9 +176,10 @@
                 </tr>
                 <tr>
                     <td>Pricing</td>
-                    <td>Affordable</td>
+                    <td>$0.50 per 5 seconds of video</td>
                 </tr>
             </table>
+            <a href="https://www.dreammachine.ai" class="subscribe-button">Subscribe to Dream Machine</a>
         </div>
 
         <!-- Adobe's New Model -->
@@ -142,7 +188,7 @@
             <div class="model-description">
                 <p>Adobe's model integrates seamlessly into their suite, making it ideal for professionals already using Premiere Pro and After Effects.</p>
             </div>
-            <img src="adobe-ai-render.jpg" alt="Adobe AI Video Render" class="model-image">
+            <img src="https://example.com/adobe-ai-render.jpg" alt="Adobe AI Video Render" class="model-image">
             <table>
                 <tr>
                     <th>Feature</th>
@@ -158,9 +204,10 @@
                 </tr>
                 <tr>
                     <td>Pricing</td>
-                    <td>Premium</td>
+                    <td>$30 per month (includes all features)</td>
                 </tr>
             </table>
+            <a href="https://www.adobe.com" class="subscribe-button">Subscribe to Adobe AI</a>
         </div>
 
         <!-- Open-Source Model: Text2Video-Zero -->
@@ -169,7 +216,7 @@
             <div class="model-description">
                 <p>An open-source option that can be run locally, offering decent quality but requiring more technical expertise to operate.</p>
             </div>
-            <img src="text2video-zero-render.jpg" alt="Text2Video-Zero Render" class="model-image">
+            <img src="https://example.com/text2video-zero-render.jpg" alt="Text2Video-Zero Render" class="model-image">
             <table>
                 <tr>
                     <th>Feature</th>
@@ -188,6 +235,7 @@
                     <td>Free (Open-Source)</td>
                 </tr>
             </table>
+            <a href="https://github.com/modelscope/text2video-zero" class="subscribe-button">Learn More about Text2Video-Zero</a>
         </div>
 
     </div>
