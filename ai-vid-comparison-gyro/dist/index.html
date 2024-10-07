@@ -1,40 +1,92 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <title>Ai-Vid-Comparison gyro</title>
-  <link rel="stylesheet" href="./style.css">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Gyro Image Movement</title>
+    <style>
+      body {
+        text-align: center;
+        background-color: #111;
+        color: white;
+        font-family: Arial, sans-serif;
+      }
+      #image-container {
+        position: relative;
+        width: 300px;
+        height: 300px;
+        margin: 100px auto;
+        overflow: hidden;
+      }
+      #gyro-image {
+        position: absolute;
+        width: 100%;
+        transition: transform 0.1s ease-out;
+      }
+      #start_demo {
+        margin-top: 20px;
+      }
+    </style>
 </head>
-<body class="demo-1 loading">
-  <!-- Permission Modal (only shown on mobile devices) -->
-  <div id="permission-modal" style="display: none;">
-    <div class="modal-content">
-      <h2>Enable Motion Sensors</h2>
-      <p>This page uses your device's motion sensors to enhance interactivity. Please allow access.</p>
-      <button id="grant-permission">Enable</button>
-    </div>
-  </div>
+<body>
 
-  <main>
-    <div class="content">
-      <div id="rgbKineticSlider" class="rgbKineticSlider">
-        <!-- Gradient Overlay -->
-        <div class="gradient-overlay"></div>
-      </div>
-      <nav>
-        <a href="#" class="main-nav prev" data-nav="previous">Prev <span></span></a>
-        <a href="#" class="main-nav next" data-nav="next">Next <span></span></a>
-      </nav>
-      <span class="notice">Swipe left... or right</span>
-    </div>
-  </main>
+<h1>Gyro Image Movement Demo</h1>
+<p>Use your phone's gyroscope to move the image!</p>
 
-  <script src='https://cdn.jsdelivr.net/gh/hmongouachon/rgbKineticSlider/js/libs/TweenMax.min.js'></script>
-  <script src='https://cdn.jsdelivr.net/gh/hmongouachon/rgbKineticSlider/js/libs/imagesLoaded.pkgd.min.js'></script>
-  <script src='https://cdn.jsdelivr.net/gh/hmongouachon/rgbKineticSlider/js/libs/pixi.min.js'></script>
-  <script src='https://cdn.jsdelivr.net/gh/hmongouachon/rgbKineticSlider/js/libs/pixi-filters.min.js'></script>
-  <script src='https://cdn.jsdelivr.net/gh/hmongouachon/rgbKineticSlider/js/rgbKineticSlider.js'></script>
-  <script src="./script.js"></script>
+<div id="image-container">
+  <img id="gyro-image" src="https://locksy.github.io/ai-vid-comparison-gyro/dist/moon.jpg" alt="Moon">
+</div>
+
+<button id="start_demo" class="btn btn-lg btn-success py-1">Start the demo</button>
+
+<script>
+  let is_running = false;
+  let demo_button = document.getElementById("start_demo");
+  let image = document.getElementById("gyro-image");
+
+  // Initial position of the image
+  let posX = 0;
+  let posY = 0;
+  const maxOffset = 20; // Maximum pixels the image can move
+
+  function handleOrientation(event) {
+    let beta = event.beta; // X-axis rotation (up and down)
+    let gamma = event.gamma; // Y-axis rotation (left and right)
+
+    // Calculate movement based on rotation angles, normalizing to a -maxOffset to +maxOffset range
+    let moveX = (gamma / 90) * maxOffset;
+    let moveY = (beta / 90) * maxOffset;
+
+    // Update image position
+    image.style.transform = `translate(${moveX}px, ${moveY}px)`;
+  }
+
+  demo_button.onclick = function(e) {
+    e.preventDefault();
+
+    // Request permission for iOS 13+ devices
+    if (
+      DeviceMotionEvent &&
+      typeof DeviceMotionEvent.requestPermission === "function"
+    ) {
+      DeviceMotionEvent.requestPermission();
+    }
+
+    if (is_running) {
+      window.removeEventListener("deviceorientation", handleOrientation);
+      demo_button.innerHTML = "Start the demo";
+      demo_button.classList.add('btn-success');
+      demo_button.classList.remove('btn-danger');
+      is_running = false;
+    } else {
+      window.addEventListener("deviceorientation", handleOrientation);
+      demo_button.innerHTML = "Stop the demo";
+      demo_button.classList.remove('btn-success');
+      demo_button.classList.add('btn-danger');
+      is_running = true;
+    }
+  };
+</script>
+
 </body>
 </html>
