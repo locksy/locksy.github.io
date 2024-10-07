@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8">
+  <title>CodePen - Ai-Vid-Comparison gyro</title>
+  <link rel="stylesheet" href="./style.css">
+
+</head>
+<body>
+<!-- partial:index.partial.html -->
+<body class="demo-1 loading">
+  <!-- Permission Modal (only shown on mobile devices) -->
+  <div id="permission-modal" style="display: none;">
+    <div class="modal-content">
+      <h2>Enable Motion Sensors</h2>
+      <p>This page uses your device's motion sensors to enhance interactivity. Please allow access.</p>
+      <button id="grant-permission">Enable</button>
+    </div>
+  </div>
+  <main>
+    <div class="content">
+      <div id="rgbKineticSlider" class="rgbKineticSlider">
+        <!-- Gradient Overlay -->
+        <div class="gradient-overlay"></div>
+      </div>
+      <nav>
+        <a href="#" class="main-nav prev" data-nav="previous">Prev <span></span></a>
+        <a href="#" class="main-nav next" data-nav="next">Next <span></span></a>
+      </nav>
+      <span class="notice">Swipe left... or right</span>
+    </div>
+  </main>
+</body>
+<!-- partial -->
+  <script src='https://cdn.jsdelivr.net/gh/hmongouachon/rgbKineticSlider/js/libs/TweenMax.min.js'></script>
+<script src='https://cdn.jsdelivr.net/gh/hmongouachon/rgbKineticSlider/js/libs/imagesLoaded.pkgd.min.js'></script>
+<script src='https://cdn.jsdelivr.net/gh/hmongouachon/rgbKineticSlider/js/libs/pixi.min.js'></script>
+<script src='https://cdn.jsdelivr.net/gh/hmongouachon/rgbKineticSlider/js/libs/pixi-filters.min.js'></script>
+<script src='https://cdn.jsdelivr.net/gh/hmongouachon/rgbKineticSlider/js/rgbKineticSlider.js'></script><script  src="./script.js"></script>
+
+</body>
+</html>
