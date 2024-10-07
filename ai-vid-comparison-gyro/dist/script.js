@@ -41,7 +41,7 @@ slider = new rgbKineticSlider({
   textsTiltEffect: true,
 });
 
-// Motion detection
+// Motion detection for mobile devices
 function isMobileDevice() {
   return /Mobi|Android|iPhone|iPad|iPod|BlackBerry|Windows Phone/i.test(navigator.userAgent);
 }
@@ -80,6 +80,7 @@ function startMotionDetection() {
 }
 
 let lastCall = 0;
+
 function handleOrientation(event) {
   const now = Date.now();
   if (now - lastCall < 50) return; // Limit to 20fps
