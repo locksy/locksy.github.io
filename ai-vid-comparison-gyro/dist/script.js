@@ -1,6 +1,6 @@
 // Images setup
 const images = [
-  "./moon.jpg" // Replacing image with a local file
+  "./moon.jpg" // Using local image for the test
 ];
 
 // Content setup
@@ -52,7 +52,8 @@ document.addEventListener('DOMContentLoaded', function () {
     mobileTextSubTitleSize: 16,
     textSubTitleLetterspacing: 1,
     textSubTitleOffsetTop: 120,
-    mobileTextSubTitleOffsetTop: 100
+    mobileTextSubTitleOffsetTop: 100,
+    useGyroscope: true // Enable gyroscope input
   });
 
   setupGyroOrMouseControl();
@@ -108,15 +109,8 @@ function handleMouseMove(event) {
   const mouseX = event.clientX;
   const mouseY = event.clientY;
 
-  // Calculate positions relative to slider dimensions
-  const sliderWidth = window.innerWidth;
-  const sliderHeight = window.innerHeight;
-
-  // Update the slider's mouse position based on cursor movement
-  slider.mousePosCache.x = mouseX;
-  slider.mousePosCache.y = mouseY;
-  slider.mousePos.x = mouseX;
-  slider.mousePos.y = mouseY;
+  // Inject mouse data into the library directly
+  updateSliderDistortion(mouseX, mouseY);
 }
 
 // Handle gyroscope for mobile
@@ -137,9 +131,14 @@ function handleOrientation(event) {
   const mouseX = normalizedX * sliderWidth;
   const mouseY = normalizedY * sliderHeight;
 
-  // Update the slider's mouse position based on gyroscope movement
-  slider.mousePosCache.x = mouseX;
-  slider.mousePosCache.y = mouseY;
-  slider.mousePos.x = mouseX;
-  slider.mousePos.y = mouseY;
+  // Inject gyroscope data into the library directly
+  updateSliderDistortion(mouseX, mouseY);
+}
+
+function updateSliderDistortion(x, y) {
+  if (slider && slider.displacementFilter) {
+    // Pass the calculated mouse or gyro coordinates to the displacement filter
+    slider.displacementFilter.scale.x = (x - window.innerWidth / 2) * 0.05;
+    slider.displacementFilter.scale.y = (y - window.innerHeight / 2) * 0.05;
+  }
 }
