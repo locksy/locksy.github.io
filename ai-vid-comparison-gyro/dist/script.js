@@ -58,6 +58,7 @@ document.getElementById('grant-permission').addEventListener('click', function()
   if (typeof DeviceMotionEvent.requestPermission === 'function') {
     DeviceMotionEvent.requestPermission().then(response => {
       if (response === 'granted') {
+        console.log("Motion Permission Granted");
         startMotionDetection();
         document.getElementById('permission-modal').style.display = 'none';
       } else {
@@ -76,12 +77,15 @@ document.getElementById('grant-permission').addEventListener('click', function()
 });
 
 function startMotionDetection() {
+  console.log("Starting Motion Detection");
   window.addEventListener('deviceorientation', handleOrientation);
 }
 
 let lastCall = 0;
 
 function handleOrientation(event) {
+  console.log("Orientation Event Fired", event);
+  
   const now = Date.now();
   if (now - lastCall < 50) return; // Limit to 20fps
   lastCall = now;
@@ -99,6 +103,8 @@ function handleOrientation(event) {
 
   const mouseX = normalizedX * sliderWidth;
   const mouseY = normalizedY * sliderHeight;
+
+  console.log("Mouse Position Calculated: ", mouseX, mouseY);
 
   // Update the slider's mouse position
   if (slider) {
