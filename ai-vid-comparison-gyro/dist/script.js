@@ -15,24 +15,62 @@ const texts = [
   ["Venus", "Surface gravity‎: ‎8.87 m/s²"],
 ];
 
-// Declare the slider variable in a scope accessible by the handleOrientation function
 let slider;
 let isGyroActive = false;
 
-// Initialize the slider
-slider = new rgbKineticSlider({
-  // ... (existing slider options remain unchanged)
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize the slider
+  slider = new rgbKineticSlider({
+    slideImages: images,
+    itemsTitles: texts,
+    backgroundDisplacementSprite: 'https://images.unsplash.com/photo-1558865869-c93f6f8482af?ixlib=rb-1.2.1&auto=format&fit=crop&w=2081&q=80',
+    cursorDisplacementSprite: 'https://images.unsplash.com/photo-1558865869-c93f6f8482af?ixlib=rb-1.2.1&auto=format&fit=crop&w=2081&q=80',
+    cursorImgEffect: true,
+    cursorTextEffect: false,
+    cursorScaleIntensity: 0.65,
+    cursorMomentum: 0.14,
+    swipe: true,
+    swipeDistance: window.innerWidth * 0.4,
+    swipeScaleIntensity: 2,
+    slideTransitionDuration: 1,
+    transitionScaleIntensity: 30,
+    transitionScaleAmplitude: 160,
+    nav: true,
+    navElement: '.main-nav',
+    textsDisplay: true,
+    textsSubTitleDisplay: true,
+    textsTiltEffect: true,
+    googleFonts: ['Playfair Display:700', 'Roboto:400'],
+    buttonMode: false,
+    textsRgbEffect: true,
+    textsRgbIntensity: 0.03,
+    navTextsRgbIntensity: 15,
+    textTitleColor: 'white',
+    textTitleSize: 80,
+    mobileTextTitleSize: 60,
+    textTitleLetterspacing: 2,
+    textSubTitleColor: 'white',
+    textSubTitleSize: 18,
+    mobileTextSubTitleSize: 16,
+    textSubTitleLetterspacing: 1,
+    textSubTitleOffsetTop: 120,
+    mobileTextSubTitleOffsetTop: 100
+  });
+
+  setupGyroControl();
 });
+
+function setupGyroControl() {
+  if (isMobileDevice()) {
+    document.getElementById('permission-modal').style.display = 'flex';
+  } else {
+    window.addEventListener('mousemove', handleMouseMove);
+  }
+}
 
 function isMobileDevice() {
   return /Mobi|Android|iPhone|iPad|iPod|BlackBerry|Windows Phone/i.test(navigator.userAgent);
 }
-
-window.addEventListener('load', function() {
-  if (isMobileDevice()) {
-    document.getElementById('permission-modal').style.display = 'flex';
-  }
-});
 
 document.getElementById('grant-permission').addEventListener('click', function() {
   if (typeof DeviceOrientationEvent.requestPermission === 'function') {
@@ -41,7 +79,7 @@ document.getElementById('grant-permission').addEventListener('click', function()
         if (response === 'granted') {
           startGyroControl();
         } else {
-          alert('Permission denied. Gyroscope control will not work.');
+          console.log('Gyroscope permission denied');
         }
         document.getElementById('permission-modal').style.display = 'none';
       })
@@ -57,13 +95,8 @@ function startGyroControl() {
   window.addEventListener('deviceorientation', handleOrientation);
 }
 
-let lastCall = 0;
 function handleOrientation(event) {
-  if (!isGyroActive) return;
-
-  const now = Date.now();
-  if (now - lastCall < 50) return; // Limit to 20fps
-  lastCall = now;
+  if (!isGyroActive || !slider) return;
 
   const gamma = event.gamma || 0; // [-90, 90] left-right tilt
   const beta = event.beta || 0;   // [-180, 180] front-back tilt
@@ -80,17 +113,10 @@ function handleOrientation(event) {
   const mouseY = normalizedY * sliderHeight;
 
   // Update the slider's mouse position
-  if (slider) {
-    slider.mousePosCache.x = mouseX;
-    slider.mousePosCache.y = mouseY;
-    slider.mousePos.x = mouseX;
-    slider.mousePos.y = mouseY;
-  }
-}
-
-// Add mouse event listeners for non-mobile devices
-if (!isMobileDevice()) {
-  window.addEventListener('mousemove', handleMouseMove);
+  slider.mousePosCache.x = mouseX;
+  slider.mousePosCache.y = mouseY;
+  slider.mousePos.x = mouseX;
+  slider.mousePos.y = mouseY;
 }
 
 function handleMouseMove(event) {
