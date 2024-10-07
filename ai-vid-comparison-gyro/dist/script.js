@@ -1,194 +1,147 @@
-// Vertex shader program
-const vertexShaderSource = `
-  attribute vec2 a_position;
-  attribute vec2 a_texCoord;
-  varying vec2 v_texCoord;
-
-  void main() {
-    gl_Position = vec4(a_position, 0, 1);
-    v_texCoord = a_texCoord;
-  }
-`;
-
-// Fragment shader program
-const fragmentShaderSource = `
-  precision mediump float;
-
-  varying vec2 v_texCoord;
-  uniform sampler2D u_image;
-  uniform vec2 u_resolution;
-  uniform vec2 u_mouse;
-  uniform float u_time;
-
-  void main() {
-    vec2 uv = v_texCoord;
-
-    // Calculate distortion effect
-    float dist = distance(u_mouse, uv * u_resolution) / u_resolution.y;
-    float strength = 0.2 * sin(u_time + dist * 10.0);
-    uv.y += strength * (uv.x - 0.5);
-
-    // Get image color
-    vec4 color = texture2D(u_image, uv);
-
-    gl_FragColor = color;
-  }
-`;
-
-// Utility function to create a shader
-function createShader(gl, type, source) {
-  const shader = gl.createShader(type);
-  gl.shaderSource(shader, source);
-  gl.compileShader(shader);
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    console.error('Error compiling shader:', gl.getShaderInfoLog(shader));
-    gl.deleteShader(shader);
-    return null;
-  }
-  return shader;
-}
-
-// Utility function to create a program
-function createProgram(gl, vertexShader, fragmentShader) {
-  const program = gl.createProgram();
-  gl.attachShader(program, vertexShader);
-  gl.attachShader(program, fragmentShader);
-  gl.linkProgram(program);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    console.error('Error linking program:', gl.getProgramInfoLog(program));
-    return null;
-  }
-  return program;
-}
-
-// Get canvas and WebGL context
-const canvas = document.querySelector('canvas');
-const gl = canvas.getContext('webgl');
-if (!gl) {
-  console.error('WebGL not supported');
-}
-
-// Set canvas size
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
-
-// Create shaders and program
-const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
-const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
-const program = createProgram(gl, vertexShader, fragmentShader);
-
-// Get attribute and uniform locations
-const positionLocation = gl.getAttribLocation(program, 'a_position');
-const texCoordLocation = gl.getAttribLocation(program, 'a_texCoord');
-const resolutionLocation = gl.getUniformLocation(program, 'u_resolution');
-const mouseLocation = gl.getUniformLocation(program, 'u_mouse');
-const timeLocation = gl.getUniformLocation(program, 'u_time');
-const imageLocation = gl.getUniformLocation(program, 'u_image');
-
-// Set up geometry (two triangles to form a rectangle)
-const positionBuffer = gl.createBuffer();
-gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-const positions = [
-  -1, -1,
-  1, -1,
-  -1, 1,
-  -1, 1,
-  1, -1,
-  1, 1,
+// Images setup
+const images = [
+  "https://locksy.github.io/ai-vid-comparison/img/dreammachine.jpg",
+  "https://images.unsplash.com/photo-1547234935-80c7145ec969?ixlib=rb-1.2.1&auto=format&fit=crop&w=2074&q=80",
+  "https://images.unsplash.com/photo-1612892483236-52d32a0e0ac1?ixlib=rb-1.2.1&auto=format&fit=crop&w=2070&q=80",
 ];
-gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
 
-// Set up texture coordinates
-const texCoordBuffer = gl.createBuffer();
-gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
-const texCoords = [
-  0, 0,
-  1, 0,
-  0, 1,
-  0, 1,
-  1, 0,
-  1, 1,
+// Content setup
+const texts = [
+  [
+    "Dream Machine",
+    "New Features: Luma 1.6 includes a groundbreaking camera control feature with 12 distinct motions.<br>Cost: Free tier offers 30 generations per month, with a $29/month plan for 150 generations."
+  ],
+  ["Mars", "Surface gravity‎: ‎3.711 m/s²"],
+  ["Venus", "Surface gravity‎: ‎8.87 m/s²"],
 ];
-gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texCoords), gl.STATIC_DRAW);
 
-// Load and create the image texture
-const image = new Image();
-image.src = './moon.jpg';  // Replace with your actual image path
-image.onload = function () {
-  const texture = gl.createTexture();
-  gl.bindTexture(gl.TEXTURE_2D, texture);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-  gl.generateMipmap(gl.TEXTURE_2D);
+let slider;
+let isGyroActive = false;
 
-  requestAnimationFrame(drawScene);
-};
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize the slider
+  slider = new rgbKineticSlider({
+    slideImages: images,
+    itemsTitles: texts,
+    backgroundDisplacementSprite: 'https://images.unsplash.com/photo-1558865869-c93f6f8482af?ixlib=rb-1.2.1&auto=format&fit=crop&w=2081&q=80',
+    cursorDisplacementSprite: 'https://images.unsplash.com/photo-1558865869-c93f6f8482af?ixlib=rb-1.2.1&auto=format&fit=crop&w=2081&q=80',
+    cursorImgEffect: true,
+    cursorTextEffect: false,
+    cursorScaleIntensity: 0.65,
+    cursorMomentum: 0.14,
+    swipe: true,
+    swipeDistance: window.innerWidth * 0.4,
+    swipeScaleIntensity: 2,
+    slideTransitionDuration: 1,
+    transitionScaleIntensity: 30,
+    transitionScaleAmplitude: 160,
+    nav: true,
+    navElement: '.main-nav',
+    textsDisplay: true,
+    textsSubTitleDisplay: true,
+    textsTiltEffect: true,
+    googleFonts: ['Playfair Display:700', 'Roboto:400'],
+    buttonMode: false,
+    textsRgbEffect: true,
+    textsRgbIntensity: 0.03,
+    navTextsRgbIntensity: 15,
+    textTitleColor: 'white',
+    textTitleSize: 80,
+    mobileTextTitleSize: 60,
+    textTitleLetterspacing: 2,
+    textSubTitleColor: 'white',
+    textSubTitleSize: 18,
+    mobileTextSubTitleSize: 16,
+    textSubTitleLetterspacing: 1,
+    textSubTitleOffsetTop: 120,
+    mobileTextSubTitleOffsetTop: 100
+  });
 
-// Variables for mouse and gyroscope
-let mouseX = canvas.width / 2;
-let mouseY = canvas.height / 2;
-
-// Handle mouse movement
-canvas.addEventListener('mousemove', (e) => {
-  const rect = canvas.getBoundingClientRect();
-  mouseX = e.clientX - rect.left;
-  mouseY = rect.bottom - e.clientY;  // Invert Y for WebGL coordinate system
+  setupGyroOrMouseControl();
 });
 
-// Handle gyroscope for mobile devices
-if (window.DeviceOrientationEvent) {
-  window.addEventListener('deviceorientation', (event) => {
-    const { beta, gamma } = event;  // Beta is for front-to-back tilt, gamma is for left-to-right
-    mouseX = (gamma / 90) * canvas.width / 2 + canvas.width / 2;
-    mouseY = (beta / 180) * canvas.height / 2 + canvas.height / 2;
-  });
-}
-
-// Function to draw the scene
-function drawScene(time) {
-  time *= 0.001;  // Convert time to seconds
-
-  // Resize canvas and viewport
-  if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+function setupGyroOrMouseControl() {
+  if (isMobileDevice()) {
+    // Show the gyroscope permission button
+    document.getElementById('gyro-permission-container').style.display = 'block';
+  } else {
+    // Desktop: Use mouse movement for distortion
+    window.addEventListener('mousemove', handleMouseMove);
   }
-
-  // Clear canvas
-  gl.clearColor(0, 0, 0, 0);
-  gl.clear(gl.COLOR_BUFFER_BIT);
-
-  // Use the program
-  gl.useProgram(program);
-
-  // Set resolution uniform
-  gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
-
-  // Set time uniform
-  gl.uniform1f(timeLocation, time);
-
-  // Set mouse uniform
-  gl.uniform2f(mouseLocation, mouseX, mouseY);
-
-  // Set up position attribute
-  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-  gl.enableVertexAttribArray(positionLocation);
-  gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
-
-  // Set up texture coordinate attribute
-  gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
-  gl.enableVertexAttribArray(texCoordLocation);
-  gl.vertexAttribPointer(texCoordLocation, 2, gl.FLOAT, false, 0, 0);
-
-  // Bind the texture and set the uniform
-  gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, image);
-  gl.uniform1i(imageLocation, 0);
-
-  // Draw the geometry
-  gl.drawArrays(gl.TRIANGLES, 0, 6);
-
-  // Call drawScene again on the next frame
-  requestAnimationFrame(drawScene);
 }
 
+function isMobileDevice() {
+  return /Mobi|Android|iPhone|iPad|iPod|BlackBerry|Windows Phone/i.test(navigator.userAgent);
+}
+
+// Event listener for the gyroscope permission button
+document.getElementById('grant-gyro-permission').addEventListener('click', function() {
+  if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+    DeviceOrientationEvent.requestPermission()
+      .then(response => {
+        if (response === 'granted') {
+          startGyroControl();
+        } else {
+          console.log('Gyroscope permission denied');
+        }
+        hideGyroPermissionButton();
+      })
+      .catch(console.error);
+  } else {
+    startGyroControl();
+    hideGyroPermissionButton();
+  }
+});
+
+function hideGyroPermissionButton() {
+  // Hide the permission button after permission is granted or denied
+  document.getElementById('gyro-permission-container').style.display = 'none';
+}
+
+function startGyroControl() {
+  isGyroActive = true;
+  window.addEventListener('deviceorientation', handleOrientation);
+}
+
+// Handle mouse movement for desktop
+function handleMouseMove(event) {
+  if (!slider) return;
+
+  const mouseX = event.clientX;
+  const mouseY = event.clientY;
+
+  // Calculate positions relative to slider dimensions
+  const sliderWidth = window.innerWidth;
+  const sliderHeight = window.innerHeight;
+
+  // Update the slider's mouse position based on cursor movement
+  slider.mousePosCache.x = mouseX;
+  slider.mousePosCache.y = mouseY;
+  slider.mousePos.x = mouseX;
+  slider.mousePos.y = mouseY;
+}
+
+// Handle gyroscope for mobile
+function handleOrientation(event) {
+  if (!isGyroActive || !slider) return;
+
+  const gamma = event.gamma || 0; // [-90, 90] left-right tilt
+  const beta = event.beta || 0;   // [-180, 180] front-back tilt
+
+  // Normalize gamma and beta values
+  const normalizedX = (gamma + 90) / 180; // Range: [0, 1]
+  const normalizedY = (beta + 180) / 360; // Range: [0, 1]
+
+  // Calculate positions relative to slider dimensions
+  const sliderWidth = window.innerWidth;
+  const sliderHeight = window.innerHeight;
+
+  const mouseX = normalizedX * sliderWidth;
+  const mouseY = normalizedY * sliderHeight;
+
+  // Update the slider's mouse position based on gyroscope movement
+  slider.mousePosCache.x = mouseX;
+  slider.mousePosCache.y = mouseY;
+  slider.mousePos.x = mouseX;
+  slider.mousePos.y = mouseY;
+}
