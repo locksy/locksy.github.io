@@ -18,30 +18,48 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
         #moon-image {
             max-width: 100%;
             max-height: 100vh;
+            transition: transform 0.1s ease-out;
+        }
+        #start-button {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
+    <button id="start-button">Start Gyro Control</button>
     <div id="image-container">
         <img id="moon-image" src="https://locksy.github.io/ai-vid-comparison-gyro/dist/moon.jpg" alt="Moon">
     </div>
 
     <script>
         const image = document.getElementById('moon-image');
+        const startButton = document.getElementById('start-button');
         let baseX = 0, baseY = 0;
-        const sensitivity = 0.1; // Adjust this value to change the sensitivity of the movement
+        const sensitivity = 0.5; // Adjust this value to change the sensitivity of the movement
 
         function handleOrientation(event) {
-            const x = event.beta;  // In degree in the range [-180,180]
-            const y = event.gamma; // In degree in the range [-90,90]
+            const y = event.beta;  // In degree in the range [-180,180]
+            const x = event.gamma; // In degree in the range [-90,90]
 
             // Calculate new position
-            let newX = baseX + y * sensitivity;
-            let newY = baseY + x * sensitivity;
+            let newX = baseX - x * sensitivity;
+            let newY = baseY + y * sensitivity;
 
             // Limit the movement range
             newX = Math.max(Math.min(newX, 50), -50);
@@ -58,17 +76,18 @@
                     .then(response => {
                         if (response == "granted") {
                             window.addEventListener("deviceorientation", handleOrientation);
+                            startButton.style.display = 'none';
                         }
                     })
                     .catch(console.error);
             } else {
                 // For non iOS 13+ devices
                 window.addEventListener("deviceorientation", handleOrientation);
+                startButton.style.display = 'none';
             }
         }
 
-        // Start the demo when the page is loaded
-        window.onload = startDemo;
+        startButton.addEventListener('click', startDemo);
     </script>
 </body>
 </html>
