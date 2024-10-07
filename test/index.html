@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Circle</title>
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f0f0f0;
+            overflow: hidden;
+        }
+        
+        #circle {
+            width: 100px;
+            height: 100px;
+            background-color: black;
+            border-radius: 50%;
+            position: absolute;
+        }
+
+        #motion-button {
+            display: none;
+            position: absolute;
+            bottom: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            background-color: #008CBA;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        @media (max-width: 768px) {
+            #motion-button {
+                display: block;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="circle"></div>
+    <button id="motion-button">Enable Motion Controls</button>
+
+    <script>
+        const circle = document.getElementById('circle');
+        const motionButton = document.getElementById('motion-button');
+
+        // Check if device has motion sensors
+        const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+
+        if (!isMobile) {
+            // Desktop: Circle follows mouse movement
+            document.addEventListener('mousemove', (event) => {
+                circle.style.left = `${event.clientX - circle.offsetWidth / 2}px`;
+                circle.style.top = `${event.clientY - circle.offsetHeight / 2}px`;
+            });
+        } else {
+            // Mobile: Enable motion controls
+            motionButton.addEventListener('click', () => {
+                if (typeof DeviceMotionEvent.requestPermission === 'function') {
+                    DeviceMotionEvent.requestPermission()
+                        .then((permissionState) => {
+                            if (permissionState === 'granted') {
+                                startMotionTracking();
+                            }
+                        })
+                        .catch(console.error);
+                } else {
+                    // For devices that don't require permission (older versions)
+                    startMotionTracking();
+                }
+            });
+        }
+
+        function startMotionTracking() {
+            window.addEventListener('deviceorientation', (event) => {
+                const { alpha, beta, gamma } = event;
+                const screenCenterX = window.innerWidth / 2;
+                const screenCenterY = window.innerHeight / 2;
+
+                // Translate gyro data to circle movement
+                const xPos = screenCenterX + gamma * 5; // Adjust sensitivity as needed
+                const yPos = screenCenterY + beta * 5;  // Adjust sensitivity as needed
+
+                circle.style.left = `${xPos - circle.offsetWidth / 2}px`;
+                circle.style.top = `${yPos - circle.offsetHeight / 2}px`;
+            });
+        }
+    </script>
+</body>
+</html>
