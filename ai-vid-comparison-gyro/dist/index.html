@@ -1,93 +1,36 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="no-js">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>Gyro-controlled Image</title>
-    <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: black;
-        }
-        #image-container {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 100%;
-            height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        #moon-image {
-            max-width: 100%;
-            max-height: 100vh;
-            transition: transform 0.1s ease-out;
-        }
-        #start-button {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 10;
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>RGB Kinetic Slider Demo</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <script>document.documentElement.className="js";var supportsCssVars=function(){var e,t=document.createElement("style");return t.innerHTML="root: { --tmp-var: bold; }",document.head.appendChild(t),e=!!(window.CSS&&window.CSS.supports&&window.CSS.supports("font-weight","var(--tmp-var)")),t.parentNode.removeChild(t),e};supportsCssVars()||alert("Please view this demo in a modern browser that supports CSS Variables.");</script>
 </head>
-<body>
-    <button id="start-button">Start Gyro Control</button>
-    <div id="image-container">
-        <img id="moon-image" src="https://locksy.github.io/ai-vid-comparison-gyro/dist/moon.jpg" alt="Moon">
+<body class="loading">
+    <main>
+        <div class="content">
+            <div id="rgbKineticSlider" class="rgbKineticSlider"></div>
+        </div>
+    </main>
+    <nav class="main-nav">
+        <a href="#" class="prev" data-nav="previous">Prev <span></span></a>
+        <a href="#" class="next" data-nav="next">Next <span></span></a>
+    </nav>
+    <div class="gradient-overlay"></div>
+    
+    <!-- Gyro Control Permission Modal -->
+    <div id="permission-modal" style="display: none;">
+        <div class="modal-content">
+            <h2>Enable Gyroscope Control</h2>
+            <p>This experience works best with gyroscope control. Please grant permission to use your device's gyroscope.</p>
+            <button id="grant-permission">Start Gyro Control</button>
+        </div>
     </div>
 
-    <script>
-        const image = document.getElementById('moon-image');
-        const startButton = document.getElementById('start-button');
-        let baseX = 0, baseY = 0;
-        const sensitivity = 0.5; // Adjust this value to change the sensitivity of the movement
-
-        function handleOrientation(event) {
-            const y = event.beta;  // In degree in the range [-180,180]
-            const x = event.gamma; // In degree in the range [-90,90]
-
-            // Calculate new position
-            let newX = baseX - x * sensitivity;
-            let newY = baseY + y * sensitivity;
-
-            // Limit the movement range
-            newX = Math.max(Math.min(newX, 50), -50);
-            newY = Math.max(Math.min(newY, 50), -50);
-
-            // Apply the new position
-            image.style.transform = `translate(${newX}px, ${newY}px)`;
-        }
-
-        function startDemo() {
-            // Request permission for iOS 13+ devices
-            if (DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === "function") {
-                DeviceOrientationEvent.requestPermission()
-                    .then(response => {
-                        if (response == "granted") {
-                            window.addEventListener("deviceorientation", handleOrientation);
-                            startButton.style.display = 'none';
-                        }
-                    })
-                    .catch(console.error);
-            } else {
-                // For non iOS 13+ devices
-                window.addEventListener("deviceorientation", handleOrientation);
-                startButton.style.display = 'none';
-            }
-        }
-
-        startButton.addEventListener('click', startDemo);
-    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+    <script src="rgbKineticSlider.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>

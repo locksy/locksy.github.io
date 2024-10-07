@@ -17,6 +17,7 @@ const texts = [
 
 // Declare the slider variable in a scope accessible by the handleOrientation function
 let slider;
+let isGyroActive = false;
 
 // Initialize the slider
 slider = new rgbKineticSlider({
@@ -91,11 +92,11 @@ document.getElementById('grant-permission').addEventListener('click', function()
     DeviceMotionEvent.requestPermission()
       .then(response => {
         if (response === 'granted') {
-          startDeviceOrientationDetection();
+          startGyroControl();
           // Hide the modal
           document.getElementById('permission-modal').style.display = 'none';
         } else {
-          alert('Permission denied. Motion detection will not work.');
+          alert('Permission denied. Gyroscope control will not work.');
           document.getElementById('permission-modal').style.display = 'none';
         }
       })
@@ -106,18 +107,29 @@ document.getElementById('grant-permission').addEventListener('click', function()
       });
   } else {
     // For devices that don't require permission
-    startDeviceOrientationDetection();
+    startGyroControl();
     // Hide the modal
     document.getElementById('permission-modal').style.display = 'none';
   }
 });
 
-// Function to handle device orientation events
-function handleDeviceOrientation(event) {
-  const gamma = event.gamma || 0; // Left-right tilt (X-axis)
-  const beta = event.beta || 0;   // Front-back tilt (Y-axis)
+function startGyroControl() {
+  isGyroActive = true;
+  window.addEventListener('deviceorientation', handleOrientation);
+}
 
-  // Normalize gamma and beta values for use as coordinates
+let lastCall = 0;
+function handleOrientation(event) {
+  if (!isGyroActive) return;
+
+  const now = Date.now();
+  if (now - lastCall < 50) return; // Limit to 20fps
+  lastCall = now;
+
+  const gamma = event.gamma || 0; // [-90, 90] left-right tilt
+  const beta = event.beta || 0;   // [-180, 180] front-back tilt
+
+  // Normalize gamma and beta values
   const normalizedX = (gamma + 90) / 180; // Range: [0, 1]
   const normalizedY = (beta + 180) / 360; // Range: [0, 1]
 
@@ -128,7 +140,7 @@ function handleDeviceOrientation(event) {
   const mouseX = normalizedX * sliderWidth;
   const mouseY = normalizedY * sliderHeight;
 
-  // Update the slider's mouse position using the normalized device orientation
+  // Update the slider's mouse position
   if (slider) {
     slider.mousePosCache.x = mouseX;
     slider.mousePosCache.y = mouseY;
@@ -137,9 +149,16 @@ function handleDeviceOrientation(event) {
   }
 }
 
-// Function to start listening to device orientation
-function startDeviceOrientationDetection() {
-  if (window.DeviceOrientationEvent) {
-    window.addEventListener('deviceorientation', handleDeviceOrientation);
+// Add mouse event listeners for non-mobile devices
+if (!isMobileDevice()) {
+  window.addEventListener('mousemove', handleMouseMove);
+}
+
+function handleMouseMove(event) {
+  if (slider) {
+    slider.mousePosCache.x = event.clientX;
+    slider.mousePosCache.y = event.clientY;
+    slider.mousePos.x = event.clientX;
+    slider.mousePos.y = event.clientY;
   }
 }
