@@ -20,7 +20,6 @@ let slider;
 
 // Initialize the slider
 slider = new rgbKineticSlider({
-
   slideImages: images, // Array of images
   itemsTitles: texts,   // Array of titles / subtitles
 

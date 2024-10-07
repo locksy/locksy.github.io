@@ -69,15 +69,14 @@ a:focus {
   outline: none;
 }
 
-/* Removed styles related to the 'message' and 'frame' classes */
-
+/* Content layout */
 .content {
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 100vh; /* Adjusted to take full viewport height */
+  height: 100vh;
   position: relative;
-  justify-content: center; /* Centered content vertically */
+  justify-content: center;
   align-items: center;
 }
 
@@ -90,14 +89,13 @@ a:focus {
   height: 100%;
 }
 
-/* Gradient overlay for text readability */
 .gradient-overlay {
   position: absolute;
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 40%; /* Gradient darkens the bottom 40% of the slider */
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent); /* Dark gradient fades upwards */
+  height: 40%;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
   z-index: 1;
 }
 
@@ -165,25 +163,6 @@ nav a.prev {
   }
 }
 
-/* Custom styles for the slider texts */
-.rgbKineticSlider .rgbKineticSlider__title {
-  line-height: 1.1;
-  text-align: center;
-  text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.8);
-}
-
-.rgbKineticSlider .rgbKineticSlider__subtitle {
-  position: relative;
-  z-index: 2; /* Make sure text is above the gradient */
-  max-width: 80%;
-  line-height: 1.5;
-  text-align: center;
-  margin: 0 auto;
-  padding: 10px;
-  color: white;
-  text-shadow: 1px 1px 5px rgba(0, 0, 0, 0.9); /* Stronger shadow for readability */
-}
-
 /* Modal Dialog Styles */
 #permission-modal {
   position: fixed;
@@ -192,10 +171,10 @@ nav a.prev {
   width: 100%;
   height: 100%;
   background-color: rgba(0, 0, 0, 0.5);
-  display: none; /* We'll show it when needed */
+  display: none;
   justify-content: center;
   align-items: center;
-  z-index: 10000; /* Ensure it overlays other elements */
+  z-index: 10000;
 }
 
 .modal-content {
@@ -214,15 +193,12 @@ nav a.prev {
   padding: 10px 20px;
   cursor: pointer;
 }
-/* Existing CSS ... */
 
-/* Ensure the canvas fills the container */
 .rgbKineticSlider canvas {
   width: 100% !important;
   height: 100% !important;
 }
 
-/* Ensure the images cover the canvas area */
 .rgbKineticSlider .rgbKineticSlider_canvas canvas {
   object-fit: cover;
 }
