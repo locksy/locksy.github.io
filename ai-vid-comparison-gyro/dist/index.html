@@ -1,36 +1,59 @@
 <!DOCTYPE html>
-<html lang="en" class="no-js">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>RGB Kinetic Slider Demo</title>
-    <link rel="stylesheet" type="text/css" href="style.css">
-    <script>document.documentElement.className="js";var supportsCssVars=function(){var e,t=document.createElement("style");return t.innerHTML="root: { --tmp-var: bold; }",document.head.appendChild(t),e=!!(window.CSS&&window.CSS.supports&&window.CSS.supports("font-weight","var(--tmp-var)")),t.parentNode.removeChild(t),e};supportsCssVars()||alert("Please view this demo in a modern browser that supports CSS Variables.");</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ai-Vid-Comparison Gyro</title>
+  <link rel="stylesheet" href="./style.css">
 </head>
-<body>
-    <main>
-        <div class="content">
-            <div id="rgbKineticSlider" class="rgbKineticSlider"></div>
-        </div>
-    </main>
-    <nav class="main-nav">
-        <a href="#" class="prev" data-nav="previous">Prev <span></span></a>
-        <a href="#" class="next" data-nav="next">Next <span></span></a>
-    </nav>
-    <div class="gradient-overlay"></div>
-    
-    <!-- Gyro Control Permission Modal -->
-    <div id="permission-modal" style="display: none;">
-        <div class="modal-content">
-            <h2>Enable Gyroscope Control</h2>
-            <p>This experience works best with gyroscope control. Please grant permission to use your device's gyroscope.</p>
-            <button id="grant-permission">Start Gyro Control</button>
-        </div>
+<body class="demo-1 loading">
+  <!-- Permission Modal (only shown on mobile devices) -->
+  <div id="permission-modal" style="display: none;">
+    <div class="modal-content">
+      <h2>Enable Motion Sensors</h2>
+      <p>This page uses your device's motion sensors to enhance interactivity. Please allow access.</p>
+      <button id="grant-permission">Enable</button>
     </div>
+  </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
-    <script src="rgbKineticSlider.js"></script>
-    <script src="./script.js"></script>
+  <main>
+    <div class="content">
+      <div id="rgbKineticSlider" class="rgbKineticSlider">
+        <!-- Gradient Overlay -->
+        <div class="gradient-overlay"></div>
+      </div>
+      <nav>
+        <a href="#" class="main-nav prev" data-nav="previous">Prev <span></span></a>
+        <a href="#" class="main-nav next" data-nav="next">Next <span></span></a>
+      </nav>
+      <span class="notice">Swipe left... or right</span>
+    </div>
+  </main>
+
+  <!-- Including JS libraries -->
+  <script src="https://cdn.jsdelivr.net/gh/hmongouachon/rgbKineticSlider/js/libs/TweenMax.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/hmongouachon/rgbKineticSlider/js/libs/imagesLoaded.pkgd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/hmongouachon/rgbKineticSlider/js/libs/pixi.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/hmongouachon/rgbKineticSlider/js/libs/pixi-filters.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/hmongouachon/rgbKineticSlider/js/rgbKineticSlider.js"></script>
+
+  <!-- Custom Script for handling mouse/gyro interaction -->
+  <script src="./script.js"></script>
+
+  <!-- Ensure proper permissions for motion sensors on mobile -->
+  <script>
+    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+      document.getElementById('permission-modal').style.display = 'block';
+      document.getElementById('grant-permission').addEventListener('click', function() {
+        DeviceMotionEvent.requestPermission()
+          .then(function(response) {
+            if (response === 'granted') {
+              document.getElementById('permission-modal').style.display = 'none';
+            }
+          })
+          .catch(console.error);
+      });
+    }
+  </script>
 </body>
 </html>
