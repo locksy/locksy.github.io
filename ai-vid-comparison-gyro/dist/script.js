@@ -1,8 +1,6 @@
 // Images setup
 const images = [
-  "https://locksy.github.io/ai-vid-comparison/img/dreammachine.jpg",
-  "https://images.unsplash.com/photo-1547234935-80c7145ec969?ixlib=rb-1.2.1&auto=format&fit=crop&w=2074&q=80",
-  "https://images.unsplash.com/photo-1612892483236-52d32a0e0ac1?ixlib=rb-1.2.1&auto=format&fit=crop&w=2070&q=80",
+  "./moon.jpg" // Replacing image with a local file
 ];
 
 // Content setup
@@ -18,13 +16,13 @@ const texts = [
 let slider;
 let isGyroActive = false;
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
   // Initialize the slider
   slider = new rgbKineticSlider({
     slideImages: images,
     itemsTitles: texts,
-    backgroundDisplacementSprite: 'https://images.unsplash.com/photo-1558865869-c93f6f8482af?ixlib=rb-1.2.1&auto=format&fit=crop&w=2081&q=80',
-    cursorDisplacementSprite: 'https://images.unsplash.com/photo-1558865869-c93f6f8482af?ixlib=rb-1.2.1&auto=format&fit=crop&w=2081&q=80',
+    backgroundDisplacementSprite: './moon.jpg', // Using moon.jpg for displacement as well
+    cursorDisplacementSprite: './moon.jpg', // Using moon.jpg for cursor effect
     cursorImgEffect: true,
     cursorTextEffect: false,
     cursorScaleIntensity: 0.65,
@@ -75,7 +73,7 @@ function isMobileDevice() {
 }
 
 // Event listener for the gyroscope permission button
-document.getElementById('grant-gyro-permission').addEventListener('click', function() {
+document.getElementById('grant-gyro-permission').addEventListener('click', function () {
   if (typeof DeviceOrientationEvent.requestPermission === 'function') {
     DeviceOrientationEvent.requestPermission()
       .then(response => {

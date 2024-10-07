@@ -1,21 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ai-Vid-Comparison Gyro</title>
+  <title>Slider with Gyro and Mouse</title>
   <link rel="stylesheet" href="./style.css">
 </head>
+
 <body class="demo-1 loading">
-  <!-- Permission Modal (only shown on mobile devices) -->
-  <div id="permission-modal" style="display: none;">
-    <div class="modal-content">
-      <h2>Enable Motion Sensors</h2>
-      <p>This page uses your device's motion sensors to enhance interactivity. Please allow access.</p>
-      <button id="grant-permission">Enable</button>
-    </div>
+  <!-- Gyroscope Permission Modal (for mobile) -->
+  <div id="gyro-permission-container" style="display: none;">
+    <button id="grant-gyro-permission" class="gyro-button">
+      Allow Gyroscope Access
+    </button>
   </div>
 
+  <!-- Slider Section -->
   <main>
     <div class="content">
       <div id="rgbKineticSlider" class="rgbKineticSlider">
@@ -30,30 +31,13 @@
     </div>
   </main>
 
-  <!-- Including JS libraries -->
-  <script src="https://cdn.jsdelivr.net/gh/hmongouachon/rgbKineticSlider/js/libs/TweenMax.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/hmongouachon/rgbKineticSlider/js/libs/imagesLoaded.pkgd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/hmongouachon/rgbKineticSlider/js/libs/pixi.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/hmongouachon/rgbKineticSlider/js/libs/pixi-filters.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/hmongouachon/rgbKineticSlider/js/rgbKineticSlider.js"></script>
-
-  <!-- Custom Script for handling mouse/gyro interaction -->
+  <!-- External scripts -->
+  <script src='https://cdn.jsdelivr.net/gh/hmongouachon/rgbKineticSlider/js/libs/TweenMax.min.js'></script>
+  <script src='https://cdn.jsdelivr.net/gh/hmongouachon/rgbKineticSlider/js/libs/imagesLoaded.pkgd.min.js'></script>
+  <script src='https://cdn.jsdelivr.net/gh/hmongouachon/rgbKineticSlider/js/libs/pixi.min.js'></script>
+  <script src='https://cdn.jsdelivr.net/gh/hmongouachon/rgbKineticSlider/js/libs/pixi-filters.min.js'></script>
+  <script src='https://cdn.jsdelivr.net/gh/hmongouachon/rgbKineticSlider/js/rgbKineticSlider.js'></script>
   <script src="./script.js"></script>
-
-  <!-- Ensure proper permissions for motion sensors on mobile -->
-  <script>
-    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-      document.getElementById('permission-modal').style.display = 'block';
-      document.getElementById('grant-permission').addEventListener('click', function() {
-        DeviceMotionEvent.requestPermission()
-          .then(function(response) {
-            if (response === 'granted') {
-              document.getElementById('permission-modal').style.display = 'none';
-            }
-          })
-          .catch(console.error);
-      });
-    }
-  </script>
 </body>
+
 </html>
