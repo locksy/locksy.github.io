@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: #111;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas { 
+            width: 512px;
+            height: 512px;
+            display: block;
+            border-radius: 20px;
+            box-shadow: 
+                inset 0 0 50px rgba(0,0,0,0.7),
+                0 5px 15px rgba(0,0,0,0.5),
+                0 15px 35px rgba(0,0,0,0.3);
+            border: 20px solid #333;
+            background: #000;
+        }
+        #permission-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            text-align: center;
+            padding: 20px;
+        }
+        #permission-button {
+            background: #4CAF50;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .permission-text {
+            color: white;
+            margin-bottom: 20px;
+            font-family: Arial, sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <div id="permission-overlay">
+        <p class="permission-text">This experience uses device motion for an interactive effect.</p>
+        <button id="permission-button">Enable Motion Effects</button>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.159.0/three.min.js"></script>
+    <script>
+        let camera, scene, renderer, material;
+        let isUsingDeviceMotion = false;
+
+        // Device motion smoothing
+        const motionSmoothing = {
+            current: { x: 0.5, y: 0.5 },
+            target: { x: 0.5, y: 0.5 },
+            smooth: 0.1
+        };
+
+        init();
+        animate();
+
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(512, 512);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.body.appendChild(renderer.domElement);
+
+            setupShaderMaterial();
+            setupEventListeners();
+            checkDeviceMotion();
+        }
+
+        function setupShaderMaterial() {
+            material = new THREE.ShaderMaterial({
+                uniforms: {
+                    time: { value: 0 },
+                    mousePos: { value: new THREE.Vector2(0.5, 0.5) },
+                    tDiffuse: { value: null },
+                    resolution: { value: new THREE.Vector2(512, 512) }
+                },
+                vertexShader: `
+                    varying vec2 vUv;
+                    void main() {
+                        vUv = uv;
+                        gl_Position = vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform sampler2D tDiffuse;
+                    uniform vec2 mousePos;
+                    uniform float time;
+                    uniform vec2 resolution;
+                    varying vec2 vUv;
+
+                    float scanline(vec2 uv) {
+                        float scan1 = sin(uv.y * resolution.y * 2.0 - time * 10.0) * 0.08;
+                        float scan2 = sin(uv.y * resolution.y * 1.0 - time * 5.0) * 0.04;
+                        return 1.0 - scan1 - scan2;
+                    }
+
+                    vec2 curveRemapUV(vec2 uv) {
+                        uv = uv * 2.0 - 1.0;
+                        vec2 offset = abs(uv.yx) / vec2(3.0, 2.5);
+                        uv = uv + uv * offset * offset;
+                        uv = uv * 0.5 + 0.5;
+                        return uv;
+                    }
+
+                    float vignette(vec2 uv) {
+                        uv = uv * 2.0 - 1.0;
+                        return 1.0 - dot(uv, uv) * 0.4;
+                    }
+
+                    void main() {
+                        vec2 uv = curveRemapUV(vUv);
+                        
+                        if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
+                            gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+                            return;
+                        }
+
+                        float distanceFromMouse = length(uv - mousePos);
+                        float angle = atan(uv.y - mousePos.y, uv.x - mousePos.x);
+                        
+                        float strength = distanceFromMouse * 0.03;
+                        float colorIntensity = smoothstep(0.0, 0.5, strength) * 1.5 + 0.8;
+                        
+                        vec2 redOffset = vec2(cos(angle), sin(angle)) * strength;
+                        vec2 greenOffset = vec2(cos(angle + 2.0944), sin(angle + 2.0944)) * strength * 0.8;
+                        vec2 blueOffset = vec2(cos(angle + 4.18879), sin(angle + 4.18879)) * strength * 0.6;
+                        
+                        vec4 redSample = texture2D(tDiffuse, uv + redOffset);
+                        vec4 greenSample = texture2D(tDiffuse, uv + greenOffset);
+                        vec4 blueSample = texture2D(tDiffuse, uv + blueOffset);
+                        
+                        vec3 color = vec3(
+                            redSample.r * colorIntensity,
+                            greenSample.g * colorIntensity,
+                            blueSample.b * colorIntensity
+                        );
+                        
+                        color *= scanline(uv);
+                        color *= vignette(uv);
+                        
+                        float bleed = sin(uv.y * resolution.y * 0.25) * 0.02;
+                        color.r += bleed;
+                        color.b -= bleed;
+                        
+                        float flicker = sin(time * 8.0) * 0.03 + 0.97;
+                        color *= flicker;
+
+                        gl_FragColor = vec4(color, 1.0);
+                    }
+                `
+            });
+
+            const textureLoader = new THREE.TextureLoader();
+            textureLoader.load(
+                '/img/flyer1.png',
+                (texture) => {
+                    material.uniforms.tDiffuse.value = texture;
+                    const width = texture.image.width;
+                    const height = texture.image.height;
+                    renderer.setSize(width, height);
+                    material.uniforms.resolution.value.set(width, height);
+                    
+                    const imgAspect = width / height;
+                    const planeGeometry = new THREE.PlaneGeometry(2 * imgAspect, 2);
+                    const plane = new THREE.Mesh(planeGeometry, material);
+                    scene.add(plane);
+                    
+                    const canvas = renderer.domElement;
+                    canvas.style.width = width + 'px';
+                    canvas.style.height = height + 'px';
+                }
+            );
+        }
+
+        function setupEventListeners() {
+            // Mouse movement handler
+            document.addEventListener('mousemove', (event) => {
+                if (!isUsingDeviceMotion) {
+                    const rect = renderer.domElement.getBoundingClientRect();
+                    const x = (event.clientX - rect.left) / rect.width;
+                    const y = 1.0 - (event.clientY - rect.top) / rect.height;
+                    material.uniforms.mousePos.value.set(x, y);
+                }
+            });
+
+            // Device motion handler
+            window.addEventListener('devicemotion', (event) => {
+                if (isUsingDeviceMotion) {
+                    // Convert acceleration to normalized coordinates
+                    const x = (event.accelerationIncludingGravity.x || 0) / 10;
+                    const y = (event.accelerationIncludingGravity.y || 0) / 10;
+                    
+                    // Update target values with some bounds
+                    motionSmoothing.target.x = Math.max(0, Math.min(1, 0.5 + x));
+                    motionSmoothing.target.y = Math.max(0, Math.min(1, 0.5 + y));
+                }
+            });
+        }
+
+        function checkDeviceMotion() {
+            // Check if this is likely a mobile device
+            if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+                const overlay = document.getElementById('permission-overlay');
+                const button = document.getElementById('permission-button');
+                overlay.style.display = 'flex';
+
+                button.addEventListener('click', async () => {
+                    try {
+                        // Request permission for DeviceMotion events
+                        if (typeof DeviceMotionEvent.requestPermission === 'function') {
+                            const permission = await DeviceMotionEvent.requestPermission();
+                            if (permission === 'granted') {
+                                isUsingDeviceMotion = true;
+                                overlay.style.display = 'none';
+                            }
+                        } else {
+                            // For devices that don't require permission
+                            isUsingDeviceMotion = true;
+                            overlay.style.display = 'none';
+                        }
+                    } catch (error) {
+                        console.error('Error requesting device motion permission:', error);
+                        overlay.style.display = 'none';
+                    }
+                });
+            }
+        }
+
+        function animate(time) {
+            requestAnimationFrame(animate);
+            
+            if (isUsingDeviceMotion) {
+                // Smooth the motion values
+                motionSmoothing.current.x += (motionSmoothing.target.x - motionSmoothing.current.x) * motionSmoothing.smooth;
+                motionSmoothing.current.y += (motionSmoothing.target.y - motionSmoothing.current.y) * motionSmoothing.smooth;
+                
+                material.uniforms.mousePos.value.set(
+                    motionSmoothing.current.x,
+                    motionSmoothing.current.y
+                );
+            }
+            
+            material.uniforms.time.value = time * 0.001;
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
