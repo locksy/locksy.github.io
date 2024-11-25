@@ -75,7 +75,6 @@
             renderer.setPixelRatio(window.devicePixelRatio);
             document.body.appendChild(renderer.domElement);
 
-            // Create shader material
             material = new THREE.ShaderMaterial({
                 uniforms: {
                     time: { value: 0 },
@@ -157,27 +156,24 @@
                 `
             });
 
-            // Load texture
-            const textureLoader = new THREE.TextureLoader();
-            textureLoader.load(
-                '/img/flyer1.png',
-                (texture) => {
-                    material.uniforms.tDiffuse.value = texture;
-                    
-                    const imgAspect = texture.image.width / texture.image.height;
-                    const planeGeometry = new THREE.PlaneGeometry(2 * imgAspect, 2);
-                    const plane = new THREE.Mesh(planeGeometry, material);
-                    scene.add(plane);
-                }
-            );
+            const img = new Image();
+            img.onload = function() {
+                const texture = new THREE.Texture(img);
+                texture.needsUpdate = true;
+                material.uniforms.tDiffuse.value = texture;
+                
+                const imgAspect = img.width / img.height;
+                const planeGeometry = new THREE.PlaneGeometry(2 * imgAspect, 2);
+                const plane = new THREE.Mesh(planeGeometry, material);
+                scene.add(plane);
+            };
+            img.src = '/img/flyer1.png';
 
-            // Setup event listeners
             setupEventListeners();
             checkDeviceMotion();
         }
 
         function setupEventListeners() {
-            // Mouse movement handler
             document.addEventListener('mousemove', (event) => {
                 if (!isUsingDeviceMotion) {
                     const rect = renderer.domElement.getBoundingClientRect();
@@ -187,14 +183,10 @@
                 }
             });
 
-            // Device motion handler
             window.addEventListener('devicemotion', (event) => {
                 if (isUsingDeviceMotion) {
-                    // Convert acceleration to normalized coordinates
                     const x = (event.accelerationIncludingGravity.x || 0) / 10;
                     const y = (event.accelerationIncludingGravity.y || 0) / 10;
-                    
-                    // Update target values with some bounds
                     motionSmoothing.target.x = Math.max(0, Math.min(1, 0.5 + x));
                     motionSmoothing.target.y = Math.max(0, Math.min(1, 0.5 + y));
                 }
@@ -202,7 +194,6 @@
         }
 
         function checkDeviceMotion() {
-            // Check if this is likely a mobile device
             if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
                 const overlay = document.getElementById('permission-overlay');
                 const button = document.getElementById('permission-button');
@@ -210,7 +201,6 @@
 
                 button.addEventListener('click', async () => {
                     try {
-                        // Request permission for DeviceMotion events
                         if (typeof DeviceMotionEvent.requestPermission === 'function') {
                             const permission = await DeviceMotionEvent.requestPermission();
                             if (permission === 'granted') {
@@ -218,12 +208,10 @@
                                 overlay.style.display = 'none';
                             }
                         } else {
-                            // For devices that don't require permission
                             isUsingDeviceMotion = true;
                             overlay.style.display = 'none';
                         }
                     } catch (error) {
-                        console.error('Error requesting device motion permission:', error);
                         overlay.style.display = 'none';
                     }
                 });
@@ -234,10 +222,8 @@
             requestAnimationFrame(animate);
             
             if (isUsingDeviceMotion) {
-                // Smooth the motion values
                 motionSmoothing.current.x += (motionSmoothing.target.x - motionSmoothing.current.x) * motionSmoothing.smooth;
                 motionSmoothing.current.y += (motionSmoothing.target.y - motionSmoothing.current.y) * motionSmoothing.smooth;
-                
                 material.uniforms.mousePos.value.set(
                     motionSmoothing.current.x,
                     motionSmoothing.current.y
