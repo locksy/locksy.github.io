@@ -54,6 +54,14 @@
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.159.0/three.min.js"></script>
     <script>
+        function getImagePath() {
+            if (window.location.hostname.includes('github.com')) {
+                return '/acidhaus/img/flyer1.jpg';
+            } else {
+                return 'img/flyer1.jpg';
+            }
+        }
+
         let camera, scene, renderer, material;
         let isUsingDeviceMotion = false;
 
@@ -125,7 +133,6 @@
                         float angle = atan(uv.y - mousePos.y, uv.x - mousePos.x);
                         
                         float strength = distanceFromMouse * 0.03;
-                        float colorIntensity = smoothstep(0.0, 0.5, strength) * 1.5 + 0.8;
                         
                         vec2 redOffset = vec2(cos(angle), sin(angle)) * strength;
                         vec2 greenOffset = vec2(cos(angle + 2.0944), sin(angle + 2.0944)) * strength * 0.8;
@@ -135,10 +142,14 @@
                         vec4 greenSample = texture2D(tDiffuse, uv + greenOffset);
                         vec4 blueSample = texture2D(tDiffuse, uv + blueOffset);
                         
+                        float redIntensity = 1.0 + length(redOffset) * 15.0;
+                        float greenIntensity = 1.0 + length(greenOffset) * 15.0;
+                        float blueIntensity = 1.0 + length(blueOffset) * 15.0;
+                        
                         vec3 color = vec3(
-                            redSample.r * colorIntensity,
-                            greenSample.g * colorIntensity,
-                            blueSample.b * colorIntensity
+                            redSample.r * redIntensity,
+                            greenSample.g * greenIntensity,
+                            blueSample.b * blueIntensity
                         );
                         
                         color *= scanline(uv);
@@ -167,7 +178,8 @@
                 const plane = new THREE.Mesh(planeGeometry, material);
                 scene.add(plane);
             };
-            img.src = '/img/flyer1.png';
+            
+            img.src = getImagePath();
 
             setupEventListeners();
             checkDeviceMotion();
