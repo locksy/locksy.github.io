@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+<!-- [Previous head and style content exactly the same] -->
 <head>
     <style>
         body { 
@@ -68,7 +69,7 @@
         const motionSmoothing = {
             current: { x: 0.5, y: 0.5 },
             target: { x: 0.5, y: 0.5 },
-            smooth: 0.1
+            smooth: 0.15  // Slightly increased smoothing for more fluid motion
         };
 
         init();
@@ -201,11 +202,11 @@
                     const x = event.accelerationIncludingGravity.x || 0;
                     const y = event.accelerationIncludingGravity.y || 0;
                     
-                    // Scale down the values (adjust these numbers to control sensitivity)
-                    const scaledX = x / 5;  // More sensitive than previous /10
-                    const scaledY = y / 5;
+                    // More dramatic motion by reducing divisor from 5 to 2
+                    const scaledX = x / 2;
+                    const scaledY = y / 2;
                     
-                    // Map acceleration to screen coordinates (0 to 1)
+                    // Add more range to the motion
                     motionSmoothing.target.x = Math.max(0, Math.min(1, 0.5 + scaledX));
                     motionSmoothing.target.y = Math.max(0, Math.min(1, 0.5 + scaledY));
                 }
@@ -220,7 +221,6 @@
 
                 button.addEventListener('click', async () => {
                     try {
-                        // iOS requires permission
                         if (typeof DeviceMotionEvent.requestPermission === 'function') {
                             const permission = await DeviceMotionEvent.requestPermission();
                             if (permission === 'granted') {
@@ -228,13 +228,11 @@
                                 overlay.style.display = 'none';
                             }
                         } else {
-                            // Android doesn't need permission
                             isUsingDeviceMotion = true;
                             overlay.style.display = 'none';
                         }
                     } catch (error) {
                         console.error('Motion permission error:', error);
-                        // Still enable motion on error for Android devices
                         if (!/iPhone|iPad|iPod/.test(navigator.userAgent)) {
                             isUsingDeviceMotion = true;
                         }
