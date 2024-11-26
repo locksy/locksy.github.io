@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html>
-<!-- [Previous head and style content exactly the same] -->
 <head>
     <style>
         body { 
@@ -69,7 +68,7 @@
         const motionSmoothing = {
             current: { x: 0.5, y: 0.5 },
             target: { x: 0.5, y: 0.5 },
-            smooth: 0.15  // Slightly increased smoothing for more fluid motion
+            smooth: 0.15
         };
 
         init();
@@ -133,30 +132,33 @@
                         float distanceFromMouse = length(uv - mousePos);
                         float angle = atan(uv.y - mousePos.y, uv.x - mousePos.x);
                         
-                        float strength = distanceFromMouse * 0.03;
+                        float strength = distanceFromMouse * 0.06;
                         
-                        vec2 redOffset = vec2(cos(angle), sin(angle)) * strength;
-                        vec2 greenOffset = vec2(cos(angle + 2.0944), sin(angle + 2.0944)) * strength * 0.8;
-                        vec2 blueOffset = vec2(cos(angle + 4.18879), sin(angle + 4.18879)) * strength * 0.6;
+                        vec2 redOffset = vec2(cos(angle), sin(angle)) * strength * 1.2;
+                        vec2 greenOffset = vec2(cos(angle + 2.0944), sin(angle + 2.0944)) * strength;
+                        vec2 blueOffset = vec2(cos(angle + 4.18879), sin(angle + 4.18879)) * strength * 0.8;
                         
                         vec4 redSample = texture2D(tDiffuse, uv + redOffset);
                         vec4 greenSample = texture2D(tDiffuse, uv + greenOffset);
                         vec4 blueSample = texture2D(tDiffuse, uv + blueOffset);
                         
-                        float redIntensity = 1.0 + length(redOffset) * 15.0;
-                        float greenIntensity = 1.0 + length(greenOffset) * 15.0;
-                        float blueIntensity = 1.0 + length(blueOffset) * 15.0;
+                        float offsetMagnitude = length(redOffset) * 25.0;
+                        float redIntensity = 1.0 + offsetMagnitude;
+                        float greenIntensity = 1.0 + offsetMagnitude * 0.9;
+                        float blueIntensity = 1.0 + offsetMagnitude * 0.8;
+                        
+                        float glow = smoothstep(0.0, 0.5, offsetMagnitude) * 0.5;
                         
                         vec3 color = vec3(
-                            redSample.r * redIntensity,
-                            greenSample.g * greenIntensity,
-                            blueSample.b * blueIntensity
+                            redSample.r * redIntensity + glow,
+                            greenSample.g * greenIntensity + glow,
+                            blueSample.b * blueIntensity + glow
                         );
                         
                         color *= scanline(uv);
                         color *= vignette(uv);
                         
-                        float bleed = sin(uv.y * 100.0) * 0.02;
+                        float bleed = sin(uv.y * 100.0) * 0.04;
                         color.r += bleed;
                         color.b -= bleed;
                         
@@ -198,15 +200,13 @@
 
             window.addEventListener('devicemotion', (event) => {
                 if (isUsingDeviceMotion) {
-                    // Get acceleration including gravity
                     const x = event.accelerationIncludingGravity.x || 0;
-                    const y = event.accelerationIncludingGravity.y || 0;
+                    // Subtract 7 to make ~45 degrees the neutral point
+                    const y = (event.accelerationIncludingGravity.y || 0) - 7;
                     
-                    // More dramatic motion by reducing divisor from 5 to 2
                     const scaledX = x / 2;
                     const scaledY = y / 2;
                     
-                    // Add more range to the motion
                     motionSmoothing.target.x = Math.max(0, Math.min(1, 0.5 + scaledX));
                     motionSmoothing.target.y = Math.max(0, Math.min(1, 0.5 + scaledY));
                 }
