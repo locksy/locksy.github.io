@@ -83,13 +83,11 @@
     </style>
 </head>
 <body>
-    <!-- Loading overlay with Matrix effect -->
     <div id="loading-overlay">
         <canvas id="matrix-canvas"></canvas>
         <div id="loading-text">LOADING</div>
     </div>
 
-    <!-- Permission overlay -->
     <div id="permission-overlay">
         <p class="permission-text">This experience uses device motion for an interactive effect.</p>
         <button id="permission-button">Enable Motion Effects</button>
@@ -101,7 +99,6 @@
         const matrixCanvas = document.getElementById('matrix-canvas');
         const matrixCtx = matrixCanvas.getContext('2d');
         
-        // Set matrix canvas size to window size
         matrixCanvas.width = window.innerWidth;
         matrixCanvas.height = window.innerHeight;
         
@@ -110,7 +107,6 @@
         const columns = matrixCanvas.width / fontSize;
         const drops = [];
         
-        // Initialize drops
         for(let x = 0; x < columns; x++) {
             drops[x] = Math.floor(Math.random() * matrixCanvas.height/fontSize);
         }
@@ -132,7 +128,6 @@
             }
         }
 
-        // Main Three.js code
         function getImagePath() {
             if (window.location.hostname.includes('github.io')) {
                 return '/acidhaus/img/flyer1.png';
@@ -150,12 +145,7 @@
             smooth: 0.1
         };
 
-        // Start Matrix animation immediately
         const matrixInterval = setInterval(drawMatrix, 50);
-
-        // Initialize Three.js scene
-        init();
-        animate();
 
         function init() {
             scene = new THREE.Scene();
@@ -166,7 +156,6 @@
             renderer.setPixelRatio(window.devicePixelRatio);
             document.body.appendChild(renderer.domElement);
 
-            // Rest of your existing material setup...
             material = new THREE.ShaderMaterial({
                 uniforms: {
                     time: { value: 0 },
@@ -216,19 +205,19 @@
                         float distanceFromMouse = length(uv - mousePos);
                         float angle = atan(uv.y - mousePos.y, uv.x - mousePos.x);
                         
-                        float strength = distanceFromMouse * 0.03;
+                        float strength = distanceFromMouse * 0.06;
                         
-                        vec2 redOffset = vec2(cos(angle), sin(angle)) * strength;
-                        vec2 greenOffset = vec2(cos(angle + 2.0944), sin(angle + 2.0944)) * strength * 0.8;
-                        vec2 blueOffset = vec2(cos(angle + 4.18879), sin(angle + 4.18879)) * strength * 0.6;
+                        vec2 redOffset = vec2(cos(angle), sin(angle)) * strength * 1.2;
+                        vec2 greenOffset = vec2(cos(angle + 2.0944), sin(angle + 2.0944)) * strength;
+                        vec2 blueOffset = vec2(cos(angle + 4.18879), sin(angle + 4.18879)) * strength * 0.8;
                         
                         vec4 redSample = texture2D(tDiffuse, uv + redOffset);
                         vec4 greenSample = texture2D(tDiffuse, uv + greenOffset);
                         vec4 blueSample = texture2D(tDiffuse, uv + blueOffset);
                         
-                        float redIntensity = 1.0 + length(redOffset) * 15.0;
-                        float greenIntensity = 1.0 + length(greenOffset) * 15.0;
-                        float blueIntensity = 1.0 + length(blueOffset) * 15.0;
+                        float redIntensity = 1.0 + length(redOffset) * 20.0;
+                        float greenIntensity = 1.0 + length(greenOffset) * 20.0;
+                        float blueIntensity = 1.0 + length(blueOffset) * 20.0;
                         
                         vec3 color = vec3(
                             redSample.r * redIntensity,
@@ -262,12 +251,28 @@
                 const plane = new THREE.Mesh(planeGeometry, material);
                 scene.add(plane);
 
-                // Hide loading screen after image loads
-                setTimeout(() => {
+                renderer.render(scene, camera);
+                
+                requestAnimationFrame(() => {
                     const loadingOverlay = document.getElementById('loading-overlay');
+                    if (loadingOverlay) {
+                        loadingOverlay.style.opacity = '0';
+                        loadingOverlay.style.transition = 'opacity 0.5s';
+                        loadingOverlay.addEventListener('transitionend', () => {
+                            loadingOverlay.style.display = 'none';
+                            clearInterval(matrixInterval);
+                        }, { once: true });
+                    }
+                });
+            };
+
+            img.onerror = function(e) {
+                console.error('Image loading error:', e);
+                const loadingOverlay = document.getElementById('loading-overlay');
+                if (loadingOverlay) {
                     loadingOverlay.style.display = 'none';
-                    clearInterval(matrixInterval); // Stop matrix animation
-                }, 2000); // Minimum 2 second display
+                    clearInterval(matrixInterval);
+                }
             };
             
             img.src = getImagePath();
@@ -290,18 +295,16 @@
                 if (isUsingDeviceMotion) {
                     const x = event.accelerationIncludingGravity.x || 0;
                     const y = event.accelerationIncludingGravity.y || 0;
+                    const z = event.accelerationIncludingGravity.z || 0;
                     
-                    // Adjust for natural phone viewing angle (approximately -7 degrees)
-                    const angleOffset = -7 * Math.PI / 180; // Convert to radians
-                    const adjustedY = y * Math.cos(angleOffset) - x * Math.sin(angleOffset);
+                    const naturalAngle = -60 * Math.PI / 180;
+                    const adjustedY = y * Math.cos(naturalAngle) - z * Math.sin(naturalAngle);
                     
-                    // Scale down the values (adjust sensitivity)
-                    const scaledX = x / 5;
-                    const scaledY = adjustedY / 5;
+                    const scaledX = (x / 3) * 1.5;
+                    const scaledY = ((adjustedY + 5) / 3) * 1.2;
                     
-                    // Map acceleration to screen coordinates with offset
                     motionSmoothing.target.x = Math.max(0, Math.min(1, 0.5 + scaledX));
-                    motionSmoothing.target.y = Math.max(0, Math.min(1, 0.5 + scaledY + 0.12)); // Add offset for natural angle
+                    motionSmoothing.target.y = Math.max(0, Math.min(1, 0.5 + scaledY));
                 }
             });
         }
@@ -310,6 +313,12 @@
             if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
                 const overlay = document.getElementById('permission-overlay');
                 const button = document.getElementById('permission-button');
+                const loadingOverlay = document.getElementById('loading-overlay');
+                
+                if (loadingOverlay) {
+                    loadingOverlay.style.zIndex = '3000';
+                }
+                
                 overlay.style.display = 'flex';
 
                 button.addEventListener('click', async () => {
@@ -358,6 +367,9 @@
                 matrixCanvas.height = window.innerHeight;
             }
         });
+
+        init();
+        animate();
     </script>
 </body>
 </html>
