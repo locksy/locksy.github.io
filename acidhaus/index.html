@@ -2,264 +2,103 @@
 <html>
 <head>
     <style>
-        body { 
-            margin: 0; 
-            overflow: hidden; 
-            background: black;
-        }
-        canvas { 
-            width: 100vw; 
-            height: 100vh; 
-            display: block;
-        }
-        #permission-overlay {
-            display: none;
+        /* Original styles remain but adding Matrix overlay */
+        #loading-overlay {
             position: fixed;
             top: 0;
             left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.8);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            text-align: center;
-            padding: 20px;
+            width: 100vw;
+            height: 100vh;
+            background: #f0f0f0;
+            z-index: 2000;
+            font-family: monospace;
+            overflow: hidden;
         }
-        #permission-button {
-            background: #4CAF50;
-            border: none;
-            color: white;
-            padding: 15px 32px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 16px;
-            margin: 4px 2px;
-            cursor: pointer;
-            border-radius: 4px;
+        
+        #matrix-canvas {
+            opacity: 0.7;
         }
-        .permission-text {
-            color: white;
-            margin-bottom: 20px;
-            font-family: Arial, sans-serif;
+        
+        #loading-text {
+            position: fixed;
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #000;
+            font-family: 'Courier New', monospace;
+            font-size: 24px;
+            z-index: 2001;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
         }
     </style>
 </head>
 <body>
-    <div id="permission-overlay">
-        <p class="permission-text">This experience uses device motion for an interactive effect.</p>
-        <button id="permission-button">Enable Motion Effects</button>
+    <div id="loading-overlay">
+        <canvas id="matrix-canvas"></canvas>
+        <div id="loading-text">LOADING</div>
     </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.159.0/three.min.js"></script>
+
     <script>
-        function getImagePath() {
-            if (window.location.hostname.includes('github.io')) {
-                return '/acidhaus/img/flyer1.png';
-            } else {
-                return '/img/flyer1.png';
-            }
+        const canvas = document.getElementById('matrix-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Set canvas size to window size
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Matrix characters (using simpler characters for readability)
+        const chars = '01'.split('');
+
+        const fontSize = 14;
+        const columns = canvas.width / fontSize;
+        const drops = [];
+
+        // Initialize drops
+        for(let x = 0; x < columns; x++) {
+            drops[x] = Math.floor(Math.random() * canvas.height/fontSize);
         }
 
-        let camera, scene, renderer, material;
-        let isUsingDeviceMotion = false;
+        function draw() {
+            // Semi-transparent fade to create trail effect
+            ctx.fillStyle = 'rgba(240, 240, 240, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        const motionSmoothing = {
-            current: { x: 0.5, y: 0.5 },
-            target: { x: 0.5, y: 0.5 },
-            smooth: 0.15
-        };
+            ctx.fillStyle = '#1a1a1a'; // Dark gray for more subtle effect
+            ctx.font = fontSize + 'px monospace';
 
-        init();
-        animate();
-
-        function init() {
-            scene = new THREE.Scene();
-            camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-            
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            document.body.appendChild(renderer.domElement);
-
-            material = new THREE.ShaderMaterial({
-                uniforms: {
-                    time: { value: 0 },
-                    mousePos: { value: new THREE.Vector2(0.5, 0.5) },
-                    tDiffuse: { value: null }
-                },
-                vertexShader: `
-                    varying vec2 vUv;
-                    void main() {
-                        vUv = uv;
-                        gl_Position = vec4(position, 1.0);
-                    }
-                `,
-                fragmentShader: `
-                    uniform sampler2D tDiffuse;
-                    uniform vec2 mousePos;
-                    uniform float time;
-                    varying vec2 vUv;
-
-                    float scanline(vec2 uv) {
-                        float scan1 = sin(uv.y * 200.0 - time * 10.0) * 0.08;
-                        float scan2 = sin(uv.y * 100.0 - time * 5.0) * 0.04;
-                        return 1.0 - scan1 - scan2;
-                    }
-
-                    vec2 curveRemapUV(vec2 uv) {
-                        uv = uv * 2.0 - 1.0;
-                        vec2 offset = abs(uv.yx) / vec2(3.0, 2.5);
-                        uv = uv + uv * offset * offset;
-                        uv = uv * 0.5 + 0.5;
-                        return uv;
-                    }
-
-                    float vignette(vec2 uv) {
-                        uv = uv * 2.0 - 1.0;
-                        return 1.0 - dot(uv, uv) * 0.4;
-                    }
-
-                    void main() {
-                        vec2 uv = curveRemapUV(vUv);
-                        
-                        if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
-                            gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
-                            return;
-                        }
-
-                        float distanceFromMouse = length(uv - mousePos);
-                        float angle = atan(uv.y - mousePos.y, uv.x - mousePos.x);
-                        
-                        float strength = distanceFromMouse * 0.06;
-                        
-                        vec2 redOffset = vec2(cos(angle), sin(angle)) * strength * 1.2;
-                        vec2 greenOffset = vec2(cos(angle + 2.0944), sin(angle + 2.0944)) * strength;
-                        vec2 blueOffset = vec2(cos(angle + 4.18879), sin(angle + 4.18879)) * strength * 0.8;
-                        
-                        vec4 redSample = texture2D(tDiffuse, uv + redOffset);
-                        vec4 greenSample = texture2D(tDiffuse, uv + greenOffset);
-                        vec4 blueSample = texture2D(tDiffuse, uv + blueOffset);
-                        
-                        float offsetMagnitude = length(redOffset) * 25.0;
-                        float redIntensity = 1.0 + offsetMagnitude;
-                        float greenIntensity = 1.0 + offsetMagnitude * 0.9;
-                        float blueIntensity = 1.0 + offsetMagnitude * 0.8;
-                        
-                        float glow = smoothstep(0.0, 0.5, offsetMagnitude) * 0.5;
-                        
-                        vec3 color = vec3(
-                            redSample.r * redIntensity + glow,
-                            greenSample.g * greenIntensity + glow,
-                            blueSample.b * blueIntensity + glow
-                        );
-                        
-                        color *= scanline(uv);
-                        color *= vignette(uv);
-                        
-                        float bleed = sin(uv.y * 100.0) * 0.04;
-                        color.r += bleed;
-                        color.b -= bleed;
-                        
-                        float flicker = sin(time * 8.0) * 0.03 + 0.97;
-                        color *= flicker;
-
-                        gl_FragColor = vec4(color, 1.0);
-                    }
-                `
-            });
-
-            const img = new Image();
-            img.onload = function() {
-                const texture = new THREE.Texture(img);
-                texture.needsUpdate = true;
-                material.uniforms.tDiffuse.value = texture;
+            // Loop over drops
+            for(let i = 0; i < drops.length; i++) {
+                // Random character
+                const text = chars[Math.floor(Math.random() * chars.length)];
                 
-                const imgAspect = img.width / img.height;
-                const planeGeometry = new THREE.PlaneGeometry(2 * imgAspect, 2);
-                const plane = new THREE.Mesh(planeGeometry, material);
-                scene.add(plane);
-            };
-            
-            img.src = getImagePath();
+                // Draw the character
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
 
-            setupEventListeners();
-            checkDeviceMotion();
-        }
-
-        function setupEventListeners() {
-            document.addEventListener('mousemove', (event) => {
-                if (!isUsingDeviceMotion) {
-                    const rect = renderer.domElement.getBoundingClientRect();
-                    const x = (event.clientX - rect.left) / rect.width;
-                    const y = 1.0 - (event.clientY - rect.top) / rect.height;
-                    material.uniforms.mousePos.value.set(x, y);
+                // Reset drop if it reaches bottom or randomly
+                if(drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
                 }
-            });
 
-            window.addEventListener('devicemotion', (event) => {
-                if (isUsingDeviceMotion) {
-                    const x = event.accelerationIncludingGravity.x || 0;
-                    // Subtract 7 to make ~45 degrees the neutral point
-                    const y = (event.accelerationIncludingGravity.y || 0) - 7;
-                    
-                    const scaledX = x / 2;
-                    const scaledY = y / 2;
-                    
-                    motionSmoothing.target.x = Math.max(0, Math.min(1, 0.5 + scaledX));
-                    motionSmoothing.target.y = Math.max(0, Math.min(1, 0.5 + scaledY));
-                }
-            });
-        }
-
-        function checkDeviceMotion() {
-            if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-                const overlay = document.getElementById('permission-overlay');
-                const button = document.getElementById('permission-button');
-                overlay.style.display = 'flex';
-
-                button.addEventListener('click', async () => {
-                    try {
-                        if (typeof DeviceMotionEvent.requestPermission === 'function') {
-                            const permission = await DeviceMotionEvent.requestPermission();
-                            if (permission === 'granted') {
-                                isUsingDeviceMotion = true;
-                                overlay.style.display = 'none';
-                            }
-                        } else {
-                            isUsingDeviceMotion = true;
-                            overlay.style.display = 'none';
-                        }
-                    } catch (error) {
-                        console.error('Motion permission error:', error);
-                        if (!/iPhone|iPad|iPod/.test(navigator.userAgent)) {
-                            isUsingDeviceMotion = true;
-                        }
-                        overlay.style.display = 'none';
-                    }
-                });
+                // Move drop
+                drops[i]++;
             }
         }
 
-        function animate(time) {
-            requestAnimationFrame(animate);
-            
-            if (isUsingDeviceMotion) {
-                motionSmoothing.current.x += (motionSmoothing.target.x - motionSmoothing.current.x) * motionSmoothing.smooth;
-                motionSmoothing.current.y += (motionSmoothing.target.y - motionSmoothing.current.y) * motionSmoothing.smooth;
-                material.uniforms.mousePos.value.set(
-                    motionSmoothing.current.x,
-                    motionSmoothing.current.y
-                );
-            }
-            
-            material.uniforms.time.value = time * 0.001;
-            renderer.render(scene, camera);
-        }
+        setInterval(draw, 50);
 
-        window.addEventListener('resize', () => {
-            renderer.setSize(window.innerWidth, window.innerHeight);
+        // Hide loading screen when page is ready
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                document.getElementById('loading-overlay').style.display = 'none';
+            }, 2000); // Show loading for at least 2 seconds
         });
     </script>
 </body>
