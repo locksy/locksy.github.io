@@ -54,13 +54,16 @@
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.159.0/three.min.js"></script>
     <script>
-        function getImagePath() {
-            if (window.location.hostname.includes('github.com')) {
-                return '/acidhaus/img/flyer1.jpg';
-            } else {
-                return '/img/flyer1.png';
-            }
-        }
+      function getImagePath() {
+    if (window.location.hostname.includes('github.io')) {
+        // Use the correct relative path for GitHub Pages
+        return '/acidhaus/img/flyer1.jpg';
+    } else {
+        // Use the relative path for local development
+        return '/img/flyer1.png';
+    }
+}
+
 
         let camera, scene, renderer, material;
         let isUsingDeviceMotion = false;
