@@ -3,6 +3,11 @@
 <head>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
+        @font-face {
+            font-family: 'MatrixFont';
+            src: url('/fonts/MatrixCode.woff2') format('woff2');
+        }
+
         body { 
             margin: 0; 
             overflow: hidden; 
@@ -116,7 +121,7 @@
             matrixCtx.fillStyle = 'rgba(240, 240, 240, 0.05)';
             matrixCtx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
             matrixCtx.fillStyle = '#1a1a1a';
-            matrixCtx.font = `${fontSize}px 'Share Tech Mono'`;
+            matrixCtx.font = `${fontSize}px 'MatrixFont'`;
             
             for(let i = 0; i < drops.length; i++) {
                 const text = chars[Math.floor(Math.random() * chars.length)];
@@ -143,7 +148,7 @@
         const motionSmoothing = {
             current: { x: 0.5, y: 0.5 },
             target: { x: 0.5, y: 0.5 },
-            smooth: 0.1
+            smooth: 0.2  // Increased from 0.1 for more responsive movement
         };
 
         const matrixInterval = setInterval(drawMatrix, 50);
@@ -285,7 +290,7 @@
                 `
             });
             
-img.onerror = function(e) {
+            img.onerror = function(e) {
                 console.error('Image loading error:', e);
                 const loadingOverlay = document.getElementById('loading-overlay');
                 if (loadingOverlay) {
@@ -314,14 +319,12 @@ img.onerror = function(e) {
                 if (isUsingDeviceMotion) {
                     const x = event.accelerationIncludingGravity.x || 0;
                     const y = event.accelerationIncludingGravity.y || 0;
-                    const z = event.accelerationIncludingGravity.z || 0;
                     
-                    const naturalAngle = -60 * Math.PI / 180;
-                    const adjustedY = y * Math.cos(naturalAngle) - z * Math.sin(naturalAngle);
+                    // Simplified and more responsive motion calculations
+                    const scaledX = (x / 5) * 2.0;  // Increased sensitivity
+                    const scaledY = (y / 5) * 2.0;  // Increased sensitivity
                     
-                    const scaledX = (x / 2.5) * 2.0;
-                    const scaledY = ((adjustedY + 5) / 2.5) * 1.5;
-                    
+                    // Center point is 0.5, and we add our scaled values
                     motionSmoothing.target.x = Math.max(0, Math.min(1, 0.5 + scaledX));
                     motionSmoothing.target.y = Math.max(0, Math.min(1, 0.5 + scaledY));
                 }
@@ -374,7 +377,6 @@ img.onerror = function(e) {
                     motionSmoothing.current.y
                 );
             }
-            
             material.uniforms.time.value = time * 0.001;
             renderer.render(scene, camera);
         }
