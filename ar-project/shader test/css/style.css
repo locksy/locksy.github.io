@@ -1,0 +1,64 @@
+@font-face {
+  font-family: 'CustomFont';
+  src: url('/font.otf') format('opentype');
+}
+
+:root {
+  --mouse-x: 50%;
+  --mouse-y: 50%;
+}
+
+body, html {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  height: 100vh;
+  background-color: black;
+}
+
+#canvas-container {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#glCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#overlay-text {
+  position: relative;
+  font-family: 'CustomFont', sans-serif;
+  font-size: 250px;
+  font-weight: normal;
+  background: radial-gradient(
+    circle at var(--mouse-x) var(--mouse-y),
+    rgba(255, 99, 132, 0.85) 0%,
+    rgba(255, 64, 192, 0.85) 20%,
+    rgba(198, 51, 249, 0.85) 40%,
+    rgba(108, 99, 255, 0.85) 60%,
+    rgba(41, 121, 255, 0.85) 80%,
+    rgba(89, 193, 255, 0.85) 100%
+  );
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-align: center;
+  mix-blend-mode: difference;
+  filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.3));
+  pointer-events: none;
+  width: 100%;
+  z-index: 1;
+  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.7);
+  mix-blend-mode: hard-light;
+  opacity: 0.95;
+  transition: background-position 0.05s ease-out;
+}
