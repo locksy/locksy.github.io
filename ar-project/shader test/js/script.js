@@ -5,20 +5,18 @@ const gl = canvas.getContext("webgl");
 document.body.insertAdjacentHTML('beforeend', `
   <div id="permission-overlay">
     <div id="permission-content">
-      <div class="permission-text">Enable device motion for an interactive experience</div>
-      <button id="permission-button">Enable Motion</button>
+      <div class="permission-text">Enable motion for an interactive experience</div>
+      <button id="permission-button">Enable</button>
     </div>
   </div>
 `);
 
 const pixelRatio = window.devicePixelRatio || 1;
-canvas.width = (window.innerWidth * pixelRatio) * 0.9;
-canvas.height = (window.innerHeight * pixelRatio) * 0.9;
+canvas.width = (window.innerWidth * pixelRatio) * 0.85;
+canvas.height = (window.innerHeight * pixelRatio) * 0.85;
 
 let mouseX = 0.5, mouseY = 0.5;
-let textMouseX = 50, textMouseY = 50;
 let isDeviceMotionActive = false;
-let motionValues = { x: 0.5, y: 0.5 };
 
 // Smooth motion parameters
 const smoothing = {
@@ -54,7 +52,6 @@ function enableDeviceMotion() {
 }
 
 function handleDeviceOrientation(event) {
-    // Enhanced sensitivity for more dramatic effect
     const sensitivity = 1.5;
     
     let x = ((event.gamma || 0) + 90) / 180;
@@ -68,22 +65,22 @@ function handleDeviceOrientation(event) {
 }
 
 function updateMotionSmoothing() {
-    smoothing.current.x += (smoothing.target.x - smoothing.current.x) * smoothing.ease;
-    smoothing.current.y += (smoothing.target.y - smoothing.current.y) * smoothing.ease;
-    
-    mouseX = smoothing.current.x;
-    mouseY = smoothing.current.y;
-    
-    textMouseX = mouseX * 100;
-    textMouseY = mouseY * 100;
-    
-    document.documentElement.style.setProperty('--mouse-x', `${textMouseX}%`);
-    document.documentElement.style.setProperty('--mouse-y', `${textMouseY}%`);
+    if (isDeviceMotionActive) {
+        smoothing.current.x += (smoothing.target.x - smoothing.current.x) * smoothing.ease;
+        smoothing.current.y += (smoothing.target.y - smoothing.current.y) * smoothing.ease;
+        
+        mouseX = smoothing.current.x;
+        mouseY = smoothing.current.y;
+        
+        const textMouseX = mouseX * 100;
+        const textMouseY = mouseY * 100;
+        
+        document.documentElement.style.setProperty('--mouse-x', `${textMouseX}%`);
+        document.documentElement.style.setProperty('--mouse-y', `${textMouseY}%`);
+    }
     
     requestAnimationFrame(updateMotionSmoothing);
 }
-
-updateMotionSmoothing();
 
 canvas.addEventListener("mousemove", (e) => {
     if (!isDeviceMotionActive) {
@@ -91,8 +88,8 @@ canvas.addEventListener("mousemove", (e) => {
         mouseX = (e.clientX - rect.left) / canvas.width;
         mouseY = 1.0 - (e.clientY - rect.top) / canvas.height;
         
-        textMouseX = (e.clientX / window.innerWidth) * 100;
-        textMouseY = (e.clientY / window.innerHeight) * 100;
+        const textMouseX = (e.clientX / window.innerWidth) * 100;
+        const textMouseY = (e.clientY / window.innerHeight) * 100;
         
         document.documentElement.style.setProperty('--mouse-x', `${textMouseX}%`);
         document.documentElement.style.setProperty('--mouse-y', `${textMouseY}%`);
@@ -112,7 +109,9 @@ if (isMobile()) {
     button.addEventListener('click', requestDeviceMotionPermission);
 }
 
-// WebGL initialization and render code
+// Start motion smoothing
+updateMotionSmoothing();
+
 const vertexShaderSource = `
   attribute vec2 a_position;
   void main() {
@@ -200,8 +199,8 @@ function render(timestamp) {
 }
 
 window.addEventListener('resize', () => {
-  canvas.width = (window.innerWidth * pixelRatio) * 0.9;
-  canvas.height = (window.innerHeight * pixelRatio) * 0.9;
+  canvas.width = (window.innerWidth * pixelRatio) * 0.85;
+  canvas.height = (window.innerHeight * pixelRatio) * 0.85;
 });
 
 requestAnimationFrame(render);
