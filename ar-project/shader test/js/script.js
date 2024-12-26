@@ -1,118 +1,24 @@
 const canvas = document.getElementById("glCanvas");
 const gl = canvas.getContext("webgl");
 
-// Add permission overlay to DOM
-document.body.insertAdjacentHTML('beforeend', `
-  <div id="permission-overlay">
-    <div id="permission-content">
-      <div class="permission-text">Enable device motion for an interactive experience</div>
-      <button id="permission-button">Enable Motion</button>
-    </div>
-  </div>
-`);
-
 const pixelRatio = window.devicePixelRatio || 1;
 canvas.width = (window.innerWidth * pixelRatio) * 0.9;
 canvas.height = (window.innerHeight * pixelRatio) * 0.9;
 
 let mouseX = 0.5, mouseY = 0.5;
-let textMouseX = 50, textMouseY = 50;
-let isDeviceMotionActive = false;
-let motionValues = { x: 0.5, y: 0.5 };
 
-// Smooth motion parameters
-const smoothing = {
-    current: { x: 0.5, y: 0.5 },
-    target: { x: 0.5, y: 0.5 },
-    ease: 0.1
-};
-
-async function requestDeviceMotionPermission() {
-    const overlay = document.getElementById('permission-overlay');
-    overlay.classList.remove('visible');
+canvas.addEventListener("mousemove", (e) => {
+    const rect = canvas.getBoundingClientRect();
+    mouseX = (e.clientX - rect.left) / canvas.width;
+    mouseY = 1.0 - (e.clientY - rect.top) / canvas.height;
     
-    if (typeof DeviceOrientationEvent !== 'undefined' && 
-        typeof DeviceOrientationEvent.requestPermission === 'function') {
-        try {
-            const permissionState = await DeviceOrientationEvent.requestPermission();
-            if (permissionState === 'granted') {
-                enableDeviceMotion();
-            }
-        } catch (error) {
-            console.error('Error requesting device motion permission:', error);
-        }
-    } else {
-        enableDeviceMotion();
-    }
-}
-
-function enableDeviceMotion() {
-    if ('DeviceOrientationEvent' in window) {
-        window.addEventListener('deviceorientation', handleDeviceOrientation);
-        isDeviceMotionActive = true;
-    }
-}
-
-function handleDeviceOrientation(event) {
-    // Enhanced sensitivity for more dramatic effect
-    const sensitivity = 1.5;
-    
-    let x = ((event.gamma || 0) + 90) / 180;
-    let y = ((event.beta || 0) + 180) / 360;
-    
-    x = 0.5 + (x - 0.5) * sensitivity;
-    y = 0.5 + (y - 0.5) * sensitivity;
-    
-    smoothing.target.x = Math.max(0, Math.min(1, x));
-    smoothing.target.y = Math.max(0, Math.min(1, y));
-}
-
-function updateMotionSmoothing() {
-    smoothing.current.x += (smoothing.target.x - smoothing.current.x) * smoothing.ease;
-    smoothing.current.y += (smoothing.target.y - smoothing.current.y) * smoothing.ease;
-    
-    mouseX = smoothing.current.x;
-    mouseY = smoothing.current.y;
-    
-    textMouseX = mouseX * 100;
-    textMouseY = mouseY * 100;
+    const textMouseX = (e.clientX / window.innerWidth) * 100;
+    const textMouseY = (e.clientY / window.innerHeight) * 100;
     
     document.documentElement.style.setProperty('--mouse-x', `${textMouseX}%`);
     document.documentElement.style.setProperty('--mouse-y', `${textMouseY}%`);
-    
-    requestAnimationFrame(updateMotionSmoothing);
-}
-
-updateMotionSmoothing();
-
-canvas.addEventListener("mousemove", (e) => {
-    if (!isDeviceMotionActive) {
-        const rect = canvas.getBoundingClientRect();
-        mouseX = (e.clientX - rect.left) / canvas.width;
-        mouseY = 1.0 - (e.clientY - rect.top) / canvas.height;
-        
-        textMouseX = (e.clientX / window.innerWidth) * 100;
-        textMouseY = (e.clientY / window.innerHeight) * 100;
-        
-        document.documentElement.style.setProperty('--mouse-x', `${textMouseX}%`);
-        document.documentElement.style.setProperty('--mouse-y', `${textMouseY}%`);
-    }
 });
 
-function isMobile() {
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-}
-
-// Initialize permissions UI if on mobile
-if (isMobile()) {
-    const overlay = document.getElementById('permission-overlay');
-    const button = document.getElementById('permission-button');
-    
-    overlay.classList.add('visible');
-    button.addEventListener('click', requestDeviceMotionPermission);
-}
-
-// WebGL initialization and render code
 const vertexShaderSource = `
   attribute vec2 a_position;
   void main() {
