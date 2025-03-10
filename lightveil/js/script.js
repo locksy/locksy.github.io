@@ -103,13 +103,13 @@ const uMixFactorLocation = gl.getUniformLocation(program, "u_mixFactor");
 
 // List of image paths
 const imagePaths = [
-  "./img/1.jpg",
-  "./img/2.jpg",
-  "./img/3.jpg",
-  "./img/4.jpg",
-  "./img/5.jpg",
-  "./img/6.jpg",
-  "./img/7.jpg"
+  "img/1.jpg",
+  "img/2.jpg",
+  "img/3.jpg",
+  "img/4.jpg",
+  "img/5.jpg",
+  "img/6.jpg",
+  "img/7.jpg"
 ];
 
 // Helper function to load an image as a promise
