@@ -1,200 +1,200 @@
-// LightVeil - Interactive Image Transitions
-// Main script for handling WebGL transitions using Three.js
+// Get the canvas and set its size
+const canvas = document.getElementById('glCanvas');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-// Configuration
-const CONFIG = {
-    totalImages: 7,                      // Total number of images to load
-    transitionSpeed: 0.1,                // Speed of transition between images (lower = smoother but slower)
-    imagePath: '../img/',                // Path to the images folder
-    imageFormat: '.jpg',                 // Image file format
-    preloadAll: true                     // Whether to preload all images at start
-};
+// Initialize WebGL context
+const gl = canvas.getContext('webgl');
+if (!gl) {
+  console.error("WebGL not supported.");
+}
 
-// Global variables
-let camera, scene, renderer;
-let currentImageIndex = 0;
-let nextImageIndex = 1;
-let transitionMesh;
-let transitionMaterial;
-let mouseX = 0;
-let mouseY = 0;
-let targetTransition = 0;
-let currentTransition = 0;
-let textures = [];
-let imagesLoaded = 0;
-let isTransitioning = false;
+// Shader source code
+const vsSource = `
+attribute vec2 a_position;
+attribute vec2 a_texCoord;
+varying vec2 v_texCoord;
+void main() {
+  gl_Position = vec4(a_position, 0.0, 1.0);
+  v_texCoord = a_texCoord;
+}
+`;
 
-// Initialize the application
-function init() {
-    // Create renderer
-    renderer = new THREE.WebGLRenderer();
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
+const fsSource = `
+precision mediump float;
+varying vec2 v_texCoord;
+uniform sampler2D u_texture0;
+uniform sampler2D u_texture1;
+uniform float u_mixFactor;
+void main() {
+  vec4 color0 = texture2D(u_texture0, v_texCoord);
+  vec4 color1 = texture2D(u_texture1, v_texCoord);
+  gl_FragColor = mix(color0, color1, u_mixFactor);
+}
+`;
 
-    // Create scene and camera
-    scene = new THREE.Scene();
-    camera = new THREE.OrthographicCamera(
-        -1, 1, 1, -1, 0, 1
+// Utility: compile a shader from source
+function compileShader(gl, source, type) {
+  const shader = gl.createShader(type);
+  gl.shaderSource(shader, source);
+  gl.compileShader(shader);
+  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      console.error("Shader compile error:", gl.getShaderInfoLog(shader));
+      gl.deleteShader(shader);
+      return null;
+  }
+  return shader;
+}
+
+// Utility: create a shader program
+function createProgram(gl, vertexShader, fragmentShader) {
+  const program = gl.createProgram();
+  gl.attachShader(program, vertexShader);
+  gl.attachShader(program, fragmentShader);
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      console.error("Program linking error:", gl.getProgramInfoLog(program));
+      return null;
+  }
+  return program;
+}
+
+// Compile shaders and create the program
+const vertexShader = compileShader(gl, vsSource, gl.VERTEX_SHADER);
+const fragmentShader = compileShader(gl, fsSource, gl.FRAGMENT_SHADER);
+const program = createProgram(gl, vertexShader, fragmentShader);
+
+// Define geometry data (a full-screen rectangle)
+const positionBuffer = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+const positions = [
+  -1, -1,
+   1, -1,
+  -1,  1,
+  -1,  1,
+   1, -1,
+   1,  1,
+];
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+
+const texCoordBuffer = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+const texCoords = [
+  0, 0,
+  1, 0,
+  0, 1,
+  0, 1,
+  1, 0,
+  1, 1,
+];
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texCoords), gl.STATIC_DRAW);
+
+// Get attribute and uniform locations from the shader program
+const aPositionLocation = gl.getAttribLocation(program, "a_position");
+const aTexCoordLocation = gl.getAttribLocation(program, "a_texCoord");
+const uTexture0Location = gl.getUniformLocation(program, "u_texture0");
+const uTexture1Location = gl.getUniformLocation(program, "u_texture1");
+const uMixFactorLocation = gl.getUniformLocation(program, "u_mixFactor");
+
+// List of image paths (make sure these images exist in the img folder)
+const imagePaths = [
+  "img/1.jpg",
+  "img/2.jpg",
+  "img/3.jpg",
+  "img/4.jpg",
+  "img/5.jpg",
+  "img/6.jpg",
+  "img/7.jpg"
+];
+
+// Helper function to load an image as a promise
+function loadImage(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.src = url;
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Failed to load image: ' + url));
+  });
+}
+
+// Load all images, then create textures and start the animation loop
+Promise.all(imagePaths.map(loadImage)).then(images => {
+  // Create a texture for each image
+  const textures = images.map(image => {
+    const texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    // Flip the Y axis to align with WebGL texture coordinates
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(
+      gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,
+      gl.UNSIGNED_BYTE, image
     );
+    // Set texture filtering parameters
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    return texture;
+  });
 
-    // Load textures
-    loadTextures();
+  // Variables for the crossfade animation
+  let currentIndex = 0;
+  let nextIndex = 1;
+  let mixFactor = 0;
+  const transitionDuration = 2000; // duration in milliseconds
+  let lastTime = performance.now();
 
-    // Setup event listeners
-    window.addEventListener('resize', onWindowResize);
-    window.addEventListener('mousemove', onMouseMove);
-
-    // Start animation loop
-    animate();
-}
-
-// Load all image textures
-function loadTextures() {
-    const loader = new THREE.TextureLoader();
-    
-    // Function to handle each loaded texture
-    const onTextureLoaded = (index, texture) => {
-        console.log(`Loaded image ${index}`);
-        textures[index] = texture;
-        imagesLoaded++;
-        
-        // Initialize the transition when we have at least two images
-        if (imagesLoaded >= 2 && !transitionMesh) {
-            initializeTransition();
-        }
-        
-        // Continue loading if we haven't loaded all images
-        if (CONFIG.preloadAll && imagesLoaded < CONFIG.totalImages) {
-            loadNextTexture(imagesLoaded);
-        }
-    };
-    
-    // Function to load a specific texture
-    const loadNextTexture = (index) => {
-        const imageIndex = index + 1; // Images are named 1.jpg, 2.jpg, etc.
-        const imagePath = CONFIG.imagePath + imageIndex + CONFIG.imageFormat;
-        
-        loader.load(
-            imagePath,
-            (texture) => onTextureLoaded(index, texture),
-            undefined, // Progress callback
-            (err) => console.error(`Error loading texture ${imageIndex}:`, err)
-        );
-    };
-    
-    // Start loading first two textures
-    loadNextTexture(0);
-    loadNextTexture(1);
-}
-
-// Initialize the transition mesh and material with shader
-function initializeTransition() {
-    // Create shader material
-    transitionMaterial = new THREE.ShaderMaterial({
-        uniforms: {
-            texture1: { value: textures[0] },
-            texture2: { value: textures[1] },
-            mixRatio: { value: 0.0 }
-        },
-        vertexShader: `
-            varying vec2 vUv;
-            
-            void main() {
-                vUv = uv;
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-            }
-        `,
-        fragmentShader: `
-            uniform sampler2D texture1;
-            uniform sampler2D texture2;
-            uniform float mixRatio;
-            
-            varying vec2 vUv;
-            
-            void main() {
-                // Sample both textures
-                vec4 color1 = texture2D(texture1, vUv);
-                vec4 color2 = texture2D(texture2, vUv);
-                
-                // Mix the colors based on the mix ratio
-                gl_FragColor = mix(color1, color2, mixRatio);
-            }
-        `
-    });
-
-    // Create a plane that fills the screen
-    const geometry = new THREE.PlaneBufferGeometry(2, 2);
-    transitionMesh = new THREE.Mesh(geometry, transitionMaterial);
-    scene.add(transitionMesh);
-}
-
-// Handle mouse movement
-function onMouseMove(event) {
-    // Calculate normalized mouse position (0 to 1)
-    mouseX = event.clientX / window.innerWidth;
-    
-    // Calculate target transition value based on mouse X position
-    targetTransition = mouseX * (CONFIG.totalImages - 1);
-    
-    // Determine which two images we're between
-    updateImageIndices();
-}
-
-// Update which images we're transitioning between
-function updateImageIndices() {
-    // Calculate the current image index based on transition value
-    currentImageIndex = Math.floor(targetTransition);
-    nextImageIndex = (currentImageIndex + 1) % CONFIG.totalImages;
-    
-    // Ensure the next image is loaded if we haven't preloaded all
-    if (!CONFIG.preloadAll && !textures[nextImageIndex] && nextImageIndex < CONFIG.totalImages) {
-        const loader = new THREE.TextureLoader();
-        const imagePath = CONFIG.imagePath + (nextImageIndex + 1) + CONFIG.imageFormat;
-        
-        loader.load(
-            imagePath,
-            (texture) => {
-                textures[nextImageIndex] = texture;
-                imagesLoaded = Math.max(imagesLoaded, nextImageIndex + 1);
-            },
-            undefined,
-            (err) => console.error(`Error loading texture ${nextImageIndex + 1}:`, err)
-        );
+  // Render loop: update blend factor and draw the scene
+  function render(now) {
+    const deltaTime = now - lastTime;
+    lastTime = now;
+    mixFactor += deltaTime / transitionDuration;
+    if (mixFactor >= 1) {
+      mixFactor = 0;
+      currentIndex = nextIndex;
+      nextIndex = (nextIndex + 1) % textures.length;
     }
-}
 
-// Handle window resize
-function onWindowResize() {
-    renderer.setSize(window.innerWidth, window.innerHeight);
-}
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+    gl.clearColor(0, 0, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
 
-// Animation loop
-function animate() {
-    requestAnimationFrame(animate);
-    
-    // Smoothly update current transition value
-    currentTransition += (targetTransition - currentTransition) * CONFIG.transitionSpeed;
-    
-    // Update which images we're between if the transition value has changed significantly
-    if (Math.abs(Math.floor(currentTransition) - Math.floor(targetTransition)) > 0) {
-        updateImageIndices();
-    }
-    
-    // Update shader uniforms if we have a transition mesh
-    if (transitionMesh && textures[currentImageIndex] && textures[nextImageIndex]) {
-        // Update textures
-        transitionMaterial.uniforms.texture1.value = textures[currentImageIndex];
-        transitionMaterial.uniforms.texture2.value = textures[nextImageIndex];
-        
-        // Calculate mix ratio (fractional part of the transition value)
-        const mixRatio = currentTransition - Math.floor(currentTransition);
-        transitionMaterial.uniforms.mixRatio.value = mixRatio;
-    }
-    
-    // Render the scene
-    renderer.render(scene, camera);
-}
+    gl.useProgram(program);
 
-// Start initialization when the DOM is loaded
-document.addEventListener('DOMContentLoaded', init);
+    // Set up the position attribute
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.enableVertexAttribArray(aPositionLocation);
+    gl.vertexAttribPointer(aPositionLocation, 2, gl.FLOAT, false, 0, 0);
+
+    // Set up the texture coordinate attribute
+    gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+    gl.enableVertexAttribArray(aTexCoordLocation);
+    gl.vertexAttribPointer(aTexCoordLocation, 2, gl.FLOAT, false, 0, 0);
+
+    // Bind the current texture to texture unit 0
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, textures[currentIndex]);
+    gl.uniform1i(uTexture0Location, 0);
+
+    // Bind the next texture to texture unit 1
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, textures[nextIndex]);
+    gl.uniform1i(uTexture1Location, 1);
+
+    // Pass the mix factor uniform to the fragment shader
+    gl.uniform1f(uMixFactorLocation, mixFactor);
+
+    // Draw the two triangles (6 vertices)
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    requestAnimationFrame(render);
+  }
+  requestAnimationFrame(render);
+}).catch(error => {
+  console.error("Error loading images:", error);
+});
+
+// Optional: Adjust canvas size on window resize
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+});
