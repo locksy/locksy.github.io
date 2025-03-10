@@ -6,7 +6,8 @@ canvas.height = window.innerHeight;
 // Initialize WebGL context
 const gl = canvas.getContext('webgl');
 if (!gl) {
-  console.error("WebGL not supported.");
+  console.error("WebGL not supported or disabled in this browser.");
+  alert("WebGL not supported. Please try a different browser.");
 }
 
 // Shader source code
@@ -64,6 +65,10 @@ const vertexShader = compileShader(gl, vsSource, gl.VERTEX_SHADER);
 const fragmentShader = compileShader(gl, fsSource, gl.FRAGMENT_SHADER);
 const program = createProgram(gl, vertexShader, fragmentShader);
 
+if (!program) {
+  console.error("Failed to initialize shader program.");
+}
+
 // Define geometry data (a full-screen rectangle)
 const positionBuffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -89,22 +94,22 @@ const texCoords = [
 ];
 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texCoords), gl.STATIC_DRAW);
 
-// Get attribute and uniform locations from the shader program
+// Get attribute and uniform locations
 const aPositionLocation = gl.getAttribLocation(program, "a_position");
 const aTexCoordLocation = gl.getAttribLocation(program, "a_texCoord");
 const uTexture0Location = gl.getUniformLocation(program, "u_texture0");
 const uTexture1Location = gl.getUniformLocation(program, "u_texture1");
 const uMixFactorLocation = gl.getUniformLocation(program, "u_mixFactor");
 
-// List of image paths (make sure these images exist in the img folder)
+// List of image paths
 const imagePaths = [
-  "img/1.jpg",
-  "img/2.jpg",
-  "img/3.jpg",
-  "img/4.jpg",
-  "img/5.jpg",
-  "img/6.jpg",
-  "img/7.jpg"
+  "./img/1.jpg",
+  "./img/2.jpg",
+  "./img/3.jpg",
+  "./img/4.jpg",
+  "./img/5.jpg",
+  "./img/6.jpg",
+  "./img/7.jpg"
 ];
 
 // Helper function to load an image as a promise
@@ -117,33 +122,30 @@ function loadImage(url) {
   });
 }
 
-// Load all images, then create textures and start the animation loop
+// Load images, create textures, and start animation
 Promise.all(imagePaths.map(loadImage)).then(images => {
-  // Create a texture for each image
   const textures = images.map(image => {
     const texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    // Flip the Y axis to align with WebGL texture coordinates
+    // Flip the Y axis for proper texture orientation
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
     gl.texImage2D(
       gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,
       gl.UNSIGNED_BYTE, image
     );
-    // Set texture filtering parameters
+    // Set texture filtering
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.bindTexture(gl.TEXTURE_2D, null);
     return texture;
   });
 
-  // Variables for the crossfade animation
   let currentIndex = 0;
   let nextIndex = 1;
   let mixFactor = 0;
-  const transitionDuration = 2000; // duration in milliseconds
+  const transitionDuration = 2000; // in milliseconds
   let lastTime = performance.now();
 
-  // Render loop: update blend factor and draw the scene
   function render(now) {
     const deltaTime = now - lastTime;
     lastTime = now;
@@ -160,30 +162,28 @@ Promise.all(imagePaths.map(loadImage)).then(images => {
 
     gl.useProgram(program);
 
-    // Set up the position attribute
+    // Set up position attribute
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
     gl.enableVertexAttribArray(aPositionLocation);
     gl.vertexAttribPointer(aPositionLocation, 2, gl.FLOAT, false, 0, 0);
 
-    // Set up the texture coordinate attribute
+    // Set up texture coordinate attribute
     gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
     gl.enableVertexAttribArray(aTexCoordLocation);
     gl.vertexAttribPointer(aTexCoordLocation, 2, gl.FLOAT, false, 0, 0);
 
-    // Bind the current texture to texture unit 0
+    // Bind textures
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, textures[currentIndex]);
     gl.uniform1i(uTexture0Location, 0);
 
-    // Bind the next texture to texture unit 1
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, textures[nextIndex]);
     gl.uniform1i(uTexture1Location, 1);
 
-    // Pass the mix factor uniform to the fragment shader
+    // Set mix factor uniform
     gl.uniform1f(uMixFactorLocation, mixFactor);
 
-    // Draw the two triangles (6 vertices)
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
     requestAnimationFrame(render);
@@ -193,7 +193,7 @@ Promise.all(imagePaths.map(loadImage)).then(images => {
   console.error("Error loading images:", error);
 });
 
-// Optional: Adjust canvas size on window resize
+// Adjust canvas size on window resize
 window.addEventListener('resize', () => {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
