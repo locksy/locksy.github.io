@@ -16,53 +16,46 @@
       height: 100vh;
       display: block;
     }
+    /* Hide the video element */
+    #videoDisp {
+      display: none;
+    }
   </style>
 </head>
 <body>
   <canvas id="shaderCanvas"></canvas>
-  <!-- Hidden video element for dynamic displacement (using dispvid4.mp4) -->
   <video id="videoDisp" loop muted playsinline>
     <source src="/maps/dispvid4.mp4" type="video/mp4">
   </video>
+
   <script>
     class OrganicFluidTransition {
       constructor() {
         this.canvas = document.getElementById('shaderCanvas');
         this.gl = this.canvas.getContext('webgl2');
-        this.isWebGL2 = true;
         if (!this.gl) {
-          console.warn('WebGL2 not supported, falling back to WebGL1');
-          this.gl = this.canvas.getContext('webgl');
-          this.isWebGL2 = false;
-        }
-        if (!this.gl) {
-          alert('Your browser does not support WebGL');
+          alert('WebGL2 not supported');
           return;
         }
-        
-        // Base image paths – ensure these files exist.
-        this.imagePaths = ['1.JPG','2.JPG','3.JPG','4.JPG','5.JPG','6.JPG','7.JPG'];
-        // We use only a video displacement map.
+
+        this.imagePaths = ['1.JPG', '2.JPG', '3.JPG', '4.JPG', '5.JPG', '6.JPG', '7.JPG'];
         this.video = document.getElementById('videoDisp');
         this.video.play();
-        
-        // Initialize default "mouse" coordinates for desktop fallback.
-        this.mouseX = window.innerWidth / 2;
-        this.mouseY = window.innerHeight / 2;
-        
-        this.setupWebGL();
+
+        this.isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
+        this.tiltX = 0; // For horizontal tilt (gamma)
+        this.tiltY = 0; // For vertical tilt (beta)
+        this.shakeIntensity = 0; // For shake detection
+
+        this.setupShaders();
+        this.setupBuffers();
+        this.loadTextures();
         this.setupEventListeners();
         this.startAnimation();
       }
-      
-      setupWebGL() {
-        this.program = this.createShaderProgram();
-        this.setupBuffers();
-      }
-      
-      createShaderProgram() {
-        const gl = this.gl;
-        const vertexShaderSource = this.isWebGL2 ? `#version 300 es
+
+      setupShaders() {
+        const vertexShaderSource = `#version 300 es
           in vec4 a_position;
           in vec2 a_texCoord;
           out vec2 v_texCoord;
@@ -70,283 +63,143 @@
             gl_Position = a_position;
             v_texCoord = a_texCoord;
           }
-        ` : `
-          attribute vec4 a_position;
-          attribute vec2 a_texCoord;
-          varying vec2 v_texCoord;
-          void main() {
-            gl_Position = a_position;
-            v_texCoord = a_texCoord;
-          }
         `;
-        
-        // This fragment shader uses a video displacement map to blend between two images
-        // and applies a subtle RGB shift at high-displacement boundaries.
-        const fragmentShaderSource = this.isWebGL2 ? `#version 300 es
+
+        const fragmentShaderSource = `#version 300 es
           precision highp float;
+
           uniform sampler2D u_image0;
           uniform sampler2D u_image1;
           uniform sampler2D u_dispVideo;
+
           uniform vec2 u_resolution;
-          uniform vec2 u_mouse;
           uniform float u_time;
           uniform float u_transitionProgress;
           uniform float u_dispAmount;
           uniform float u_dispScale;
+          uniform float u_rgbShift;
+
           in vec2 v_texCoord;
           out vec4 outColor;
-          
+
           void main() {
-            // Apply a subtle time-based offset to the displacement coordinate.
             vec2 timeOffset = vec2(0.02 * sin(u_time * 0.5), 0.02 * cos(u_time * 0.5));
             vec2 dispCoord = v_texCoord * u_dispScale + timeOffset;
+
             vec2 videoDisp = texture(u_dispVideo, dispCoord).rg;
-            
-            // Compute displacement vector.
-            float dynamicDisp = u_dispAmount * (1.0 + 0.3 * sin(u_time * 0.5));
-            vec2 displacement = (videoDisp - 0.5) * dynamicDisp;
-            
-            // Smooth the transition progress using sine easing.
-            float smoothProg = 0.5 - 0.5 * cos(u_transitionProgress * 3.14159265);
-            
-            // Compute displaced UVs for blending the two images.
-            vec2 displacedUV0 = clamp(v_texCoord + displacement * (1.0 - smoothProg), 0.0, 1.0);
-            vec2 displacedUV1 = clamp(v_texCoord - displacement * smoothProg, 0.0, 1.0);
+            vec2 displacement = (videoDisp - 0.5) * u_dispAmount;
+
+            vec2 displacedUV0 = clamp(v_texCoord + displacement * (1.0 - u_transitionProgress), 0.0, 1.0);
+            vec2 displacedUV1 = clamp(v_texCoord - displacement * u_transitionProgress, 0.0, 1.0);
             vec4 color0 = texture(u_image0, displacedUV0);
             vec4 color1 = texture(u_image1, displacedUV1);
-            vec4 baseColor = mix(color0, color1, smoothProg);
-            
-            // Compute displacement magnitude and create a mask.
-            float dispMag = length(displacement);
-            float mask = smoothstep(0.2, 0.45, dispMag);
-            
-            // Compute normalized displacement direction.
-            vec2 dir = normalize(displacement + vec2(0.0001));
-            // Increase the RGB shift effect.
-            float offsetScale = 0.025 * mask;
-            vec2 offsetR = dir * offsetScale;
-            vec2 offsetB = -dir * offsetScale;
-            
-            // Sample red and blue channels with offsets.
-            float r = texture(u_image0, displacedUV0 + offsetR).r;
-            float g = baseColor.g;
-            float b = texture(u_image0, displacedUV0 + offsetB).b;
-            vec3 shiftedColor = vec3(r, g, b);
-            
-            // Blend the shifted color with the base color.
-            vec3 finalColor = mix(baseColor.rgb, shiftedColor, mask);
-            finalColor = pow(finalColor, vec3(1.05));
-            
+            vec4 baseColor = mix(color0, color1, u_transitionProgress);
+
+            // RGB Shift based on shake intensity
+            float shiftAmount = u_rgbShift * 0.002;
+            vec4 shiftedR = texture(u_image0, displacedUV0 + vec2(shiftAmount, 0.0));
+            vec4 shiftedB = texture(u_image1, displacedUV1 - vec2(shiftAmount, 0.0));
+
+            vec3 finalColor = vec3(
+              shiftedR.r,
+              baseColor.g,
+              shiftedB.b
+            );
+
             outColor = vec4(finalColor, baseColor.a);
           }
-        ` : `
-          precision mediump float;
-          varying vec2 v_texCoord;
-          uniform sampler2D u_image0;
-          uniform sampler2D u_image1;
-          uniform sampler2D u_dispVideo;
-          uniform vec2 u_resolution;
-          uniform vec2 u_mouse;
-          uniform float u_time;
-          uniform float u_transitionProgress;
-          uniform float u_dispAmount;
-          uniform float u_dispScale;
-          void main() {
-            vec2 timeOffset = vec2(0.02 * sin(u_time * 0.5), 0.02 * cos(u_time * 0.5));
-            vec2 dispCoord = v_texCoord * u_dispScale + timeOffset;
-            vec4 dispSample = texture2D(u_dispVideo, dispCoord);
-            vec2 videoDisp = dispSample.rg;
-            float dynamicDisp = u_dispAmount * (1.0 + 0.3 * sin(u_time * 0.5));
-            vec2 displacement = (videoDisp - vec2(0.5)) * dynamicDisp;
-            float smoothProg = 0.5 - 0.5 * cos(u_transitionProgress * 3.14159265);
-            vec2 displacedUV0 = clamp(v_texCoord + displacement * (1.0 - smoothProg), 0.0, 1.0);
-            vec2 displacedUV1 = clamp(v_texCoord - displacement * smoothProg, 0.0, 1.0);
-            vec4 color0 = texture2D(u_image0, displacedUV0);
-            vec4 color1 = texture2D(u_image1, displacedUV1);
-            vec4 baseColor = mix(color0, color1, smoothProg);
-            float dispMag = length(displacement);
-            float mask = smoothstep(0.2, 0.45, dispMag);
-            vec2 dir = normalize(displacement + vec2(0.0001));
-            float offsetScale = 0.025 * mask;
-            vec2 offsetR = dir * offsetScale;
-            vec2 offsetB = -dir * offsetScale;
-            float r = texture2D(u_image0, displacedUV0 + offsetR).r;
-            float g = baseColor.g;
-            float b = texture2D(u_image0, displacedUV0 + offsetB).b;
-            vec3 shiftedColor = vec3(r, g, b);
-            vec3 finalColor = mix(baseColor.rgb, shiftedColor, mask);
-            finalColor = pow(finalColor, vec3(1.05));
-            gl_FragColor = vec4(finalColor, baseColor.a);
-          }
         `;
-        
-        const vertexShader = gl.createShader(gl.VERTEX_SHADER);
-        gl.shaderSource(vertexShader, vertexShaderSource);
-        gl.compileShader(vertexShader);
-        if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
-          console.error('Vertex shader error:', gl.getShaderInfoLog(vertexShader));
+
+        const gl = this.gl;
+        this.program = gl.createProgram();
+        const vertexShader = this.compileShader(gl.VERTEX_SHADER, vertexShaderSource);
+        const fragmentShader = this.compileShader(gl.FRAGMENT_SHADER, fragmentShaderSource);
+        gl.attachShader(this.program, vertexShader);
+        gl.attachShader(this.program, fragmentShader);
+        gl.linkProgram(this.program);
+        if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) {
+          console.error('Program linking error:', gl.getProgramInfoLog(this.program));
         }
-        const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-        gl.shaderSource(fragmentShader, fragmentShaderSource);
-        gl.compileShader(fragmentShader);
-        if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
-          console.error('Fragment shader error:', gl.getShaderInfoLog(fragmentShader));
-        }
-        const program = gl.createProgram();
-        gl.attachShader(program, vertexShader);
-        gl.attachShader(program, fragmentShader);
-        gl.linkProgram(program);
-        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-          console.error('Program linking error:', gl.getProgramInfoLog(program));
-        }
-        return program;
       }
-      
+
+      compileShader(type, source) {
+        const shader = this.gl.createShader(type);
+        this.gl.shaderSource(shader, source);
+        this.gl.compileShader(shader);
+        if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
+          console.error('Shader error:', this.gl.getShaderInfoLog(shader));
+        }
+        return shader;
+      }
+
       setupBuffers() {
         const gl = this.gl;
         const positionBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-        const positions = [
-          -1.0, -1.0,
-           1.0, -1.0,
-          -1.0,  1.0,
-          -1.0,  1.0,
-           1.0, -1.0,
-           1.0,  1.0
-        ];
+        const positions = [-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1];
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+
         const texCoordBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
-        const texCoords = [
-          0.0, 0.0,
-          1.0, 0.0,
-          0.0, 1.0,
-          0.0, 1.0,
-          1.0, 0.0,
-          1.0, 1.0
-        ];
+        const texCoords = [0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1];
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texCoords), gl.STATIC_DRAW);
-        gl.useProgram(this.program);
-        const posLoc = gl.getAttribLocation(this.program, 'a_position');
-        const texLoc = gl.getAttribLocation(this.program, 'a_texCoord');
-        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-        gl.enableVertexAttribArray(posLoc);
-        gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
-        gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
-        gl.enableVertexAttribArray(texLoc);
-        gl.vertexAttribPointer(texLoc, 2, gl.FLOAT, false, 0, 0);
       }
-      
+
+      loadTextures() {
+        this.textures = [];
+        this.images = this.imagePaths.map((path) => {
+          const img = new Image();
+          img.src = path;
+          return img;
+        });
+
+        this.images.forEach((image, i) => {
+          image.onload = () => {
+            const texture = this.gl.createTexture();
+            this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+            this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, image);
+            this.textures[i] = texture;
+          };
+        });
+
+        this.dispVideoTexture = this.gl.createTexture();
+      }
+
       setupEventListeners() {
-        // Use device orientation events on mobile for interactivity,
-        // fallback to mouse movement on desktop.
-        window.addEventListener('deviceorientation', (e) => {
-          // Use e.gamma for left/right tilt (approx. -45 to 45)
-          // and e.beta for front/back tilt (approx. -45 to 45).
-          let gamma = e.gamma || 0;
-          let beta = e.beta || 0;
-          // Map gamma and beta to screen coordinates.
-          this.mouseX = ((gamma + 45) / 90) * window.innerWidth;
-          this.mouseY = ((beta + 45) / 90) * window.innerHeight;
-        });
-        window.addEventListener('mousemove', (e) => {
-          this.mouseX = e.clientX;
-          this.mouseY = e.clientY;
-        });
-        window.addEventListener('resize', () => {
-          this.resizeCanvas();
-        });
-      }
-      
-      resizeCanvas() {
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
-        this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-      }
-      
-      requestRender() {
-        if (!this.renderRequested) {
-          this.renderRequested = true;
-          requestAnimationFrame(() => this.render());
+        if (this.isMobile) {
+          window.addEventListener("deviceorientation", (event) => {
+            this.tiltX = event.gamma / 30; // Normalize left-right tilt
+            this.tiltY = event.beta / 30;  // Normalize up-down tilt
+          });
+
+          window.addEventListener("devicemotion", (event) => {
+            const accel = event.accelerationIncludingGravity;
+            const shakeStrength = Math.abs(accel.x) + Math.abs(accel.y) + Math.abs(accel.z);
+            this.shakeIntensity = Math.min(shakeStrength / 20, 1.0); // Scale between 0-1
+          });
         }
       }
-      
-      startAnimation() {
-        this.currentImageIndex = 0;
-        this.nextImageIndex = 1;
-        this.transitionProgress = 0;
-        this.startTime = performance.now();
-        this.animate();
+
+      updateVideoTexture() {
+        if (this.video.readyState >= this.video.HAVE_CURRENT_DATA) {
+          this.gl.bindTexture(this.gl.TEXTURE_2D, this.dispVideoTexture);
+          this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.video);
+        }
       }
-      
-      animate() {
-        this.requestRender();
-        // For demonstration, oscillate transition progress slowly.
-        this.transitionProgress = 0.5 + 0.5 * Math.sin((performance.now() - this.startTime) * 0.0005);
-      }
-      
+
       render() {
-        const gl = this.gl;
-        this.renderRequested = false;
         this.updateVideoTexture();
-        gl.clearColor(0, 0, 0, 1);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        if (!this.textures || this.textures.length < 2) return;
-        gl.useProgram(this.program);
-        
-        const mouseXNorm = this.mouseX / this.canvas.width;
-        const imageIndex = Math.min(
-          Math.floor(mouseXNorm * this.imagePaths.length),
-          this.imagePaths.length - 1
-        );
-        const nextImageIndex = (imageIndex + 1) % this.imagePaths.length;
-        const segmentWidth = 1 / this.imagePaths.length;
-        const segmentProgress = (mouseXNorm - (imageIndex * segmentWidth)) / segmentWidth;
-        
-        const resLoc = this.gl.getUniformLocation(this.program, 'u_resolution');
-        const mouseLoc = this.gl.getUniformLocation(this.program, 'u_mouse');
-        const timeLoc = this.gl.getUniformLocation(this.program, 'u_time');
-        const transLoc = this.gl.getUniformLocation(this.program, 'u_transitionProgress');
-        const img0Loc = this.gl.getUniformLocation(this.program, 'u_image0');
-        const img1Loc = this.gl.getUniformLocation(this.program, 'u_image1');
-        const dispVideoLoc = this.gl.getUniformLocation(this.program, 'u_dispVideo');
-        const dispAmountLoc = this.gl.getUniformLocation(this.program, 'u_dispAmount');
-        const dispScaleLoc = this.gl.getUniformLocation(this.program, 'u_dispScale');
-        
-        this.gl.uniform2f(resLoc, this.canvas.width, this.canvas.height);
-        this.gl.uniform2f(mouseLoc, this.mouseX, this.mouseY);
-        const elapsedTime = (performance.now() - this.startTime) / 1000;
-        this.gl.uniform1f(timeLoc, elapsedTime);
-        this.gl.uniform1f(transLoc, this.transitionProgress);
-        
-        this.gl.activeTexture(this.gl.TEXTURE0);
-        this.gl.bindTexture(this.gl.TEXTURE_2D, this.textures[imageIndex]);
-        this.gl.uniform1i(img0Loc, 0);
-        this.gl.activeTexture(this.gl.TEXTURE1);
-        this.gl.bindTexture(this.gl.TEXTURE_2D, this.textures[nextImageIndex]);
-        this.gl.uniform1i(img1Loc, 1);
-        this.gl.activeTexture(this.gl.TEXTURE2);
-        this.gl.bindTexture(this.gl.TEXTURE_2D, this.dispTextures[0]);
-        this.gl.uniform1i(dispVideoLoc, 2);
-        
-        this.gl.uniform1f(dispAmountLoc, 0.05);
-        this.gl.uniform1f(dispScaleLoc, 1.0);
-        
+        this.gl.useProgram(this.program);
+
+        this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_transitionProgress'), this.tiltX);
+        this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_dispAmount'), this.tiltY);
+        this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'u_rgbShift'), this.shakeIntensity);
+
         this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
       }
-      
-      updateVideoTexture() {
-        const gl = this.gl;
-        if (this.video.readyState >= this.video.HAVE_CURRENT_DATA) {
-          gl.bindTexture(gl.TEXTURE_2D, this.dispVideoTexture);
-          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.video);
-        }
-      }
     }
-    
-    window.addEventListener('load', () => {
-      new OrganicFluidTransition();
-    });
+
+    window.addEventListener("load", () => new OrganicFluidTransition());
   </script>
 </body>
 </html>
