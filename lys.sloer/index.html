@@ -82,7 +82,8 @@
               return mat2(cos(a), -sin(a), sin(a), cos(a));
             }
             
-            // Example accumulation function (modified from your Shadertoy code).
+            // Accumulation effect (modified from your Shadertoy code)
+            // Attenuates near the center to remove the bright spot.
             vec3 accumEffect(vec2 uv, float time, vec2 resolution) {
               vec2 fragCoord = uv * resolution;
               float dCenter = distance(uv, vec2(0.5));
@@ -149,7 +150,7 @@
               
               vec3 finalColor = mix(baseColor.rgb, shiftedColor, mask);
               
-              // New accumulation effect overlay using overlay blend.
+              // New accumulation effect overlay with overlay blend.
               vec3 extraEffect = accumEffect(v_texCoord, u_time, u_resolution);
               vec3 blendedExtra = overlayBlend(finalColor, extraEffect);
               finalColor = mix(finalColor, blendedExtra, 0.15);
@@ -158,7 +159,7 @@
             }
           `;
         } else {
-          // WebGL1 fallback (omitted for brevity; similar adjustments can be applied)
+          // WebGL1 fallback (similar changes can be applied here)
           this.vertexShaderSource = `
             attribute vec4 a_position;
             attribute vec2 a_texCoord;
@@ -358,14 +359,12 @@
       loadDispTextures() {
         const gl = this.gl;
         this.dispTextures = [];
-        // Create a texture for the video displacement.
         this.dispVideoTexture = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, this.dispVideoTexture);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        // Allocate a blank texture at 480p.
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 480, 270, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
         this.dispTextures.push(this.dispVideoTexture);
       }
@@ -381,11 +380,27 @@
       setupEventListeners() {
         this.mouseX = 0;
         this.mouseY = 0;
+        
+        // Listen for mouse movement.
         window.addEventListener('mousemove', e => {
           this.mouseX = e.clientX;
           this.mouseY = e.clientY;
           this.requestRender();
         });
+        
+        // Listen for device orientation events for mobile.
+        if (window.DeviceOrientationEvent) {
+          window.addEventListener('deviceorientation', e => {
+            // Map gamma and beta to screen coordinates.
+            let gamma = e.gamma || 0;  // Left-to-right tilt in degrees, range roughly [-90, 90]
+            let beta = e.beta || 0;    // Front-to-back tilt in degrees, range roughly [-180, 180]
+            // Map these values to the canvas dimensions.
+            this.mouseX = ((gamma + 90) / 180) * window.innerWidth;
+            this.mouseY = ((beta + 180) / 360) * window.innerHeight;
+            this.requestRender();
+          });
+        }
+        
         window.addEventListener('resize', () => {
           this.resizeCanvas();
           this.requestRender();
@@ -416,7 +431,6 @@
       render() {
         const gl = this.gl;
         this.renderRequested = false;
-        // Update the video texture each frame.
         this.updateVideoTexture();
         
         gl.clearColor(0, 0, 0, 1);
@@ -425,7 +439,6 @@
         
         gl.useProgram(this.program);
         
-        // Use mouseX to determine current and next images.
         const mouseXNorm = this.mouseX / this.canvas.width;
         const imageIndex = Math.min(
           Math.floor(mouseXNorm * this.imagePaths.length),
