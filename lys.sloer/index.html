@@ -46,13 +46,11 @@
         
         // Base images – ensure these exist in your directory.
         this.imagePaths = ['1.JPG','2.JPG','3.JPG','4.JPG','5.JPG','6.JPG','7.JPG'];
-        // Only a video displacement map (sea foam waves).
-        
-        // Video element for the displacement
+        // Video element for the displacement.
         this.video = document.getElementById('videoDisp');
         this.video.play();
         
-        // Choose shaders based on WebGL version
+        // Choose shaders based on WebGL version.
         if (this.isWebGL2) {
           this.vertexShaderSource = `#version 300 es
             in vec4 a_position;
@@ -63,15 +61,16 @@
               v_texCoord = a_texCoord;
             }
           `;
-          // This fragment shader splits the color channels with small offsets
-          // based on displacement boundaries, creating an RGB shift effect.
           this.fragmentShaderSource = `#version 300 es
             precision highp float;
             
+            #define PI 3.141592
+            #define BALLS 20.
+            
+            // Uniforms
             uniform sampler2D u_image0;
             uniform sampler2D u_image1;
             uniform sampler2D u_dispVideo;
-            
             uniform vec2 u_resolution;
             uniform vec2 u_mouse;
             uniform float u_time;
@@ -82,22 +81,43 @@
             in vec2 v_texCoord;
             out vec4 outColor;
             
+            // Helper: 2D rotation matrix.
+            mat2 rotate2d(float a) {
+              return mat2(cos(a), -sin(a), sin(a), cos(a));
+            }
+            
+            // New accumulation effect function based on your Shadertoy code.
+            vec3 accumEffect(vec2 uv, float time, vec2 resolution) {
+              vec2 fragCoord = uv * resolution;
+              vec2 aUv = fragCoord / resolution;
+              aUv -= vec2(0.5);
+              aUv.x *= resolution.x / resolution.y;
+              vec3 accum = vec3(0.0);
+              aUv *= 100.0;
+              float dist = length(aUv);
+              aUv *= rotate2d(time / 7.0);
+              for (float i = 0.0; i < BALLS; i++) {
+                aUv.y += 0.5 * (i / BALLS) * cos(aUv.y / 1000.0 + time / 4.0) + sin(aUv.x / 50.0 - time / 2.0);
+                aUv.x += 0.5 * i * sin(aUv.x / 300.0 + time / 6.0) * sin(aUv.y / 50.0 + time / 5.0);
+                float t = 0.01 * dist * i * PI / BALLS * 6.0;
+                vec2 p = 8.0 * vec2(-cos(t), sin(t / 6.0));
+                p /= sin(PI * sin(aUv.x / 10.0) * cos(aUv.y / 11.0) + 0.0001);
+                vec3 col = cos(vec3(0.0, 1.0, -1.0) * (PI * 2.0 / 3.0) + PI * (time / 5.0 + i / 5.0)) * 0.5 + 0.5;
+                accum += (i * 0.2) / length(aUv - p * 0.9) * col;
+              }
+              accum = pow(accum, vec3(2.0));
+              return accum;
+            }
+            
             void main() {
-              // Slight time offset to displacement coords
+              // Time offset for displacement sampling.
               vec2 timeOffset = vec2(0.02 * sin(u_time * 0.5), 0.02 * cos(u_time * 0.5));
               vec2 dispCoord = v_texCoord * u_dispScale + timeOffset;
-              
-              // Sample video displacement map
               vec2 videoDisp = texture(u_dispVideo, dispCoord).rg;
-              
-              // Displacement vector
               float dynamicDisp = u_dispAmount * (1.0 + 0.3 * sin(u_time * 0.5));
               vec2 displacement = (videoDisp - 0.5) * dynamicDisp;
               
-              // Smooth the transition progress with a sine easing
               float smoothProg = 0.5 - 0.5 * cos(u_transitionProgress * 3.14159265);
-              
-              // Displaced UVs for base images
               vec2 displacedUV0 = clamp(v_texCoord + displacement * (1.0 - smoothProg), 0.0, 1.0);
               vec2 displacedUV1 = clamp(v_texCoord - displacement * smoothProg, 0.0, 1.0);
               
@@ -105,38 +125,31 @@
               vec4 color1 = texture(u_image1, displacedUV1);
               vec4 baseColor = mix(color0, color1, smoothProg);
               
-              // Compute displacement magnitude (for a boundary mask)
               float dispMag = length(displacement);
-              // Slightly narrower range so it doesn't blow out
-              float mask = smoothstep(0.2, 0.45, dispMag); 
+              float mask = smoothstep(0.2, 0.45, dispMag);
               
-              // Normalized displacement direction
               vec2 dir = normalize(displacement + vec2(0.0001));
-              
-              // We'll define slightly larger channel offsets for a bolder effect
-              float offsetScale = 0.025 * mask; // increased from 0.015
-              
-              // We'll offset red slightly along dir, green slightly perpendicular, blue in the opposite
-              vec2 dirPerp = vec2(-dir.y, dir.x); // a perpendicular direction
-              
-              // Offsets for each channel
+              float offsetScale = 0.025 * mask;
+              vec2 dirPerp = vec2(-dir.y, dir.x);
               vec2 offsetR = dir * offsetScale;
-              vec2 offsetG = dirPerp * offsetScale * 0.5; // smaller offset for G
+              vec2 offsetG = dirPerp * offsetScale * 0.5;
               vec2 offsetB = -dir * offsetScale;
               
-              // Sample each channel from base images (using image0 for effect)
               float r = texture(u_image0, displacedUV0 + offsetR).r;
               float g = texture(u_image0, displacedUV0 + offsetG).g;
               float b = texture(u_image0, displacedUV0 + offsetB).b;
-              
-              // Combine the channels
               vec3 shiftedColor = vec3(r, g, b);
               
-              // Now blend the shifted color with the base color using the mask
               vec3 finalColor = mix(baseColor.rgb, shiftedColor, mask);
+              // Remove extra gamma boost to avoid washing out the scene.
+              // finalColor = pow(finalColor, vec3(1.05));
               
-              // Slight contrast boost, but keep it moderate
-              finalColor = pow(finalColor, vec3(1.05));
+              // --- New accumulation effect overlay ---
+              vec3 extraEffect = accumEffect(v_texCoord, u_time, u_resolution);
+              // Use a screen blend to complement the base visuals.
+              vec3 screenBlend = 1.0 - (1.0 - finalColor) * (1.0 - extraEffect);
+              // Lower the mix factor to 0.15 for a more subtle effect.
+              finalColor = mix(finalColor, screenBlend, 0.15);
               
               outColor = vec4(finalColor, baseColor.a);
             }
@@ -155,11 +168,13 @@
           this.fragmentShaderSource = `
             precision mediump float;
             
+            #define PI 3.141592
+            #define BALLS 20.
+            
             varying vec2 v_texCoord;
             uniform sampler2D u_image0;
             uniform sampler2D u_image1;
             uniform sampler2D u_dispVideo;
-            
             uniform vec2 u_resolution;
             uniform vec2 u_mouse;
             uniform float u_time;
@@ -167,48 +182,67 @@
             uniform float u_dispAmount;
             uniform float u_dispScale;
             
+            mat2 rotate2d(float a) {
+              return mat2(cos(a), -sin(a), sin(a), cos(a));
+            }
+            
+            vec3 accumEffect(vec2 uv, float time, vec2 resolution) {
+              vec2 fragCoord = uv * resolution;
+              vec2 aUv = fragCoord / resolution;
+              aUv -= vec2(0.5);
+              aUv.x *= resolution.x / resolution.y;
+              vec3 accum = vec3(0.0);
+              aUv *= 100.0;
+              float dist = length(aUv);
+              aUv *= rotate2d(time / 7.0);
+              for (float i = 0.0; i < BALLS; i++) {
+                aUv.y += 0.5 * (i / BALLS) * cos(aUv.y / 1000.0 + time / 4.0) + sin(aUv.x / 50.0 - time / 2.0);
+                aUv.x += 0.5 * i * sin(aUv.x / 300.0 + time / 6.0) * sin(aUv.y / 50.0 + time / 5.0);
+                float t = 0.01 * dist * i * PI / BALLS * 6.0;
+                vec2 p = 8.0 * vec2(-cos(t), sin(t / 6.0));
+                p /= sin(PI * sin(aUv.x / 10.0) * cos(aUv.y / 11.0) + 0.0001);
+                vec3 col = cos(vec3(0.0, 1.0, -1.0) * (PI * 2.0 / 3.0) + PI * (time / 5.0 + i / 5.0)) * 0.5 + 0.5;
+                accum += (i * 0.2) / length(aUv - p * 0.9) * col;
+              }
+              accum = pow(accum, vec3(2.0));
+              return accum;
+            }
+            
             void main() {
               vec2 timeOffset = vec2(0.02 * sin(u_time * 0.5), 0.02 * cos(u_time * 0.5));
               vec2 dispCoord = v_texCoord * u_dispScale + timeOffset;
-              
               vec4 dispSample = texture2D(u_dispVideo, dispCoord);
               vec2 videoDisp = dispSample.rg;
-              
               float dynamicDisp = u_dispAmount * (1.0 + 0.3 * sin(u_time * 0.5));
               vec2 displacement = (videoDisp - vec2(0.5)) * dynamicDisp;
-              
               float smoothProg = 0.5 - 0.5 * cos(u_transitionProgress * 3.14159265);
-              
               vec2 displacedUV0 = clamp(v_texCoord + displacement * (1.0 - smoothProg), 0.0, 1.0);
               vec2 displacedUV1 = clamp(v_texCoord - displacement * smoothProg, 0.0, 1.0);
               vec4 color0 = texture2D(u_image0, displacedUV0);
               vec4 color1 = texture2D(u_image1, displacedUV1);
               vec4 baseColor = mix(color0, color1, smoothProg);
-              
               float dispMag = length(displacement);
               float mask = smoothstep(0.2, 0.45, dispMag);
-              
               vec2 dir = normalize(displacement + vec2(0.0001));
               float offsetScale = 0.025 * mask;
               vec2 dirPerp = vec2(-dir.y, dir.x);
-              
               vec2 offsetR = dir * offsetScale;
               vec2 offsetG = dirPerp * offsetScale * 0.5;
               vec2 offsetB = -dir * offsetScale;
-              
               float r = texture2D(u_image0, displacedUV0 + offsetR).r;
               float g = texture2D(u_image0, displacedUV0 + offsetG).g;
               float b = texture2D(u_image0, displacedUV0 + offsetB).b;
-              
               vec3 shiftedColor = vec3(r, g, b);
               vec3 finalColor = mix(baseColor.rgb, shiftedColor, mask);
-              finalColor = pow(finalColor, vec3(1.05));
+              vec3 extraEffect = accumEffect(v_texCoord, u_time, u_resolution);
+              vec3 screenBlend = vec3(1.0) - (vec3(1.0) - finalColor) * (vec3(1.0) - extraEffect);
+              finalColor = mix(finalColor, screenBlend, 0.15);
               gl_FragColor = vec4(finalColor, baseColor.a);
             }
           `;
         }
         
-        // Initialize everything
+        // Initialize everything.
         this.program = this.createShaderProgram();
         this.setupBuffers();
         this.loadTextures();
@@ -310,14 +344,14 @@
       loadDispTextures() {
         const gl = this.gl;
         this.dispTextures = [];
-        // Create a texture for the video displacement
+        // Create a texture for the video displacement.
         this.dispVideoTexture = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, this.dispVideoTexture);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        // Allocate a blank texture at 480p
+        // Allocate a blank texture at 480p.
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 480, 270, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
         this.dispTextures.push(this.dispVideoTexture);
       }
@@ -368,8 +402,7 @@
       render() {
         const gl = this.gl;
         this.renderRequested = false;
-        
-        // Update the video texture each frame
+        // Update the video texture each frame.
         this.updateVideoTexture();
         
         gl.clearColor(0, 0, 0, 1);
@@ -378,14 +411,13 @@
         
         gl.useProgram(this.program);
         
-        // Use mouseX to figure out the current + next image
+        // Use mouseX to determine current and next images.
         const mouseXNorm = this.mouseX / this.canvas.width;
         const imageIndex = Math.min(
           Math.floor(mouseXNorm * this.imagePaths.length),
           this.imagePaths.length - 1
         );
         const nextImageIndex = (imageIndex + 1) % this.imagePaths.length;
-        // The fraction within the segment
         const segmentWidth = 1 / this.imagePaths.length;
         const segmentProgress = (mouseXNorm - (imageIndex * segmentWidth)) / segmentWidth;
         
@@ -405,7 +437,6 @@
         gl.uniform1f(timeLoc, elapsedTime);
         gl.uniform1f(transLoc, segmentProgress);
         
-        // Bind base images
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, this.textures[imageIndex]);
         gl.uniform1i(img0Loc, 0);
@@ -414,16 +445,13 @@
         gl.bindTexture(gl.TEXTURE_2D, this.textures[nextImageIndex]);
         gl.uniform1i(img1Loc, 1);
         
-        // Bind video displacement
         gl.activeTexture(gl.TEXTURE2);
         gl.bindTexture(gl.TEXTURE_2D, this.dispTextures[0]);
         gl.uniform1i(dispVideoLoc, 2);
         
-        // Adjust these as needed
         gl.uniform1f(dispAmountLoc, 0.05);
         gl.uniform1f(dispScaleLoc, 1.0);
         
-        // Draw the full-screen quad
         gl.drawArrays(gl.TRIANGLES, 0, 6);
       }
     }
