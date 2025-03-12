@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>lys.slør</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: #000;
+      font-family: Arial, sans-serif;
+    }
+    canvas {
+      width: 100vw;
+      height: 100vh;
+      display: block;
+    }
+    /* Hide the video element */
+    #videoDisp {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="shaderCanvas"></canvas>
+  <!-- Hidden video element for dynamic displacement (using dispvid4.mp4) -->
+  <video id="videoDisp" loop muted playsinline>
+    <source src="/maps/dispvid4.mp4" type="video/mp4">
+  </video>
+  <script>
+    class OrganicFluidTransition {
+      constructor() {
+        this.canvas = document.getElementById('shaderCanvas');
+        this.gl = this.canvas.getContext('webgl2');
+        this.isWebGL2 = true;
+        if (!this.gl) {
+          console.warn('WebGL2 not supported, falling back to WebGL1');
+          this.gl = this.canvas.getContext('webgl');
+          this.isWebGL2 = false;
+        }
+        if (!this.gl) {
+          alert('Your browser does not support WebGL');
+          return;
+        }
+        
+        // Base images – ensure these exist in your directory.
+        this.imagePaths = ['1.JPG','2.JPG','3.JPG','4.JPG','5.JPG','6.JPG','7.JPG'];
+        // Video element for the displacement.
+        this.video = document.getElementById('videoDisp');
+        this.video.play();
+        
+        // Choose shaders based on WebGL version.
+        if (this.isWebGL2) {
+          this.vertexShaderSource = `#version 300 es
+            in vec4 a_position;
+            in vec2 a_texCoord;
+            out vec2 v_texCoord;
+            void main() {
+              gl_Position = a_position;
+              v_texCoord = a_texCoord;
+            }
+          `;
+          this.fragmentShaderSource = `#version 300 es
+            precision highp float;
+            
+            #define PI 3.141592
+            #define BALLS 20.
+            
+            // Uniforms
+            uniform sampler2D u_image0;
+            uniform sampler2D u_image1;
+            uniform sampler2D u_dispVideo;
+            uniform vec2 u_resolution;
+            uniform vec2 u_mouse;
+            uniform float u_time;
+            uniform float u_transitionProgress;
+            uniform float u_dispAmount;
+            uniform float u_dispScale;
+            
+            in vec2 v_texCoord;
+            out vec4 outColor;
+            
+            // Helper: 2D rotation matrix.
+            mat2 rotate2d(float a) {
+              return mat2(cos(a), -sin(a), sin(a), cos(a));
+            }
+            
+            // Accumulation function based on your Shadertoy code,
+            // modified to attenuate (reduce) the effect near the center.
+            vec3 accumEffect(vec2 uv, float time, vec2 resolution) {
+              vec2 fragCoord = uv * resolution;
+              // Here uv is already in [0,1], so the center is at (0.5, 0.5)
+              // We'll compute a distance factor to attenuate the bright center.
+              float dCenter = distance(uv, vec2(0.5));
+              // Attenuate effect near the center (adjust thresholds as needed)
+              float attenuation = smoothstep(0.2, 0.3, dCenter);
+              
+              vec2 aUv = fragCoord / resolution;
+              aUv -= vec2(0.5);
+              aUv.x *= resolution.x / resolution.y;
+              vec3 accum = vec3(0.0);
+              aUv *= 100.0;
+              float dist = length(aUv);
+              aUv *= rotate2d(time / 7.0);
+              for (float i = 0.0; i < BALLS; i++) {
+                aUv.y += 0.5 * (i / BALLS) * cos(aUv.y / 1000.0 + time / 4.0) + sin(aUv.x / 50.0 - time / 2.0);
+                aUv.x += 0.5 * i * sin(aUv.x / 300.0 + time / 6.0) * sin(aUv.y / 50.0 + time / 5.0);
+                float t = 0.01 * dist * i * PI / BALLS * 6.0;
+                vec2 p = 8.0 * vec2(-cos(t), sin(t / 6.0));
+                p /= sin(PI * sin(aUv.x / 10.0) * cos(aUv.y / 11.0) + 0.0001);
+                vec3 col = cos(vec3(0.0, 1.0, -1.0) * (PI * 2.0 / 3.0) + PI * (time / 5.0 + i / 5.0)) * 0.5 + 0.5;
+                accum += (i * 0.2) / length(aUv - p * 0.9) * col;
+              }
+              accum = pow(accum, vec3(2.0));
+              return accum * attenuation;
+            }
+            
+            // Overlay blend function (per channel).
+            vec3 overlayBlend(vec3 base, vec3 blend) {
+              return vec3(
+                base.r < 0.5 ? (2.0 * base.r * blend.r) : (1.0 - 2.0 * (1.0 - base.r) * (1.0 - blend.r)),
+                base.g < 0.5 ? (2.0 * base.g * blend.g) : (1.0 - 2.0 * (1.0 - base.g) * (1.0 - blend.g)),
+                base.b < 0.5 ? (2.0 * base.b * blend.b) : (1.0 - 2.0 * (1.0 - base.b) * (1.0 - blend.b))
+              );
+            }
+            
+            void main() {
+              // Time offset for displacement sampling.
+              vec2 timeOffset = vec2(0.02 * sin(u_time * 0.5), 0.02 * cos(u_time * 0.5));
+              vec2 dispCoord = v_texCoord * u_dispScale + timeOffset;
+              vec2 videoDisp = texture(u_dispVideo, dispCoord).rg;
+              float dynamicDisp = u_dispAmount * (1.0 + 0.3 * sin(u_time * 0.5));
+              vec2 displacement = (videoDisp - 0.5) * dynamicDisp;
+              
+              float smoothProg = 0.5 - 0.5 * cos(u_transitionProgress * 3.14159265);
+              vec2 displacedUV0 = clamp(v_texCoord + displacement * (1.0 - smoothProg), 0.0, 1.0);
+              vec2 displacedUV1 = clamp(v_texCoord - displacement * smoothProg, 0.0, 1.0);
+              
+              vec4 color0 = texture(u_image0, displacedUV0);
+              vec4 color1 = texture(u_image1, displacedUV1);
+              vec4 baseColor = mix(color0, color1, smoothProg);
+              
+              float dispMag = length(displacement);
+              float mask = smoothstep(0.2, 0.45, dispMag);
+              
+              vec2 dir = normalize(displacement + vec2(0.0001));
+              float offsetScale = 0.025 * mask;
+              vec2 dirPerp = vec2(-dir.y, dir.x);
+              vec2 offsetR = dir * offsetScale;
+              vec2 offsetG = dirPerp * offsetScale * 0.5;
+              vec2 offsetB = -dir * offsetScale;
+              
+              float r = texture(u_image0, displacedUV0 + offsetR).r;
+              float g = texture(u_image0, displacedUV0 + offsetG).g;
+              float b = texture(u_image0, displacedUV0 + offsetB).b;
+              vec3 shiftedColor = vec3(r, g, b);
+              
+              vec3 finalColor = mix(baseColor.rgb, shiftedColor, mask);
+              
+              // --- New accumulation effect overlay using overlay blend ---
+              vec3 extraEffect = accumEffect(v_texCoord, u_time, u_resolution);
+              vec3 blendedExtra = overlayBlend(finalColor, extraEffect);
+              // Mix the overlay blend with the base result (15% influence)
+              finalColor = mix(finalColor, blendedExtra, 0.15);
+              
+              outColor = vec4(finalColor, baseColor.a);
+            }
+          `;
+        } else {
+          // WebGL1 fallback
+          this.vertexShaderSource = `
+            attribute vec4 a_position;
+            attribute vec2 a_texCoord;
+            varying vec2 v_texCoord;
+            void main() {
+              gl_Position = a_position;
+              v_texCoord = a_texCoord;
+            }
+          `;
+          this.fragmentShaderSource = `
+            precision mediump float;
+            
+            #define PI 3.141592
+            #define BALLS 20.
+            
+            varying vec2 v_texCoord;
+            uniform sampler2D u_image0;
+            uniform sampler2D u_image1;
+            uniform sampler2D u_dispVideo;
+            uniform vec2 u_resolution;
+            uniform vec2 u_mouse;
+            uniform float u_time;
+            uniform float u_transitionProgress;
+            uniform float u_dispAmount;
+            uniform float u_dispScale;
+            
+            mat2 rotate2d(float a) {
+              return mat2(cos(a), -sin(a), sin(a), cos(a));
+            }
+            
+            vec3 accumEffect(vec2 uv, float time, vec2 resolution) {
+              vec2 fragCoord = uv * resolution;
+              float dCenter = distance(uv, vec2(0.5));
+              float attenuation = smoothstep(0.2, 0.3, dCenter);
+              
+              vec2 aUv = fragCoord / resolution;
+              aUv -= vec2(0.5);
+              aUv.x *= resolution.x / resolution.y;
+              vec3 accum = vec3(0.0);
+              aUv *= 100.0;
+              float dist = length(aUv);
+              aUv *= rotate2d(time / 7.0);
+              for (float i = 0.0; i < BALLS; i++) {
+                aUv.y += 0.5 * (i / BALLS) * cos(aUv.y / 1000.0 + time / 4.0) + sin(aUv.x / 50.0 - time / 2.0);
+                aUv.x += 0.5 * i * sin(aUv.x / 300.0 + time / 6.0) * sin(aUv.y / 50.0 + time / 5.0);
+                float t = 0.01 * dist * i * PI / BALLS * 6.0;
+                vec2 p = 8.0 * vec2(-cos(t), sin(t / 6.0));
+                p /= sin(PI * sin(aUv.x / 10.0) * cos(aUv.y / 11.0) + 0.0001);
+                vec3 col = cos(vec3(0.0, 1.0, -1.0) * (PI * 2.0 / 3.0) + PI * (time / 5.0 + i / 5.0)) * 0.5 + 0.5;
+                accum += (i * 0.2) / length(aUv - p * 0.9) * col;
+              }
+              accum = pow(accum, vec3(2.0));
+              return accum * attenuation;
+            }
+            
+            vec3 overlayBlend(vec3 base, vec3 blend) {
+              return vec3(
+                base.r < 0.5 ? (2.0 * base.r * blend.r) : (1.0 - 2.0 * (1.0 - base.r) * (1.0 - blend.r)),
+                base.g < 0.5 ? (2.0 * base.g * blend.g) : (1.0 - 2.0 * (1.0 - base.g) * (1.0 - blend.g)),
+                base.b < 0.5 ? (2.0 * base.b * blend.b) : (1.0 - 2.0 * (1.0 - base.b) * (1.0 - blend.b))
+              );
+            }
+            
+            void main() {
+              vec2 timeOffset = vec2(0.02 * sin(u_time * 0.5), 0.02 * cos(u_time * 0.5));
+              vec2 dispCoord = v_texCoord * u_dispScale + timeOffset;
+              vec4 dispSample = texture2D(u_dispVideo, dispCoord);
+              vec2 videoDisp = dispSample.rg;
+              float dynamicDisp = u_dispAmount * (1.0 + 0.3 * sin(u_time * 0.5));
+              vec2 displacement = (videoDisp - vec2(0.5)) * dynamicDisp;
+              float smoothProg = 0.5 - 0.5 * cos(u_transitionProgress * 3.14159265);
+              vec2 displacedUV0 = clamp(v_texCoord + displacement * (1.0 - smoothProg), 0.0, 1.0);
+              vec2 displacedUV1 = clamp(v_texCoord - displacement * smoothProg, 0.0, 1.0);
+              vec4 color0 = texture2D(u_image0, displacedUV0);
+              vec4 color1 = texture2D(u_image1, displacedUV1);
+              vec4 baseColor = mix(color0, color1, smoothProg);
+              float dispMag = length(displacement);
+              float mask = smoothstep(0.2, 0.45, dispMag);
+              vec2 dir = normalize(displacement + vec2(0.0001));
+              float offsetScale = 0.025 * mask;
+              vec2 dirPerp = vec2(-dir.y, dir.x);
+              vec2 offsetR = dir * offsetScale;
+              vec2 offsetG = dirPerp * offsetScale * 0.5;
+              vec2 offsetB = -dir * offsetScale;
+              float r = texture2D(u_image0, displacedUV0 + offsetR).r;
+              float g = texture2D(u_image0, displacedUV0 + offsetG).g;
+              float b = texture2D(u_image0, displacedUV0 + offsetB).b;
+              vec3 shiftedColor = vec3(r, g, b);
+              vec3 finalColor = mix(baseColor.rgb, shiftedColor, mask);
+              vec3 extraEffect = accumEffect(v_texCoord, u_time, u_resolution);
+              vec3 blendedExtra = overlayBlend(finalColor, extraEffect);
+              finalColor = mix(finalColor, blendedExtra, 0.15);
+              gl_FragColor = vec4(finalColor, baseColor.a);
+            }
+          `;
+        }
+        
+        // Initialize everything.
+        this.program = this.createShaderProgram();
+        this.setupBuffers();
+        this.loadTextures();
+        this.loadDispTextures();
+        this.setupEventListeners();
+        this.startAnimation();
+      }
+      
+      createShaderProgram() {
+        const gl = this.gl;
+        const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+        gl.shaderSource(vertexShader, this.vertexShaderSource);
+        gl.compileShader(vertexShader);
+        if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
+          console.error('Vertex shader error:', gl.getShaderInfoLog(vertexShader));
+        }
+        const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+        gl.shaderSource(fragmentShader, this.fragmentShaderSource);
+        gl.compileShader(fragmentShader);
+        if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
+          console.error('Fragment shader error:', gl.getShaderInfoLog(fragmentShader));
+        }
+        const program = gl.createProgram();
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
+        gl.linkProgram(program);
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+          console.error('Program linking error:', gl.getProgramInfoLog(program));
+        }
+        return program;
+      }
+      
+      setupBuffers() {
+        const gl = this.gl;
+        const positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        const positions = [
+          -1.0, -1.0,
+           1.0, -1.0,
+          -1.0,  1.0,
+          -1.0,  1.0,
+           1.0, -1.0,
+           1.0,  1.0
+        ];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+        
+        const texCoordBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+        const texCoords = [
+          0.0, 0.0,
+          1.0, 0.0,
+          0.0, 1.0,
+          0.0, 1.0,
+          1.0, 0.0,
+          1.0, 1.0
+        ];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texCoords), gl.STATIC_DRAW);
+        
+        gl.useProgram(this.program);
+        const posLoc = gl.getAttribLocation(this.program, 'a_position');
+        const texLoc = gl.getAttribLocation(this.program, 'a_texCoord');
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.enableVertexAttribArray(posLoc);
+        gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+        gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+        gl.enableVertexAttribArray(texLoc);
+        gl.vertexAttribPointer(texLoc, 2, gl.FLOAT, false, 0, 0);
+      }
+      
+      loadTextures() {
+        const gl = this.gl;
+        this.textures = [];
+        this.images = [];
+        this.imagePaths.forEach(path => {
+          const img = new Image();
+          img.src = path;
+          this.images.push(img);
+        });
+        Promise.all(this.images.map(img => new Promise(resolve => {
+          if (img.complete) resolve();
+          else img.onload = resolve;
+        })))
+        .then(() => {
+          this.images.forEach(image => {
+            const texture = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+            this.textures.push(texture);
+          });
+          this.resizeCanvas();
+        })
+        .catch(err => console.error('Error loading base images:', err));
+      }
+      
+      loadDispTextures() {
+        const gl = this.gl;
+        this.dispTextures = [];
+        // Create a texture for the video displacement.
+        this.dispVideoTexture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, this.dispVideoTexture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        // Allocate a blank texture at 480p.
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 480, 270, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+        this.dispTextures.push(this.dispVideoTexture);
+      }
+      
+      updateVideoTexture() {
+        const gl = this.gl;
+        if (this.video.readyState >= this.video.HAVE_CURRENT_DATA) {
+          gl.bindTexture(gl.TEXTURE_2D, this.dispVideoTexture);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.video);
+        }
+      }
+      
+      setupEventListeners() {
+        this.mouseX = 0;
+        this.mouseY = 0;
+        window.addEventListener('mousemove', e => {
+          this.mouseX = e.clientX;
+          this.mouseY = e.clientY;
+          this.requestRender();
+        });
+        window.addEventListener('resize', () => {
+          this.resizeCanvas();
+          this.requestRender();
+        });
+      }
+      
+      resizeCanvas() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+      }
+      
+      requestRender() {
+        if (!this.renderRequested) {
+          this.renderRequested = true;
+          requestAnimationFrame(() => this.render());
+        }
+      }
+      
+      startAnimation() {
+        this.currentImageIndex = 0;
+        this.nextImageIndex = 1;
+        this.transitionProgress = 0;
+        this.startTime = performance.now();
+        this.requestRender();
+      }
+      
+      render() {
+        const gl = this.gl;
+        this.renderRequested = false;
+        // Update the video texture each frame.
+        this.updateVideoTexture();
+        
+        gl.clearColor(0, 0, 0, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        if (!this.textures || this.textures.length < 2) return;
+        
+        gl.useProgram(this.program);
+        
+        // Use mouseX to determine current and next images.
+        const mouseXNorm = this.mouseX / this.canvas.width;
+        const imageIndex = Math.min(
+          Math.floor(mouseXNorm * this.imagePaths.length),
+          this.imagePaths.length - 1
+        );
+        const nextImageIndex = (imageIndex + 1) % this.imagePaths.length;
+        const segmentWidth = 1 / this.imagePaths.length;
+        const segmentProgress = (mouseXNorm - (imageIndex * segmentWidth)) / segmentWidth;
+        
+        const resLoc = gl.getUniformLocation(this.program, 'u_resolution');
+        const mouseLoc = gl.getUniformLocation(this.program, 'u_mouse');
+        const timeLoc = gl.getUniformLocation(this.program, 'u_time');
+        const transLoc = gl.getUniformLocation(this.program, 'u_transitionProgress');
+        const img0Loc = gl.getUniformLocation(this.program, 'u_image0');
+        const img1Loc = gl.getUniformLocation(this.program, 'u_image1');
+        const dispVideoLoc = gl.getUniformLocation(this.program, 'u_dispVideo');
+        const dispAmountLoc = gl.getUniformLocation(this.program, 'u_dispAmount');
+        const dispScaleLoc = gl.getUniformLocation(this.program, 'u_dispScale');
+        
+        gl.uniform2f(resLoc, this.canvas.width, this.canvas.height);
+        gl.uniform2f(mouseLoc, this.mouseX, this.mouseY);
+        const elapsedTime = (performance.now() - this.startTime) / 1000;
+        gl.uniform1f(timeLoc, elapsedTime);
+        gl.uniform1f(transLoc, segmentProgress);
+        
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, this.textures[imageIndex]);
+        gl.uniform1i(img0Loc, 0);
+        
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, this.textures[nextImageIndex]);
+        gl.uniform1i(img1Loc, 1);
+        
+        gl.activeTexture(gl.TEXTURE2);
+        gl.bindTexture(gl.TEXTURE_2D, this.dispTextures[0]);
+        gl.uniform1i(dispVideoLoc, 2);
+        
+        gl.uniform1f(dispAmountLoc, 0.05);
+        gl.uniform1f(dispScaleLoc, 1.0);
+        
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+      }
+    }
+    
+    window.addEventListener('load', () => {
+      new OrganicFluidTransition();
+    });
+  </script>
+</body>
+</html>
