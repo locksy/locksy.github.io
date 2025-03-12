@@ -16,18 +16,10 @@
       height: 100vh;
       display: block;
     }
-    /* Hide the video element */
-    #videoDisp {
-      display: none;
-    }
   </style>
 </head>
 <body>
   <canvas id="shaderCanvas"></canvas>
-  <!-- Hidden video element for dynamic displacement (using dispvid4.mp4) -->
-  <video id="videoDisp" loop muted playsinline>
-    <source src="/maps/dispvid4.mp4" type="video/mp4">
-  </video>
   <script>
     class OrganicFluidTransition {
       constructor() {
@@ -46,8 +38,13 @@
         
         // Base images – ensure these exist in your directory.
         this.imagePaths = ['1.JPG','2.JPG','3.JPG','4.JPG','5.JPG','6.JPG','7.JPG'];
-        // Video element for the displacement.
-        this.video = document.getElementById('videoDisp');
+        
+        // Create the video element for displacement directly.
+        this.video = document.createElement('video');
+        this.video.src = "dispvid4.mp4";
+        this.video.loop = true;
+        this.video.muted = true;
+        this.video.playsInline = true;
         this.video.play();
         
         // Choose shaders based on WebGL version.
@@ -67,7 +64,6 @@
             #define PI 3.141592
             #define BALLS 20.
             
-            // Uniforms
             uniform sampler2D u_image0;
             uniform sampler2D u_image1;
             uniform sampler2D u_dispVideo;
@@ -86,14 +82,10 @@
               return mat2(cos(a), -sin(a), sin(a), cos(a));
             }
             
-            // Accumulation function based on your Shadertoy code,
-            // modified to attenuate (reduce) the effect near the center.
+            // Example accumulation function (modified from your Shadertoy code).
             vec3 accumEffect(vec2 uv, float time, vec2 resolution) {
               vec2 fragCoord = uv * resolution;
-              // Here uv is already in [0,1], so the center is at (0.5, 0.5)
-              // We'll compute a distance factor to attenuate the bright center.
               float dCenter = distance(uv, vec2(0.5));
-              // Attenuate effect near the center (adjust thresholds as needed)
               float attenuation = smoothstep(0.2, 0.3, dCenter);
               
               vec2 aUv = fragCoord / resolution;
@@ -116,7 +108,7 @@
               return accum * attenuation;
             }
             
-            // Overlay blend function (per channel).
+            // Overlay blend function.
             vec3 overlayBlend(vec3 base, vec3 blend) {
               return vec3(
                 base.r < 0.5 ? (2.0 * base.r * blend.r) : (1.0 - 2.0 * (1.0 - base.r) * (1.0 - blend.r)),
@@ -126,7 +118,6 @@
             }
             
             void main() {
-              // Time offset for displacement sampling.
               vec2 timeOffset = vec2(0.02 * sin(u_time * 0.5), 0.02 * cos(u_time * 0.5));
               vec2 dispCoord = v_texCoord * u_dispScale + timeOffset;
               vec2 videoDisp = texture(u_dispVideo, dispCoord).rg;
@@ -158,17 +149,16 @@
               
               vec3 finalColor = mix(baseColor.rgb, shiftedColor, mask);
               
-              // --- New accumulation effect overlay using overlay blend ---
+              // New accumulation effect overlay using overlay blend.
               vec3 extraEffect = accumEffect(v_texCoord, u_time, u_resolution);
               vec3 blendedExtra = overlayBlend(finalColor, extraEffect);
-              // Mix the overlay blend with the base result (15% influence)
               finalColor = mix(finalColor, blendedExtra, 0.15);
               
               outColor = vec4(finalColor, baseColor.a);
             }
           `;
         } else {
-          // WebGL1 fallback
+          // WebGL1 fallback (omitted for brevity; similar adjustments can be applied)
           this.vertexShaderSource = `
             attribute vec4 a_position;
             attribute vec2 a_texCoord;
