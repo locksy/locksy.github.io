@@ -53,7 +53,7 @@
           return;
         }
         
-        // For simplicity, detect mobile if DeviceOrientationEvent is present.
+        // Detect mobile if device orientation events are available.
         this.isMobile = (window.DeviceOrientationEvent !== undefined);
         
         // Base images – ensure these exist in your directory.
@@ -89,22 +89,22 @@
             uniform sampler2D u_dispVideo;
             uniform vec2 u_resolution;
             uniform vec2 u_mouse;
-            // u_time will be 0 on mobile so the effect only responds to interaction.
             uniform float u_time;
-            // Transition progress between images.
             uniform float u_transitionProgress;
             uniform float u_dispAmount;
             uniform float u_dispScale;
+            // New uniform: 0.0 for desktop, 1.0 for mobile.
+            uniform float u_mobile;
             
             in vec2 v_texCoord;
             out vec4 outColor;
             
-            // 2D rotation matrix helper.
+            // 2D rotation matrix.
             mat2 rotate2d(float a) {
               return mat2(cos(a), -sin(a), sin(a), cos(a));
             }
             
-            // Accumulation effect function (modified to attenuate near center).
+            // Accumulation effect function (with attenuation near center).
             vec3 accumEffect(vec2 uv, float time, vec2 resolution) {
               vec2 fragCoord = uv * resolution;
               float dCenter = distance(uv, vec2(0.5));
@@ -130,7 +130,7 @@
               return accum * attenuation;
             }
             
-            // Overlay blend helper.
+            // Overlay blend function.
             vec3 overlayBlend(vec3 base, vec3 blend) {
               return vec3(
                 base.r < 0.5 ? (2.0 * base.r * blend.r) : (1.0 - 2.0 * (1.0 - base.r) * (1.0 - blend.r)),
@@ -140,8 +140,11 @@
             }
             
             void main() {
-              // Remove the continuous time-based offset on mobile.
-              vec2 timeOffset = vec2(0.02 * sin(u_time * 0.5), 0.02 * cos(u_time * 0.5));
+              // On mobile (u_mobile=1.0) we disable time-based offset for displacement.
+              vec2 timeOffset = vec2(
+                mix(0.02 * sin(u_time * 0.5), 0.0, u_mobile),
+                mix(0.02 * cos(u_time * 0.5), 0.0, u_mobile)
+              );
               vec2 dispCoord = v_texCoord * u_dispScale + timeOffset;
               vec2 videoDisp = texture(u_dispVideo, dispCoord).rg;
               float dynamicDisp = u_dispAmount * (1.0 + 0.3 * sin(u_time * 0.5));
@@ -181,7 +184,7 @@
             }
           `;
         } else {
-          // WebGL1 fallback (similar adjustments can be applied)
+          // WebGL1 fallback (similar changes can be applied)
           this.vertexShaderSource = `
             attribute vec4 a_position;
             attribute vec2 a_texCoord;
@@ -193,7 +196,7 @@
           `;
           this.fragmentShaderSource = `
             precision mediump float;
-            // A simplified version can be applied for WebGL1.
+            // A simplified version similar to WebGL2.
             void main() {
               gl_FragColor = vec4(0.0);
             }
@@ -322,13 +325,13 @@
       setupEventListeners() {
         this.mouseX = 0;
         this.mouseY = 0;
-        // For desktop: update via mouse.
+        // Desktop: update via mouse.
         window.addEventListener('mousemove', e => {
           this.mouseX = e.clientX;
           this.mouseY = e.clientY;
           this.requestRender();
         });
-        // For mobile: use device orientation.
+        // Mobile: use device orientation.
         if (window.DeviceOrientationEvent) {
           if (typeof DeviceOrientationEvent.requestPermission === 'function') {
             const motionBtn = document.getElementById('motionBtn');
@@ -365,7 +368,7 @@
         });
       }
       
-      // Smooth out transition progress (for mobile, which might be jumpy).
+      // Helper to smooth transition progress.
       smoothValue(oldVal, newVal, smoothing = 0.1) {
         return oldVal === undefined ? newVal : oldVal * (1.0 - smoothing) + newVal * smoothing;
       }
@@ -386,7 +389,7 @@
       startAnimation() {
         this.currentImageIndex = 0;
         this.nextImageIndex = 1;
-        // Use a smoothTransitionProgress property to dampen sudden jumps.
+        // Use a property to smooth transition progress.
         this.smoothTransitionProgress = 0;
         this.startTime = performance.now();
         this.requestRender();
@@ -410,18 +413,17 @@
         );
         const nextImageIndex = (imageIndex + 1) % this.imagePaths.length;
         const segmentWidth = 1 / this.imagePaths.length;
-        // Compute new segment progress.
         let rawProgress = (mouseXNorm - (imageIndex * segmentWidth)) / segmentWidth;
-        // Smooth the transition progress.
         this.smoothTransitionProgress = this.smoothValue(this.smoothTransitionProgress, rawProgress, 0.1);
         
-        // On mobile, disable time-based animation by setting time to zero.
-        const elapsedTime = this.isMobile ? 0.0 : ((performance.now() - this.startTime) / 1000);
+        // Always pass the elapsed time for accumulation animation.
+        const elapsedTime = (performance.now() - this.startTime) / 1000;
         
         const resLoc = gl.getUniformLocation(this.program, 'u_resolution');
         const mouseLoc = gl.getUniformLocation(this.program, 'u_mouse');
         const timeLoc = gl.getUniformLocation(this.program, 'u_time');
         const transLoc = gl.getUniformLocation(this.program, 'u_transitionProgress');
+        const mobileLoc = gl.getUniformLocation(this.program, 'u_mobile');
         const img0Loc = gl.getUniformLocation(this.program, 'u_image0');
         const img1Loc = gl.getUniformLocation(this.program, 'u_image1');
         const dispVideoLoc = gl.getUniformLocation(this.program, 'u_dispVideo');
@@ -431,8 +433,9 @@
         gl.uniform2f(resLoc, this.canvas.width, this.canvas.height);
         gl.uniform2f(mouseLoc, this.mouseX, this.mouseY);
         gl.uniform1f(timeLoc, elapsedTime);
-        // Use the smoothed transition progress.
         gl.uniform1f(transLoc, this.smoothTransitionProgress);
+        // Pass 1.0 if mobile, else 0.0.
+        gl.uniform1f(mobileLoc, this.isMobile ? 1.0 : 0.0);
         
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, this.textures[imageIndex]);
