@@ -16,7 +16,7 @@
       height: 100vh;
       display: block;
     }
-    /* Button overlay for requesting motion permission */
+    /* Button overlay for requesting motion permission on mobile */
     #motionBtn {
       position: absolute;
       top: 50%;
@@ -53,6 +53,9 @@
           return;
         }
         
+        // For simplicity, detect mobile if DeviceOrientationEvent is present.
+        this.isMobile = (window.DeviceOrientationEvent !== undefined);
+        
         // Base images – ensure these exist in your directory.
         this.imagePaths = ['1.JPG','2.JPG','3.JPG','4.JPG','5.JPG','6.JPG','7.JPG'];
         
@@ -64,7 +67,7 @@
         this.video.playsInline = true;
         this.video.play();
         
-        // Setup shaders based on WebGL version.
+        // Choose shaders based on WebGL version.
         if (this.isWebGL2) {
           this.vertexShaderSource = `#version 300 es
             in vec4 a_position;
@@ -86,7 +89,9 @@
             uniform sampler2D u_dispVideo;
             uniform vec2 u_resolution;
             uniform vec2 u_mouse;
+            // u_time will be 0 on mobile so the effect only responds to interaction.
             uniform float u_time;
+            // Transition progress between images.
             uniform float u_transitionProgress;
             uniform float u_dispAmount;
             uniform float u_dispScale;
@@ -94,12 +99,12 @@
             in vec2 v_texCoord;
             out vec4 outColor;
             
-            // Helper: 2D rotation matrix.
+            // 2D rotation matrix helper.
             mat2 rotate2d(float a) {
               return mat2(cos(a), -sin(a), sin(a), cos(a));
             }
             
-            // Accumulation effect function (with attenuation at center)
+            // Accumulation effect function (modified to attenuate near center).
             vec3 accumEffect(vec2 uv, float time, vec2 resolution) {
               vec2 fragCoord = uv * resolution;
               float dCenter = distance(uv, vec2(0.5));
@@ -125,7 +130,7 @@
               return accum * attenuation;
             }
             
-            // Overlay blend function.
+            // Overlay blend helper.
             vec3 overlayBlend(vec3 base, vec3 blend) {
               return vec3(
                 base.r < 0.5 ? (2.0 * base.r * blend.r) : (1.0 - 2.0 * (1.0 - base.r) * (1.0 - blend.r)),
@@ -135,6 +140,7 @@
             }
             
             void main() {
+              // Remove the continuous time-based offset on mobile.
               vec2 timeOffset = vec2(0.02 * sin(u_time * 0.5), 0.02 * cos(u_time * 0.5));
               vec2 dispCoord = v_texCoord * u_dispScale + timeOffset;
               vec2 videoDisp = texture(u_dispVideo, dispCoord).rg;
@@ -166,7 +172,7 @@
               
               vec3 finalColor = mix(baseColor.rgb, shiftedColor, mask);
               
-              // New accumulation overlay using overlay blend.
+              // Apply accumulation effect using overlay blend.
               vec3 extraEffect = accumEffect(v_texCoord, u_time, u_resolution);
               vec3 blendedExtra = overlayBlend(finalColor, extraEffect);
               finalColor = mix(finalColor, blendedExtra, 0.15);
@@ -175,7 +181,7 @@
             }
           `;
         } else {
-          // WebGL1 fallback (similar changes can be applied)
+          // WebGL1 fallback (similar adjustments can be applied)
           this.vertexShaderSource = `
             attribute vec4 a_position;
             attribute vec2 a_texCoord;
@@ -187,7 +193,7 @@
           `;
           this.fragmentShaderSource = `
             precision mediump float;
-            // Implementation similar to WebGL2 version
+            // A simplified version can be applied for WebGL1.
             void main() {
               gl_FragColor = vec4(0.0);
             }
@@ -316,17 +322,14 @@
       setupEventListeners() {
         this.mouseX = 0;
         this.mouseY = 0;
-        
-        // Desktop: mouse events.
+        // For desktop: update via mouse.
         window.addEventListener('mousemove', e => {
           this.mouseX = e.clientX;
           this.mouseY = e.clientY;
           this.requestRender();
         });
-        
-        // Mobile: request device orientation.
+        // For mobile: use device orientation.
         if (window.DeviceOrientationEvent) {
-          // For iOS 13+ we need to request permission.
           if (typeof DeviceOrientationEvent.requestPermission === 'function') {
             const motionBtn = document.getElementById('motionBtn');
             motionBtn.style.display = 'block';
@@ -347,7 +350,6 @@
                 .catch(console.error);
             });
           } else {
-            // If permission is not needed.
             window.addEventListener('deviceorientation', e => {
               let gamma = e.gamma || 0;
               let beta = e.beta || 0;
@@ -357,11 +359,15 @@
             });
           }
         }
-        
         window.addEventListener('resize', () => {
           this.resizeCanvas();
           this.requestRender();
         });
+      }
+      
+      // Smooth out transition progress (for mobile, which might be jumpy).
+      smoothValue(oldVal, newVal, smoothing = 0.1) {
+        return oldVal === undefined ? newVal : oldVal * (1.0 - smoothing) + newVal * smoothing;
       }
       
       resizeCanvas() {
@@ -380,7 +386,8 @@
       startAnimation() {
         this.currentImageIndex = 0;
         this.nextImageIndex = 1;
-        this.transitionProgress = 0;
+        // Use a smoothTransitionProgress property to dampen sudden jumps.
+        this.smoothTransitionProgress = 0;
         this.startTime = performance.now();
         this.requestRender();
       }
@@ -403,7 +410,13 @@
         );
         const nextImageIndex = (imageIndex + 1) % this.imagePaths.length;
         const segmentWidth = 1 / this.imagePaths.length;
-        const segmentProgress = (mouseXNorm - (imageIndex * segmentWidth)) / segmentWidth;
+        // Compute new segment progress.
+        let rawProgress = (mouseXNorm - (imageIndex * segmentWidth)) / segmentWidth;
+        // Smooth the transition progress.
+        this.smoothTransitionProgress = this.smoothValue(this.smoothTransitionProgress, rawProgress, 0.1);
+        
+        // On mobile, disable time-based animation by setting time to zero.
+        const elapsedTime = this.isMobile ? 0.0 : ((performance.now() - this.startTime) / 1000);
         
         const resLoc = gl.getUniformLocation(this.program, 'u_resolution');
         const mouseLoc = gl.getUniformLocation(this.program, 'u_mouse');
@@ -417,9 +430,9 @@
         
         gl.uniform2f(resLoc, this.canvas.width, this.canvas.height);
         gl.uniform2f(mouseLoc, this.mouseX, this.mouseY);
-        const elapsedTime = (performance.now() - this.startTime) / 1000;
         gl.uniform1f(timeLoc, elapsedTime);
-        gl.uniform1f(transLoc, segmentProgress);
+        // Use the smoothed transition progress.
+        gl.uniform1f(transLoc, this.smoothTransitionProgress);
         
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, this.textures[imageIndex]);
