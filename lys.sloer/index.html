@@ -53,7 +53,7 @@
           return;
         }
         
-        // Detect mobile if device orientation events are available.
+        // Detect mobile (for time scaling, etc.)
         this.isMobile = (window.DeviceOrientationEvent !== undefined);
         
         // Base images – ensure these exist in your directory.
@@ -65,7 +65,15 @@
         this.video.loop = true;
         this.video.muted = true;
         this.video.playsInline = true;
-        this.video.play();
+        this.video.play().catch(err => console.error("Video play error:", err));
+        
+        // Create the audio element.
+        this.audio = document.createElement('audio');
+        this.audio.src = "audio.webm";
+        this.audio.loop = true;
+        // Note: Some browsers block auto-play with sound.
+        this.audio.play().catch(err => console.error("Audio play error:", err));
+        // Alternatively, you can add a click listener to start audio if needed.
         
         // Choose shaders based on WebGL version.
         if (this.isWebGL2) {
@@ -83,6 +91,7 @@
             
             #define PI 3.141592
             #define BALLS 20.
+            #define INVERT_Y 0
             
             uniform sampler2D u_image0;
             uniform sampler2D u_image1;
@@ -93,8 +102,6 @@
             uniform float u_transitionProgress;
             uniform float u_dispAmount;
             uniform float u_dispScale;
-            // New uniform: 0.0 for desktop, 1.0 for mobile.
-            uniform float u_mobile;
             
             in vec2 v_texCoord;
             out vec4 outColor;
@@ -104,7 +111,7 @@
               return mat2(cos(a), -sin(a), sin(a), cos(a));
             }
             
-            // Accumulation effect function (with attenuation near center).
+            // Accumulation effect (modified from your Shadertoy code).
             vec3 accumEffect(vec2 uv, float time, vec2 resolution) {
               vec2 fragCoord = uv * resolution;
               float dCenter = distance(uv, vec2(0.5));
@@ -130,6 +137,29 @@
               return accum * attenuation;
             }
             
+            // Lens distortion functions.
+            float correctLensDistortionR(float x) {
+              float a = -0.01637 + 0.01;
+              float b = -0.03 + 0.01;
+              float c = -0.06489 + 0.01;
+              float d = 1.0 - (a + b + c);
+              return a*x*x*x*x + b*x*x*x + c*x*x + d*x;
+            }
+            float correctLensDistortionG(float x) {
+              float a = -0.01637;
+              float b = -0.03;
+              float c = -0.06489;
+              float d = 1.0 - (a + b + c);
+              return a*x*x*x*x + b*x*x*x + c*x*x + d*x;
+            }
+            float correctLensDistortionB(float x) {
+              float a = -0.01637 - 0.01;
+              float b = -0.03 - 0.01;
+              float c = -0.06489 - 0.01;
+              float d = 1.0 - (a + b + c);
+              return a*x*x*x*x + b*x*x*x + c*x*x + d*x;
+            }
+            
             // Overlay blend function.
             vec3 overlayBlend(vec3 base, vec3 blend) {
               return vec3(
@@ -139,12 +169,19 @@
               );
             }
             
+            // Interactive chromatic filter based on supplied code.
+            vec4 chromaticFilter(vec2 uv) {
+              vec2 m = u_mouse / u_resolution;
+              float d = (length(m) < 0.02) ? 0.015 : m.x / 10.0;
+              float r = texture(u_image0, uv - vec2(d, 0.0)).r;
+              float g = texture(u_image0, uv).r;
+              float b = texture(u_image0, uv + vec2(d, 0.0)).r;
+              return vec4(r, g, b, 1.0);
+            }
+            
             void main() {
-              // On mobile (u_mobile=1.0) we disable time-based offset for displacement.
-              vec2 timeOffset = vec2(
-                mix(0.02 * sin(u_time * 0.5), 0.0, u_mobile),
-                mix(0.02 * cos(u_time * 0.5), 0.0, u_mobile)
-              );
+              // Displacement + accumulation effect.
+              vec2 timeOffset = vec2(0.02 * sin(u_time * 0.5), 0.02 * cos(u_time * 0.5));
               vec2 dispCoord = v_texCoord * u_dispScale + timeOffset;
               vec2 videoDisp = texture(u_dispVideo, dispCoord).rg;
               float dynamicDisp = u_dispAmount * (1.0 + 0.3 * sin(u_time * 0.5));
@@ -175,16 +212,46 @@
               
               vec3 finalColor = mix(baseColor.rgb, shiftedColor, mask);
               
-              // Apply accumulation effect using overlay blend.
+              // Accumulation overlay.
               vec3 extraEffect = accumEffect(v_texCoord, u_time, u_resolution);
               vec3 blendedExtra = overlayBlend(finalColor, extraEffect);
               finalColor = mix(finalColor, blendedExtra, 0.15);
+              
+              // Interactive lens distortion filter.
+              vec2 uv = v_texCoord;
+  #if INVERT_Y
+              uv.y = 1.0 - uv.y;
+  #endif
+              vec2 cart = (uv - vec2(0.5)) * 2.2;
+              cart.x *= max(u_resolution.x, u_resolution.y) / min(u_resolution.x, u_resolution.y);
+              float an = atan(cart.y, cart.x);
+              float len = length(cart);
+              float lenR = correctLensDistortionR(len);
+              float lenG = correctLensDistortionG(len);
+              float lenB = correctLensDistortionB(len);
+              vec2 dirLens = vec2(u_resolution.y / u_resolution.x, 1.0) * vec2(cos(an), sin(an));
+              vec2 modUV_R = lenR * dirLens * 0.5 + vec2(0.5);
+              vec2 modUV_G = lenG * dirLens * 0.5 + vec2(0.5);
+              vec2 modUV_B = lenB * dirLens * 0.5 + vec2(0.5);
+              float lensBlend = clamp(u_mouse.x / u_resolution.x, 0.0, 1.0);
+              vec2 fetchUV_R = mix(uv, modUV_R, lensBlend);
+              vec2 fetchUV_G = mix(uv, modUV_G, lensBlend);
+              vec2 fetchUV_B = mix(uv, modUV_B, lensBlend);
+              vec3 lensCol = vec3(
+                texture(u_image0, fetchUV_R).r,
+                texture(u_image0, fetchUV_G).g,
+                texture(u_image0, fetchUV_B).b
+              );
+              finalColor = mix(finalColor, lensCol, 0.2);
+              
+              // Incorporate interactive chromatic filter.
+              vec4 chroma = chromaticFilter(v_texCoord);
+              finalColor = mix(finalColor, chroma.rgb, 0.2);
               
               outColor = vec4(finalColor, baseColor.a);
             }
           `;
         } else {
-          // WebGL1 fallback (similar changes can be applied)
           this.vertexShaderSource = `
             attribute vec4 a_position;
             attribute vec2 a_texCoord;
@@ -196,7 +263,6 @@
           `;
           this.fragmentShaderSource = `
             precision mediump float;
-            // A simplified version similar to WebGL2.
             void main() {
               gl_FragColor = vec4(0.0);
             }
@@ -331,7 +397,7 @@
           this.mouseY = e.clientY;
           this.requestRender();
         });
-        // Mobile: use device orientation.
+        // Mobile: request device orientation permission.
         if (window.DeviceOrientationEvent) {
           if (typeof DeviceOrientationEvent.requestPermission === 'function') {
             const motionBtn = document.getElementById('motionBtn');
@@ -368,11 +434,6 @@
         });
       }
       
-      // Helper to smooth transition progress.
-      smoothValue(oldVal, newVal, smoothing = 0.1) {
-        return oldVal === undefined ? newVal : oldVal * (1.0 - smoothing) + newVal * smoothing;
-      }
-      
       resizeCanvas() {
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
@@ -389,8 +450,7 @@
       startAnimation() {
         this.currentImageIndex = 0;
         this.nextImageIndex = 1;
-        // Use a property to smooth transition progress.
-        this.smoothTransitionProgress = 0;
+        this.transitionProgress = 0;
         this.startTime = performance.now();
         this.requestRender();
       }
@@ -413,17 +473,12 @@
         );
         const nextImageIndex = (imageIndex + 1) % this.imagePaths.length;
         const segmentWidth = 1 / this.imagePaths.length;
-        let rawProgress = (mouseXNorm - (imageIndex * segmentWidth)) / segmentWidth;
-        this.smoothTransitionProgress = this.smoothValue(this.smoothTransitionProgress, rawProgress, 0.1);
-        
-        // Always pass the elapsed time for accumulation animation.
-        const elapsedTime = (performance.now() - this.startTime) / 1000;
+        const segmentProgress = (mouseXNorm - (imageIndex * segmentWidth)) / segmentWidth;
         
         const resLoc = gl.getUniformLocation(this.program, 'u_resolution');
         const mouseLoc = gl.getUniformLocation(this.program, 'u_mouse');
         const timeLoc = gl.getUniformLocation(this.program, 'u_time');
         const transLoc = gl.getUniformLocation(this.program, 'u_transitionProgress');
-        const mobileLoc = gl.getUniformLocation(this.program, 'u_mobile');
         const img0Loc = gl.getUniformLocation(this.program, 'u_image0');
         const img1Loc = gl.getUniformLocation(this.program, 'u_image1');
         const dispVideoLoc = gl.getUniformLocation(this.program, 'u_dispVideo');
@@ -432,10 +487,9 @@
         
         gl.uniform2f(resLoc, this.canvas.width, this.canvas.height);
         gl.uniform2f(mouseLoc, this.mouseX, this.mouseY);
+        const elapsedTime = (performance.now() - this.startTime) / 1000;
         gl.uniform1f(timeLoc, elapsedTime);
-        gl.uniform1f(transLoc, this.smoothTransitionProgress);
-        // Pass 1.0 if mobile, else 0.0.
-        gl.uniform1f(mobileLoc, this.isMobile ? 1.0 : 0.0);
+        gl.uniform1f(transLoc, segmentProgress);
         
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, this.textures[imageIndex]);
