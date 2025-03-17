@@ -1,43 +1,264 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Health Pillar</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <title>WebGL Peripheral-Style Displacement with AR Control</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #000;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
 </head>
 <body>
-    <header>
-        <h1>Welcome to Health Pillar</h1>
-        <p>A new frontier in consumer-grade medical imaging.</p>
-    </header>
+  <!-- WebGL Canvas -->
+  <canvas id="glcanvas"></canvas>
+  <!-- Hidden video element used as the displacement map.
+       Note: autoplay is removed so that playback is controlled by device motion -->
+  <video id="dispVideo" src="displacement.mp4" loop muted playsinline style="display: none;"></video>
+  <script>
+    // Get canvas and initialize WebGL context.
+    const canvas = document.getElementById("glcanvas");
+    const gl = canvas.getContext("webgl");
+    if (!gl) { 
+      alert("WebGL not supported!");
+    }
 
-    <main>
-        <section id="about">
-            <h2>About the Device</h2>
-            <p>This AI-driven medical imaging device integrates non-invasive technologies like ultrasound, EIT, and PPG to provide comprehensive health analysis at home.</p>
-        </section>
+    // Resize canvas to fill window.
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      gl.viewport(0, 0, canvas.width, canvas.height);
+    }
+    window.addEventListener("resize", resize);
+    resize();
 
-        <section id="features">
-            <h2>Features</h2>
-            <ul>
-                <li>Real-time 3D scans</li>
-                <li>AI-powered diagnostics</li>
-                <li>Seamless smartphone integration</li>
-                <li>Wearable health monitoring</li>
-            </ul>
-        </section>
+    // Vertex shader: Positions a full-screen quad and passes texture coordinates.
+    const vsSource = `
+      attribute vec4 aVertexPosition;
+      attribute vec2 aTextureCoord;
+      varying highp vec2 vTextureCoord;
+      void main(void) {
+        gl_Position = aVertexPosition;
+        vTextureCoord = aTextureCoord;
+      }
+    `;
 
-        <section id="how-it-works">
-            <h2>How It Works</h2>
-            <p>The device captures multiple imaging modalities and processes the data with AI to generate detailed visualizations and insights.</p>
-        </section>
+    // Fragment shader: Blends two images using a video displacement map and device gyro data.
+    const fsSource = `
+      precision highp float;
+      varying highp vec2 vTextureCoord;
+      uniform sampler2D uImage1;
+      uniform sampler2D uImage2;
+      uniform sampler2D uDispMap;
+      uniform vec2 uResolution;
+      uniform float uTime;
+      uniform vec3 uGyro; // x, y, z gyro data
 
-        <section id="vision">
-            <h2>Our Vision</h2>
-            <p>Empowering individuals with cutting-edge medical imaging tools for proactive health management.</p>
-        </section>
-    </main>
+      // Apply a subtle glitch/color shift effect.
+      vec3 applyColorGlitch(vec3 color, vec2 uv) {
+        float glitch = sin(uv.y * 10.0 + uTime * 5.0) * 0.1;
+        return vec3(color.r + glitch, color.g, color.b - glitch);
+      }
 
-    <footer>
-        <p>© 2025 Health Pillar. All
+      void main(void) {
+        vec2 uv = vTextureCoord;
+        // Sample the displacement map and remap to -1 to 1.
+        vec2 disp = texture2D(uDispMap, uv).rg;
+        disp = (disp - 0.5) * 2.0;
+        // Scale the displacement and add influence from the gyro (using X and Y).
+        disp *= 0.05;
+        disp += uGyro.xy * 0.01;
+
+        // Sample two images with opposite displacement offsets.
+        vec4 color1 = texture2D(uImage1, uv + disp);
+        vec4 color2 = texture2D(uImage2, uv - disp);
+
+        // Create a blend factor from the displacement map and add time/gyro-based modulation.
+        float blendFactor = texture2D(uDispMap, uv).r;
+        blendFactor += sin(uTime + uv.x * 10.0 + uGyro.x) * 0.05;
+        blendFactor = clamp(blendFactor, 0.0, 1.0);
+
+        // Blend the images and apply the glitch effect.
+        vec4 finalColor = mix(color1, color2, blendFactor);
+        finalColor.rgb = applyColorGlitch(finalColor.rgb, uv);
+        gl_FragColor = finalColor;
+      }
+    `;
+
+    // Helper function to compile a shader.
+    function loadShader(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        alert('An error occurred compiling the shaders: ' + gl.getShaderInfoLog(shader));
+        gl.deleteShader(shader);
+        return null;
+      }
+      return shader;
+    }
+
+    const vertexShader = loadShader(gl.VERTEX_SHADER, vsSource);
+    const fragmentShader = loadShader(gl.FRAGMENT_SHADER, fsSource);
+
+    // Create the shader program.
+    const shaderProgram = gl.createProgram();
+    gl.attachShader(shaderProgram, vertexShader);
+    gl.attachShader(shaderProgram, fragmentShader);
+    gl.linkProgram(shaderProgram);
+    if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+      alert("Unable to initialize the shader program: " + gl.getProgramInfoLog(shaderProgram));
+    }
+    gl.useProgram(shaderProgram);
+
+    // Get attribute and uniform locations.
+    const programInfo = {
+      attribLocations: {
+        vertexPosition: gl.getAttribLocation(shaderProgram, "aVertexPosition"),
+        textureCoord: gl.getAttribLocation(shaderProgram, "aTextureCoord"),
+      },
+      uniformLocations: {
+        uImage1: gl.getUniformLocation(shaderProgram, "uImage1"),
+        uImage2: gl.getUniformLocation(shaderProgram, "uImage2"),
+        uDispMap: gl.getUniformLocation(shaderProgram, "uDispMap"),
+        uResolution: gl.getUniformLocation(shaderProgram, "uResolution"),
+        uTime: gl.getUniformLocation(shaderProgram, "uTime"),
+        uGyro: gl.getUniformLocation(shaderProgram, "uGyro"),
+      },
+    };
+
+    // Set up a full-screen quad.
+    const positions = [
+      -1.0,  1.0,
+      -1.0, -1.0,
+       1.0,  1.0,
+       1.0, -1.0,
+    ];
+    const positionBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+
+    const textureCoords = [
+      0.0, 1.0,
+      0.0, 0.0,
+      1.0, 1.0,
+      1.0, 0.0,
+    ];
+    const texCoordBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoords), gl.STATIC_DRAW);
+
+    // Function to load an image texture.
+    function loadTexture(url) {
+      const texture = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      // Temporary blue pixel until the image loads.
+      const level = 0, internalFormat = gl.RGBA, width = 1, height = 1, border = 0;
+      const srcFormat = gl.RGBA, srcType = gl.UNSIGNED_BYTE;
+      gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, width, height, border, srcFormat, srcType, new Uint8Array([0, 0, 255, 255]));
+      const image = new Image();
+      image.crossOrigin = "";
+      image.onload = function() {
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, srcFormat, srcType, image);
+        if (isPowerOf2(image.width) && isPowerOf2(image.height)) {
+          gl.generateMipmap(gl.TEXTURE_2D);
+        } else {
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        }
+      };
+      image.src = url;
+      return texture;
+    }
+    function isPowerOf2(value) { return (value & (value - 1)) === 0; }
+
+    // Load two image textures.
+    const imageTexture1 = loadTexture("image1.jpg");
+    const imageTexture2 = loadTexture("image2.jpg");
+
+    // Set up the video texture for the displacement map.
+    const video = document.getElementById("dispVideo");
+    // Pause the video to let device motion control playback.
+    video.pause();
+    const videoTexture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, videoTexture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
+    function updateVideoTexture() {
+      if (video.readyState >= video.HAVE_CURRENT_DATA) {
+        gl.bindTexture(gl.TEXTURE_2D, videoTexture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      }
+    }
+
+    // Listen for device orientation (gyro) events.
+    let gyroData = { x: 0, y: 0, z: 0 };
+    window.addEventListener("deviceorientation", function(event) {
+      // event.beta ~ x, event.gamma ~ y, event.alpha ~ z
+      gyroData.x = event.beta || 0;
+      gyroData.y = event.gamma || 0;
+      gyroData.z = event.alpha || 0;
+    }, true);
+
+    // Render loop.
+    let startTime = Date.now();
+    function render() {
+      const currentTime = (Date.now() - startTime) / 1000;
+
+      // Update the video playback position based on device orientation.
+      // Using gyroData.z (alpha rotation: 0-360) to map to the video timeline.
+      if (video.duration > 0) {
+        let playbackFactor = ((gyroData.z % 360) + 360) % 360 / 360;
+        video.currentTime = playbackFactor * video.duration;
+      }
+
+      updateVideoTexture();
+
+      gl.clearColor(0, 0, 0, 1);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+
+      // Set up vertex positions.
+      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+      gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+      gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 2, gl.FLOAT, false, 0, 0);
+
+      // Set up texture coordinates.
+      gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+      gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+      gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, 2, gl.FLOAT, false, 0, 0);
+
+      // Pass uniform values.
+      gl.uniform2f(programInfo.uniformLocations.uResolution, canvas.width, canvas.height);
+      gl.uniform1f(programInfo.uniformLocations.uTime, currentTime);
+      gl.uniform3f(programInfo.uniformLocations.uGyro, gyroData.x, gyroData.y, gyroData.z);
+
+      // Bind image textures.
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, imageTexture1);
+      gl.uniform1i(programInfo.uniformLocations.uImage1, 0);
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, imageTexture2);
+      gl.uniform1i(programInfo.uniformLocations.uImage2, 1);
+      
+      // Bind the video displacement map texture.
+      gl.activeTexture(gl.TEXTURE2);
+      gl.bindTexture(gl.TEXTURE_2D, videoTexture);
+      gl.uniform1i(programInfo.uniformLocations.uDispMap, 2);
+
+      // Draw the full-screen quad.
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>
