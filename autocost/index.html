@@ -94,7 +94,7 @@
             background-color: #f5f5f5;
         }
         .hidden {
-            display: none;
+            display: none !important;
         }
         .recipe-list {
             list-style: none;
@@ -237,9 +237,13 @@
         const loadingIndicator = document.getElementById('loadingIndicator');
         const exportBtn = document.getElementById('exportBtn');
         const exportStatus = document.getElementById('exportStatus');
+        const loginModal = document.getElementById('loginModal');
         
         // Initialize
         function init() {
+            // Make sure the login modal is hidden on page load
+            loginModal.classList.add('hidden');
+            
             // Check if localStorage is available
             try {
                 localStorage.setItem('test', 'test');
@@ -327,6 +331,9 @@
             // Update UI
             updateRecipeList();
             showStatus(recipeStatus, "Recipe saved successfully!", "success");
+            
+            // Load the recipe we just added
+            loadRecipe(name);
         }
         
         // Update the recipe list in the UI
@@ -423,7 +430,7 @@
             }
             
             // Show the login modal
-            document.getElementById('loginModal').classList.remove('hidden');
+            loginModal.classList.remove('hidden');
         }
         
         // Handle login form submission
@@ -436,7 +443,7 @@
             };
             
             // Hide the modal
-            document.getElementById('loginModal').classList.add('hidden');
+            loginModal.classList.add('hidden');
             
             // Now proceed with fetching prices using the credentials
             fetchPricesWithCredentials(credentials);
@@ -444,7 +451,7 @@
         
         // Cancel login
         function handleCancelLogin() {
-            document.getElementById('loginModal').classList.add('hidden');
+            loginModal.classList.add('hidden');
         }
         
         // Fetch prices with provided credentials
@@ -453,12 +460,19 @@
             fetchStatus.innerHTML = '';
             
             try {
+                // Make sure currentRecipeData is defined
+                if (!currentRecipeData || !currentRecipeData.ingredients) {
+                    throw new Error("No recipe selected. Please select or create a recipe first.");
+                }
+                
                 // Extract just the ingredient data we need
                 const ingredientsToSend = currentRecipeData.ingredients.map(ing => ({
                     name: ing.name,
                     quantity: ing.quantity,
                     unit: ing.unit
                 }));
+                
+                console.log("Sending ingredients:", ingredientsToSend);
                 
                 // Call the serverless function
                 const response = await fetch('/api/getPrices', {
@@ -473,10 +487,12 @@
                 });
                 
                 if (!response.ok) {
-                    throw new Error(`HTTP error ${response.status}`);
+                    const errorData = await response.json();
+                    throw new Error(`Server error: ${errorData.error || response.status}`);
                 }
                 
                 const data = await response.json();
+                console.log("Received data:", data);
                 
                 // Update the recipe with real price data
                 currentRecipeData.ingredients = data.results;
@@ -497,6 +513,7 @@
                 updateIngredientsTable(data.results);
                 showStatus(fetchStatus, "Prices fetched successfully!", "success");
             } catch (error) {
+                console.error("Error fetching prices:", error);
                 showStatus(fetchStatus, "Error fetching prices: " + error.message, "error");
             } finally {
                 loadingIndicator.style.display = 'none';
