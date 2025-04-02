@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RGB Text Effect with Blotter.js</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        #container {
+            width: 100%;
+            max-width: 1200px;
+            padding: 20px;
+        }
+
+        #text-container {
+            width: 100%;
+            height: 300px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+
+        .controls {
+            margin-top: 30px;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type="range"] {
+            width: 100%;
+        }
+
+        .value-display {
+            font-size: 0.8em;
+            color: #666;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #3e8e41;
+        }
+
+        .presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+    </style>
+    <!-- Include Blotter.js and ChannelSplitMaterial -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Blotter/0.1.0/blotter.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Blotter/0.1.0/materials/channelSplitMaterial.min.js"></script>
+</head>
+<body>
+    <div id="container">
+        <h1>RGB Text Effect with Blotter.js</h1>
+        
+        <div id="text-container"></div>
+        
+        <div class="controls">
+            <h3>Adjust RGB Effect</h3>
+            
+            <div class="control-group">
+                <label for="text-input">Text:</label>
+                <input type="text" id="text-input" value="RGB EFFECT" />
+                <button id="update-text">Update Text</button>
+            </div>
+            
+            <div class="control-group">
+                <label for="offset-slider">RGB Offset: <span id="offset-value" class="value-display">0.05</span></label>
+                <input type="range" id="offset-slider" min="0" max="0.5" step="0.01" value="0.05">
+            </div>
+            
+            <div class="control-group">
+                <label for="rotation-slider">Rotation: <span id="rotation-value" class="value-display">50</span></label>
+                <input type="range" id="rotation-slider" min="0" max="360" step="1" value="50">
+            </div>
+            
+            <div class="control-group">
+                <label for="blur-slider">Blur: <span id="blur-value" class="value-display">1</span></label>
+                <input type="range" id="blur-slider" min="0" max="1" step="0.1" value="1">
+            </div>
+            
+            <div class="control-group">
+                <label for="animate-slider">Animation Amount: <span id="animate-value" class="value-display">0.3</span></label>
+                <input type="range" id="animate-slider" min="0" max="1" step="0.1" value="0.3">
+            </div>
+            
+            <div class="control-group">
+                <label>Text Color:</label>
+                <input type="color" id="color-picker" value="#000000">
+            </div>
+            
+            <div class="control-group">
+                <label>Background Color:</label>
+                <input type="color" id="bg-color-picker" value="#f0f0f0">
+            </div>
+            
+            <div class="control-group">
+                <button id="animate-toggle">Toggle Animation</button>
+                <button id="reset">Reset</button>
+            </div>
+            
+            <div class="control-group">
+                <label>Presets:</label>
+                <div class="presets">
+                    <button class="preset" data-preset="subtle">Subtle</button>
+                    <button class="preset" data-preset="extreme">Extreme</button>
+                    <button class="preset" data-preset="vibrant">Vibrant</button>
+                    <button class="preset" data-preset="glitch">Glitch</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize variables
+        let blotter, material, text, scope;
+        let isAnimating = false;
+        let animationId = null;
+        
+        // Initialize the Blotter effect
+        function initBlotter() {
+            // Create text to apply the effect to
+            text = new Blotter.Text(document.getElementById('text-input').value, {
+                family: "sans-serif",
+                size: 80,
+                fill: document.getElementById('color-picker').value,
+                paddingLeft: 40,
+                paddingRight: 40
+            });
+
+            // Create the material with RGB channel split effect
+            material = new Blotter.ChannelSplitMaterial();
+
+            // Configure the RGB effect
+            material.uniforms.uOffset.value = parseFloat(document.getElementById('offset-slider').value);
+            material.uniforms.uRotation.value = parseFloat(document.getElementById('rotation-slider').value);
+            material.uniforms.uApplyBlur.value = parseFloat(document.getElementById('blur-slider').value);
+            material.uniforms.uAnimateNoise.value = parseFloat(document.getElementById('animate-slider').value);
+
+            // Create the Blotter instance with our material
+            blotter = new Blotter(material, {
+                texts: text
+            });
+
+            // Apply to a DOM element
+            const textContainer = document.getElementById("text-container");
+            textContainer.innerHTML = ''; // Clear previous content
+            scope = blotter.forText(text);
+            scope.appendTo(textContainer);
+        }
+
+        // Initialize Blotter when the page loads
+        window.addEventListener('load', initBlotter);
+
+        // Function to update text
+        document.getElementById('update-text').addEventListener('click', () => {
+            if (blotter) {
+                blotter.destroy();
+            }
+            initBlotter();
+        });
+
+        // Update offset value
+        document.getElementById('offset-slider').addEventListener('input', (e) => {
+            document.getElementById('offset-value').textContent = e.target.value;
+            if (material) {
+                material.uniforms.uOffset.value = parseFloat(e.target.value);
+            }
+        });
+
+        // Update rotation value
+        document.getElementById('rotation-slider').addEventListener('input', (e) => {
+            document.getElementById('rotation-value').textContent = e.target.value;
+            if (material) {
+                material.uniforms.uRotation.value = parseFloat(e.target.value);
+            }
+        });
+
+        // Update blur value
+        document.getElementById('blur-slider').addEventListener('input', (e) => {
+            document.getElementById('blur-value').textContent = e.target.value;
+            if (material) {
+                material.uniforms.uApplyBlur.value = parseFloat(e.target.value);
+            }
+        });
+
+        // Update animation amount
+        document.getElementById('animate-slider').addEventListener('input', (e) => {
+            document.getElementById('animate-value').textContent = e.target.value;
+            if (material) {
+                material.uniforms.uAnimateNoise.value = parseFloat(e.target.value);
+            }
+        });
+
+        // Update text color
+        document.getElementById('color-picker').addEventListener('input', (e) => {
+            if (text) {
+                text.fill = e.target.value;
+            }
+        });
+
+        // Update background color
+        document.getElementById('bg-color-picker').addEventListener('input', (e) => {
+            document.body.style.backgroundColor = e.target.value;
+        });
+
+        // Toggle animation
+        document.getElementById('animate-toggle').addEventListener('click', () => {
+            isAnimating = !isAnimating;
+            
+            if (isAnimating) {
+                let offset = parseFloat(document.getElementById('offset-slider').value);
+                let direction = 0.001;
+                
+                const animate = () => {
+                    offset += direction;
+                    
+                    // Reverse direction when reaching limits
+                    if (offset > 0.5 || offset < 0) {
+                        direction *= -1;
+                    }
+                    
+                    // Update slider and material
+                    document.getElementById('offset-slider').value = offset;
+                    document.getElementById('offset-value').textContent = offset.toFixed(2);
+                    
+                    if (material) {
+                        material.uniforms.uOffset.value = offset;
+                    }
+                    
+                    animationId = requestAnimationFrame(animate);
+                };
+                
+                animate();
+                document.getElementById('animate-toggle').textContent = 'Stop Animation';
+            } else {
+                cancelAnimationFrame(animationId);
+                document.getElementById('animate-toggle').textContent = 'Toggle Animation';
+            }
+        });
+
+        // Reset to defaults
+        document.getElementById('reset').addEventListener('click', () => {
+            // Stop animation if running
+            if (isAnimating) {
+                cancelAnimationFrame(animationId);
+                isAnimating = false;
+                document.getElementById('animate-toggle').textContent = 'Toggle Animation';
+            }
+            
+            // Reset slider values
+            document.getElementById('offset-slider').value = 0.05;
+            document.getElementById('offset-value').textContent = '0.05';
+            document.getElementById('rotation-slider').value = 50;
+            document.getElementById('rotation-value').textContent = '50';
+            document.getElementById('blur-slider').value = 1;
+            document.getElementById('blur-value').textContent = '1';
+            document.getElementById('animate-slider').value = 0.3;
+            document.getElementById('animate-value').textContent = '0.3';
+            document.getElementById('color-picker').value = '#000000';
+            document.getElementById('bg-color-picker').value = '#f0f0f0';
+            document.getElementById('text-input').value = 'RGB EFFECT';
+            
+            document.body.style.backgroundColor = '#f0f0f0';
+            
+            // Reinitialize Blotter
+            if (blotter) {
+                blotter.destroy();
+            }
+            initBlotter();
+        });
+
+        // Presets
+        document.querySelectorAll('.preset').forEach(preset => {
+            preset.addEventListener('click', () => {
+                const presetType = preset.getAttribute('data-preset');
+                
+                // Stop animation if running
+                if (isAnimating) {
+                    cancelAnimationFrame(animationId);
+                    isAnimating = false;
+                    document.getElementById('animate-toggle').textContent = 'Toggle Animation';
+                }
+                
+                switch (presetType) {
+                    case 'subtle':
+                        document.getElementById('offset-slider').value = 0.02;
+                        document.getElementById('offset-value').textContent = '0.02';
+                        document.getElementById('rotation-slider').value = 45;
+                        document.getElementById('rotation-value').textContent = '45';
+                        document.getElementById('blur-slider').value = 0.5;
+                        document.getElementById('blur-value').textContent = '0.5';
+                        document.getElementById('animate-slider').value = 0.1;
+                        document.getElementById('animate-value').textContent = '0.1';
+                        document.getElementById('color-picker').value = '#000000';
+                        document.getElementById('bg-color-picker').value = '#ffffff';
+                        break;
+                    case 'extreme':
+                        document.getElementById('offset-slider').value = 0.4;
+                        document.getElementById('offset-value').textContent = '0.4';
+                        document.getElementById('rotation-slider').value = 90;
+                        document.getElementById('rotation-value').textContent = '90';
+                        document.getElementById('blur-slider').value = 1;
+                        document.getElementById('blur-value').textContent = '1';
+                        document.getElementById('animate-slider').value = 0.6;
+                        document.getElementById('animate-value').textContent = '0.6';
+                        document.getElementById('color-picker').value = '#FF0000';
+                        document.getElementById('bg-color-picker').value = '#000000';
+                        break;
+                    case 'vibrant':
+                        document.getElementById('offset-slider').value = 0.15;
+                        document.getElementById('offset-value').textContent = '0.15';
+                        document.getElementById('rotation-slider').value = 120;
+                        document.getElementById('rotation-value').textContent = '120';
+                        document.getElementById('blur-slider').value = 0.7;
+                        document.getElementById('blur-value').textContent = '0.7';
+                        document.getElementById('animate-slider').value = 0.4;
+                        document.getElementById('animate-value').textContent = '0.4';
+                        document.getElementById('color-picker').value = '#00AAFF';
+                        document.getElementById('bg-color-picker').value = '#222222';
+                        break;
+                    case 'glitch':
+                        document.getElementById('offset-slider').value = 0.3;
+                        document.getElementById('offset-value').textContent = '0.3';
+                        document.getElementById('rotation-slider').value = 180;
+                        document.getElementById('rotation-value').textContent = '180';
+                        document.getElementById('blur-slider').value = 0.3;
+                        document.getElementById('blur-value').textContent = '0.3';
+                        document.getElementById('animate-slider').value = 0.8;
+                        document.getElementById('animate-value').textContent = '0.8';
+                        document.getElementById('color-picker').value = '#FFFFFF';
+                        document.getElementById('bg-color-picker').value = '#0F0F0F';
+                        break;
+                }
+                
+                document.body.style.backgroundColor = document.getElementById('bg-color-picker').value;
+                
+                // Apply preset settings
+                if (material) {
+                    material.uniforms.uOffset.value = parseFloat(document.getElementById('offset-slider').value);
+                    material.uniforms.uRotation.value = parseFloat(document.getElementById('rotation-slider').value);
+                    material.uniforms.uApplyBlur.value = parseFloat(document.getElementById('blur-slider').value);
+                    material.uniforms.uAnimateNoise.value = parseFloat(document.getElementById('animate-slider').value);
+                }
+                
+                if (text) {
+                    text.fill = document.getElementById('color-picker').value;
+                }
+            });
+        });
+
+        // Mouse move effect (optional - uncomment to enable)
+        /*
+        document.addEventListener("mousemove", (event) => {
+            if (material) {
+                // Map mouse X position to rotation value
+                const rotationValue = (event.clientX / window.innerWidth) * 360;
+                material.uniforms.uRotation.value = rotationValue;
+                document.getElementById('rotation-slider').value = rotationValue;
+                document.getElementById('rotation-value').textContent = Math.round(rotationValue);
+                
+                // Map mouse Y position to offset value (0.01 to 0.3)
+                const offsetValue = 0.01 + (event.clientY / window.innerHeight) * 0.29;
+                material.uniforms.uOffset.value = offsetValue;
+                document.getElementById('offset-slider').value = offsetValue;
+                document.getElementById('offset-value').textContent = offsetValue.toFixed(2);
+            }
+        });
+        */
+    </script>
+</body>
+</html>
