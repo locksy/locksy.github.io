@@ -128,58 +128,56 @@
   <script>
     const fill = document.getElementById('loaderFill');
     const fadeScreen = document.getElementById('fadeScreen');
-    let progress = 0;
 
     const ASSETS = [
       "1.JPG", "2.JPG", "3.JPG", "4.JPG", "5.JPG", "6.JPG", "7.JPG",
       "dispvid4.mp4"
     ];
 
-    function updateProgress(pct) {
+    let loadedCount = 0;
+
+    function updateProgress() {
+      const pct = (loadedCount / ASSETS.length) * 100;
       fill.style.setProperty('--progress', pct + '%');
     }
 
-    function preloadAssets() {
-      return Promise.all(
-        ASSETS.map(url =>
-          fetch(url, { method: 'GET' })
-            .then(res => {
-              if (!res.ok) throw new Error(`Failed to preload ${url}`);
-            })
-            .catch(err => {
-              console.warn('Preload failed:', url, err);
-            })
-        )
-      );
+    function preloadAsset(url) {
+      return fetch(url, { method: 'GET' })
+        .then(res => {
+          if (!res.ok) throw new Error(`Failed to load ${url}`);
+          loadedCount++;
+          updateProgress();
+        })
+        .catch(err => {
+          console.warn(`⚠️ Couldn’t preload ${url}`, err);
+          loadedCount++;
+          updateProgress();
+        });
+    }
+
+    function preloadAllAssets() {
+      return Promise.all(ASSETS.map(preloadAsset));
     }
 
     window.addEventListener('load', () => {
       setTimeout(() => {
         fadeScreen.classList.add('fade-out');
 
-        preloadAssets().then(() => console.log("✅ All assets preloaded."));
-
-        // Wait 0.5s before starting progress bar
         setTimeout(() => {
-          const interval = setInterval(() => {
-            progress += 1;
-            updateProgress(progress);
-            if (progress >= 100) {
-              clearInterval(interval);
+          preloadAllAssets().then(() => {
+            console.log("✅ All assets loaded.");
 
-              // Wait 0.7s before fading to black
+            // Wait 0.7s after full load
+            setTimeout(() => {
+              fadeScreen.classList.remove('fade-out');
+              fadeScreen.classList.add('fade-in');
+
               setTimeout(() => {
-                fadeScreen.classList.remove('fade-out');
-                fadeScreen.classList.add('fade-in');
-
-                // After fade, go to index2.html
-                setTimeout(() => {
-                  window.location.href = 'index2.html';
-                }, 1400);
-              }, 700);
-            }
-          }, 40);
-        }, 500);
+                window.location.href = 'index2.html';
+              }, 1400);
+            }, 700);
+          });
+        }, 500); // Wait 0.5s before starting progress
       }, 100);
     });
   </script>
