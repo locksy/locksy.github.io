@@ -111,10 +111,6 @@
     .fade-screen.fade-in {
       opacity: 1;
     }
-
-    video {
-      display: none;
-    }
   </style>
 </head>
 <body>
@@ -128,67 +124,65 @@
   </div>
 
   <div class="fade-screen" id="fadeScreen"></div>
-  <video id="preloadVideo" src="dispvid4.mp4" preload="auto" muted playsinline></video>
 
   <script>
     const fill = document.getElementById('loaderFill');
     const fadeScreen = document.getElementById('fadeScreen');
-    const preloadVideo = document.getElementById('preloadVideo');
+    let progress = 0;
 
-    const imagePaths = [
-      "1.JPG", "2.JPG", "3.JPG", "4.JPG", "5.JPG", "6.JPG", "7.JPG"
+    const ASSETS = [
+      "1.JPG", "2.JPG", "3.JPG", "4.JPG", "5.JPG", "6.JPG", "7.JPG",
+      "dispvid4.mp4"
     ];
 
-    let loadedCount = 0;
-    const totalAssets = imagePaths.length + 1; // +1 for video
-
-    function updateProgress() {
-      const pct = (loadedCount / totalAssets) * 100;
+    function updateProgress(pct) {
       fill.style.setProperty('--progress', pct + '%');
     }
 
-    function loadImage(url) {
-      return new Promise(resolve => {
-        const img = new Image();
-        img.onload = () => {
-          loadedCount++;
-          updateProgress();
-          resolve();
-        };
-        img.onerror = () => {
-          console.warn("Image failed to load:", url);
-          loadedCount++;
-          updateProgress();
-          resolve();
-        };
-        img.src = url;
-      });
-    }
-
-    function loadVideo(video) {
-      return new Promise(resolve => {
-        const done = () => {
-          loadedCount++;
-          updateProgress();
-          resolve();
-        };
-        video.addEventListener('canplaythrough', done, { once: true });
-        video.load(); // trigger load
-      });
-    }
-
-    async function preloadAll() {
-      const imagePromises = imagePaths.map(loadImage);
-      const videoPromise = loadVideo(preloadVideo);
-      await Promise.all([...imagePromises, videoPromise]);
+    function preloadAssets() {
+      return Promise.all(
+        ASSETS.map(url =>
+          fetch(url, { method: 'GET' })
+            .then(res => {
+              if (!res.ok) throw new Error(`Failed to preload ${url}`);
+            })
+            .catch(err => {
+              console.warn('Preload failed:', url, err);
+            })
+        )
+      );
     }
 
     window.addEventListener('load', () => {
       setTimeout(() => {
         fadeScreen.classList.add('fade-out');
 
-        setTimeout(async () => {
-          await preloadAll();
-          console.log("✅ Everything fully loaded and decoded");
+        preloadAssets().then(() => console.log("✅ All assets preloaded."));
 
-          setTimeout(() => {
+        // Wait 0.5s before starting progress bar
+        setTimeout(() => {
+          const interval = setInterval(() => {
+            progress += 1;
+            updateProgress(progress);
+            if (progress >= 100) {
+              clearInterval(interval);
+
+              // Wait 0.7s before fading to black
+              setTimeout(() => {
+                fadeScreen.classList.remove('fade-out');
+                fadeScreen.classList.add('fade-in');
+
+                // After fade, go to index2.html
+                setTimeout(() => {
+                  window.location.href = 'index2.html';
+                }, 1400);
+              }, 700);
+            }
+          }, 40);
+        }, 500);
+      }, 100);
+    });
+  </script>
+
+</body>
+</html>
