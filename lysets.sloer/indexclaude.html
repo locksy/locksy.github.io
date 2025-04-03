@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>lysets.slør - 360° Sphere</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: #000;
+      font-family: Arial, sans-serif;
+      touch-action: none;
+    }
+    canvas {
+      width: 100vw;
+      height: 100vh;
+      display: block;
+    }
+    #motionBtn {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 1em 2em;
+      font-size: 1.2em;
+      background-color: rgba(0,0,0,0.8);
+      color: #fff;
+      border: 2px solid #fff;
+      border-radius: 5px;
+      z-index: 1000;
+      cursor: pointer;
+      display: none;
+    }
+    #loadingIndicator {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 1.5em;
+      z-index: 1000;
+    }
+    #debugInfo {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: white;
+      background-color: rgba(0,0,0,0.5);
+      padding: 5px;
+      font-size: 12px;
+      z-index: 1000;
+      max-height: 300px;
+      overflow-y: auto;
+      display: none; /* Hide debug by default */
+    }
+  </style>
+</head>
+<body>
+  <canvas id="shaderCanvas"></canvas>
+  <button id="motionBtn">Enable 360° Experience</button>
+  <div id="loadingIndicator">Loading images... <span id="loadProgress">0/32</span></div>
+  <div id="debugInfo"></div>
+  
+  <script>
+    class SphericalARExperience {
+      constructor() {
+        this.canvas = document.getElementById('shaderCanvas');
+        
+        // Force WebGL1 for better compatibility
+        this.gl = this.canvas.getContext('webgl') || this.canvas.getContext('experimental-webgl');
+        if (!this.gl) {
+          alert('Your browser does not support WebGL. Please try a different browser.');
+          return;
+        }
+        
+        this.loadingIndicator = document.getElementById('loadingIndicator');
+        this.loadProgress = document.getElementById('loadProgress');
+        this.debugInfo = document.getElementById('debugInfo');
+        
+        this.showDebugInfo("Initializing...");
+
+        // Detect mobile device
+        this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        this.showDebugInfo(`Device type: ${this.isMobile ? 'Mobile' : 'Desktop'}`);
+        
+        // Create array with all possible paths to try
+        this.imagePathsToTry = [
+          // Path options to try in order
+          this.isMobile ? 'img/mobile/' : 'img/desktop/',
+          'img/',
+          '',
+          this.isMobile ? 'mobile/' : 'desktop/',
+          '2-33/'
+        ];
+        
+        // Create array of image paths (2.JPG to 33.JPG)
+        this.imagePaths = [];
+        this.imageStartIndex = 2;
+        this.imageEndIndex = 33;
+        this.imageCount = this.imageEndIndex - this.imageStartIndex + 1;
+        
+        // Create the video element for displacement
+        this.video = document.createElement('video');
+        
+        // Multiple video paths to try
+        this.videoPathsToTry = [
+          this.isMobile ? "dispvid4mobile.mp4" : "dispvid4.mp4",
+          "dispvid4.mp4",
+          "assets/dispvid4.mp4"
+        ];
+        
+        this.findWorkingVideoPath();
+        
+        this.video.loop = true;
+        this.video.muted = true;
+        this.video.playsInline = true;
+
+        // Mouse & velocity-based fractal time 
+        this.mouseX = 0;
+        this.mouseY = 0;
+        this.lastMouseX = 0;
+        this.lastMouseY = 0;
+
+        // For deciding when to play/pause the displacement video
+        this.moveThreshold = 0.1; // Short time before stopping video after movement ceases
+        
+        // For tracking device motion
+        this.lastMouseMoveTime = performance.now() / 1000;
+
+        // Fractal time tracking (kept from original)
+        this.fractalTime = 0;
+        this.lastFrameTime = performance.now() / 1000;
+
+        // Enhanced transition control
+        this.currentTransition = 0.0; 
+        this.targetTransition = 0.0;
+        this.transitionSpeed = 0.05; // Slower for smoother transitions
+        
+        // Spherical coordinates (phi: horizontal, theta: vertical)
+        this.phi = 0;  // horizontal angle (0 to 2π)
+        this.theta = Math.PI / 2;  // vertical angle (0 to π)
+        
+        // Target values for smooth motion
+        this.targetPhi = 0;
+        this.targetTheta = Math.PI / 2;
+        
+        // Control variables for transitions
+        this.isTransitioning = false;
+        this.transitionStartTime = 0;
+        this.transitionDuration = 0.8; // seconds for full transition
+
+        // WebGL1 compatible shaders
+        
+        // Vertex shader - simple pass-through
+        this.vertexShaderSource = `
+          attribute vec4 a_position;
+          attribute vec2 a_texCoord;
+          varying vec2 v_texCoord;
+          void main() {
+            gl_Position = a_position;
+            v_texCoord = a_texCoord;
+          }
+        `;
+
+        // Enhanced fragment shader with improved transitions
+        this.fragmentShaderSource = `
+          precision highp float;
+          
+          #define PI 3.141592
+
+          // Uniforms
+          uniform sampler2D u_image0;
+          uniform sampler2D u_image1;
+          uniform sampler2D u_dispVideo;
+          uniform vec2 u_resolution;
+          uniform float u_time;  // fractalTime
+          
+          uniform float u_transitionProgress;
+          uniform float u_fractalIntensity;
+          uniform float u_dispAmount;
+          uniform float u_dispScale;
+          uniform float u_blendMode;
+
+          varying vec2 v_texCoord;
+
+          // Improved cubic easing function
+          float cubicEase(float t) {
+            return t * t * (3.0 - 2.0 * t);
+          }
+          
+          // Improved cubic easing out-in function for transitions
+          float cubicEaseInOut(float t) {
+            return t < 0.5 ? 4.0 * t * t * t : 1.0 - pow(-2.0 * t + 2.0, 3.0) / 2.0;
+          }
+          
+          // Exponential easing - more dramatic
+          float expEase(float t) {
+            return t == 0.0 ? 0.0 : t == 1.0 ? 1.0 : t < 0.5 ?
+              pow(2.0, 20.0 * t - 10.0) / 2.0 :
+              (2.0 - pow(2.0, -20.0 * t + 10.0)) / 2.0;
+          }
+
+          ///////////////////////////
+          // Enhanced Transition Effect
+          ///////////////////////////
+          vec4 enhancedTransition() {
+            // Create dynamic time-based displacement
+            float dynamicTime = u_time * 0.25;
+            vec2 timeOffset = vec2(
+              0.02 * sin(dynamicTime) * cos(dynamicTime * 0.7),
+              0.02 * cos(dynamicTime) * sin(dynamicTime * 0.9)
+            );
+            
+            vec2 dispCoord = v_texCoord * u_dispScale + timeOffset;
+            
+            // Sample displacement video texture with orbital movement
+            vec2 videoDisp = texture2D(u_dispVideo, dispCoord).rg;
+            
+            // Enhance displacement based on transition progress
+            float transitionFactor = cubicEaseInOut(u_transitionProgress);
+            float dynamicDisp = u_dispAmount * (1.0 + 0.6 * sin(u_time * 0.15));
+            
+            // Create more organic displacement that intensifies during transitions
+            float dispIntensityFactor = 1.0 + sin(transitionFactor * PI) * 1.5;
+            vec2 displacement = (videoDisp - 0.5) * dynamicDisp * dispIntensityFactor;
+            
+            // Fix the image orientation by flipping the y-coordinate
+            vec2 flippedTexCoord = vec2(v_texCoord.x, 1.0 - v_texCoord.y);
+            
+            // Create a circular/radial distortion effect
+            vec2 center = vec2(0.5, 0.5);
+            vec2 toCenter = flippedTexCoord - center;
+            float distFromCenter = length(toCenter);
+            float distortionFactor = sin(transitionFactor * PI) * 0.1;
+            vec2 circularDistortion = normalize(toCenter) * distFromCenter * distortionFactor;
+            
+            // Add the circular distortion to the displacement
+            displacement += circularDistortion;
+            
+            // Dynamic UV mapping with differential distortion for each image
+            vec2 displacedUV0 = clamp(flippedTexCoord + displacement * (1.0 - transitionFactor), 0.0, 1.0);
+            vec2 displacedUV1 = clamp(flippedTexCoord - displacement * transitionFactor, 0.0, 1.0);
+            
+            // Sample both images
+            vec4 color0 = texture2D(u_image0, displacedUV0);
+            vec4 color1 = texture2D(u_image1, displacedUV1);
+            
+            // Use a modified blend function for smoother transitions
+            float blendFactor = expEase(transitionFactor); // More dramatic transition
+            
+            return mix(color0, color1, blendFactor);
+          }
+          
+          /////////////////////////////////////
+          // Fractal Iridescent Shader Effect//
+          /////////////////////////////////////
+          vec3 hsv(float h, float s, float v) {
+            vec3 k = vec3(1.0, 2.0/3.0, 1.0/3.0);
+            vec3 p = abs(fract(vec3(h) + k) * 6.0 - 3.0);
+            return v * mix(vec3(1.0), clamp(p - 1.0, 0.0, 1.0), s);
+          }
+          
+          vec3 formula(in vec2 p, in vec2 c) {
+            const float n = 2.0;
+            const int iters = 12;
+            float timeVal = u_time * 0.1;
+            vec3 col = vec3(0.0);
+            float t = 1.0;
+            float dpp = dot(p, p);
+            float lp = sqrt(dpp);
+            float r = smoothstep(0.0, 0.2, lp);
+            
+            for (int i = 0; i < iters; i++) {
+              p = abs(mod(p/dpp + c, n) - n/2.0);
+              dpp = dot(p, p);
+              lp = sqrt(dpp);
+              t *= smoothstep(0.0, 0.01, abs(n/2.0 - p.x) * lp)
+                 * smoothstep(0.0, 0.01, abs(n/2.0 - p.y) * lp)
+                 * smoothstep(0.0, 0.01, abs(p.x) * 2.0)
+                 * smoothstep(0.0, 0.01, abs(p.y) * 2.0);
+              r *= smoothstep(0.0, 0.2, lp);
+              col += hsv(1.0 - max(p.x, p.y) + t * 2.0 + timeVal, 2.0 - lp + t, r);
+            }
+            return (-cos(col / 4.0) * 0.5 + 0.5) * t;
+          }
+          
+          vec3 newShaderEffect(vec2 fragCoord) {
+            vec2 p = -1.0 + 2.0 * fragCoord / u_resolution;
+            p.x *= u_resolution.x / u_resolution.y;
+            p *= 2.0;
+            const vec2 e = vec2(0.06545465634, -0.05346356485);
+            vec2 c = u_time * e;  
+            vec3 col = vec3(0.0);
+            const float blursamples = 4.0;
+            float sbs = sqrt(blursamples);
+            float mbluramount = 1.0 / u_resolution.x / length(e) / blursamples * 2.0;
+            float aabluramount = 1.0 / u_resolution.x / sbs * 4.0;
+            for (float b = 0.0; b < blursamples; b++) {
+              col += formula(
+                p + vec2(mod(b, sbs) * aabluramount, floor(b / sbs) * aabluramount),
+                c + e * mbluramount * b
+              );
+            }
+            col /= blursamples;
+            return col;
+          }
+          
+          //////////////////////////////
+          // Enhanced Blend Modes     //
+          //////////////////////////////
+          vec3 colorDodgeBlend(vec3 base, vec3 blend) {
+            return clamp(base / (1.0 - blend + 0.001), 0.0, 1.0);
+          }
+          
+          vec3 lightenBlend(vec3 base, vec3 blend) {
+            return max(base, blend);
+          }
+          
+          vec3 differenceBlend(vec3 base, vec3 blend) {
+            return abs(base - blend);
+          }
+          
+          // Overlay blend
+          vec3 overlayBlend(vec3 base, vec3 blend) {
+            return mix(
+              2.0 * base * blend,
+              1.0 - 2.0 * (1.0 - base) * (1.0 - blend),
+              step(0.5, base)
+            );
+          }
+          
+          // Soft light blend - more organic
+          vec3 softLightBlend(vec3 base, vec3 blend) {
+            return mix(
+              2.0 * base * blend + base * base * (1.0 - 2.0 * blend),
+              sqrt(base) * (2.0 * blend - 1.0) + 2.0 * base * (1.0 - blend),
+              step(0.5, blend)
+            );
+          }
+          
+          //////////////////////////////
+          // Main Fragment Function   //
+          //////////////////////////////
+          void main() {
+            vec4 baseColor = enhancedTransition();
+            // Build fractal effect
+            vec3 fractalEffect = newShaderEffect(gl_FragCoord.xy) * u_fractalIntensity;
+            
+            // Get the cyclic blend mode that changes over time
+            float cyclicBlendMode = mod(u_blendMode + u_time * 0.02, 1.0);
+            
+            // Choose blend mode with smoother transitions
+            vec3 blendResult;
+            if (cyclicBlendMode < 0.2) {
+              blendResult = colorDodgeBlend(baseColor.rgb, fractalEffect);
+            } else if (cyclicBlendMode < 0.4) {
+              blendResult = lightenBlend(baseColor.rgb, fractalEffect);
+            } else if (cyclicBlendMode < 0.6) {
+              blendResult = differenceBlend(baseColor.rgb, fractalEffect);
+            } else if (cyclicBlendMode < 0.8) {
+              blendResult = overlayBlend(baseColor.rgb, fractalEffect);
+            } else {
+              blendResult = softLightBlend(baseColor.rgb, fractalEffect);
+            }
+            
+            // Final blend with transition-aware intensity
+            float dynamicIntensity = u_fractalIntensity * (0.8 + 0.4 * sin(u_time * 0.15));
+            
+            // Increase fractal intensity during transitions for more cohesive look
+            float transitionFactor = sin(u_transitionProgress * PI);
+            dynamicIntensity *= 1.0 + transitionFactor * 0.3;
+            
+            vec3 finalColor = mix(baseColor.rgb, blendResult, dynamicIntensity);
+            gl_FragColor = vec4(finalColor, baseColor.a);
+          }
+        `;
+
+        // Initialize program and begin setup
+        try {
+          this.program = this.createShaderProgram();
+          this.setupBuffers();
+          this.setupEventListeners();
+          this.showDebugInfo("Setup complete, searching for images...");
+          
+          // Find a working image path first, then load images after
+          this.findWorkingImagePath();
+        } catch (error) {
+          this.showDebugInfo(`Error during setup: ${error.message}`);
+          console.error("Setup error:", error);
+        }
+      }
+      
+      // Try to find a working video path
+      findWorkingVideoPath() {
+        this.videoPathIndex = 0;
+        this.tryNextVideoPath();
+      }
+      
+      tryNextVideoPath() {
+        if (this.videoPathIndex >= this.videoPathsToTry.length) {
+          this.showDebugInfo("❌ Could not find a working video path. Using fallback.");
+          this.loadDispTexture(); // Continue without a video
+          return;
+        }
+        
+        const path = this.videoPathsToTry[this.videoPathIndex];
+        this.showDebugInfo(`Trying video path: ${path}`);
+        
+        this.video.src = path;
+        
+        const onError = () => {
+          this.video.removeEventListener('error', onError);
+          this.video.removeEventListener('canplaythrough', onSuccess);
+          this.showDebugInfo(`❌ Video path failed: ${path}`);
+          this.videoPathIndex++;
+          this.tryNextVideoPath();
+        };
+        
+        const onSuccess = () => {
+          this.video.removeEventListener('error', onError);
+          this.video.removeEventListener('canplaythrough', onSuccess);
+          this.showDebugInfo(`✓ Video path works: ${path}`);
+          this.loadDispTexture();
+        };
+        
+        this.video.addEventListener('error', onError);
+        this.video.addEventListener('canplaythrough', onSuccess);
+      }
+      
+      // Try to find a working image path by testing with image 2.JPG
+      findWorkingImagePath() {
+        this.showDebugInfo("Finding working image path...");
+        this.imagePathIndex = 0;
+        this.tryNextImagePath();
+      }
+      
+      tryNextImagePath() {
+        if (this.imagePathIndex >= this.imagePathsToTry.length) {
+          this.showDebugInfo("❌ Could not find a working image path. Using fallbacks.");
+          this.startWithFallbackImages();
+          return;
+        }
+        
+        const basePath = this.imagePathsToTry[this.imagePathIndex];
+        const testPath = `${basePath}${this.imageStartIndex}.JPG`;
+        this.showDebugInfo(`Trying path: ${testPath}`);
+        
+        const img = new Image();
+        img.onload = () => {
+          this.showDebugInfo(`✓ Path works: ${basePath}`);
+          
+          // Construct image paths with this working base path
+          this.imagePaths = [];
+          for (let i = this.imageStartIndex; i <= this.imageEndIndex; i++) {
+            this.imagePaths.push(`${basePath}${i}.JPG`);
+          }
+          
+          // Start loading all images now that we have a working path
+          this.loadTextures();
+        };
+        
+        img.onerror = () => {
+          this.showDebugInfo(`❌ Path failed: ${testPath}`);
+          this.imagePathIndex++;
+          this.tryNextImagePath();
+        };
+        
+        img.src = testPath;
+      }
+      
+      startWithFallbackImages() {
+        this.showDebugInfo("Creating fallback images");
+        this.textures = [];
+        
+        // Create fallback textures directly
+        const gl = this.gl;
+        for (let i = 0; i < this.imageCount; i++) {
+          const texture = gl.createTexture();
+          gl.bindTexture(gl.TEXTURE_2D, texture);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+          
+          // Create a colored fallback
+          const data = new Uint8Array(4);
+          const hue = (i / this.imageCount) * 360;
+          data[0] = Math.floor(127 + 127 * Math.sin((hue) * Math.PI / 180));
+          data[1] = Math.floor(127 + 127 * Math.sin((hue + 120) * Math.PI / 180));
+          data[2] = Math.floor(127 + 127 * Math.sin((hue + 240) * Math.PI / 180));
+          data[3] = 255;
+          
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+          this.textures.push(texture);
+        }
+        
+        this.loadingIndicator.style.display = 'none';
+        this.resizeCanvas();
+        this.showDebugInfo("Starting animation with fallback images");
+        this.render();
+      }
+
+      showDebugInfo(message) {
+        if (this.debugInfo) {
+          this.debugInfo.innerHTML += message + "<br>";
+          console.log(message);
+          // Auto-scroll to bottom
+          this.debugInfo.scrollTop = this.debugInfo.scrollHeight;
+        }
+      }
+
+      // Enhanced easing functions for smoother transitions
+      easeInOutCubic(t) {
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      }
+      
+      easeInOutQuart(t) { 
+        return t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2;
+      }
+      
+      createShaderProgram() {
+        const gl = this.gl;
+        
+        // Create vertex shader
+        const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+        gl.shaderSource(vertexShader, this.vertexShaderSource);
+        gl.compileShader(vertexShader);
+        if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
+          const error = gl.getShaderInfoLog(vertexShader);
+          this.showDebugInfo(`Vertex shader error: ${error}`);
+          throw new Error(`Vertex shader error: ${error}`);
+        }
+
+        // Create fragment shader
+        const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+        gl.shaderSource(fragmentShader, this.fragmentShaderSource);
+        gl.compileShader(fragmentShader);
+        if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
+          const error = gl.getShaderInfoLog(fragmentShader);
+          this.showDebugInfo(`Fragment shader error: ${error}`);
+          throw new Error(`Fragment shader error: ${error}`);
+        }
+
+        // Create and link program
+        const program = gl.createProgram();
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
+        gl.linkProgram(program);
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+          const error = gl.getProgramInfoLog(program);
+          this.showDebugInfo(`Program linking error: ${error}`);
+          throw new Error(`Program linking error: ${error}`);
+        }
+        
+        this.showDebugInfo("Shader program created successfully");
+        return program;
+      }
+
+      setupBuffers() {
+        const gl = this.gl;
+        
+        // Position buffer
+        const positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        const positions = [
+          -1.0, -1.0,
+           1.0, -1.0,
+          -1.0,  1.0,
+          -1.0,  1.0,
+           1.0, -1.0,
+           1.0,  1.0
+        ];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+        this.positionBuffer = positionBuffer;
+
+        // Texture coordinate buffer
+        const texCoordBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+        const texCoords = [
+          0.0, 0.0,
+          1.0, 0.0,
+          0.0, 1.0,
+          0.0, 1.0,
+          1.0, 0.0,
+          1.0, 1.0
+        ];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texCoords), gl.STATIC_DRAW);
+        this.texCoordBuffer = texCoordBuffer;
+        
+        this.showDebugInfo("Buffers created successfully");
+      }
+
+      loadTextures() {
+        this.textures = [];
+        this.images = [];
+        this.loadedImages = 0;
+        
+        const updateProgress = () => {
+          this.loadedImages++;
+          this.loadProgress.textContent = `${this.loadedImages}/${this.imagePaths.length}`;
+          
+          if (this.loadedImages === this.imagePaths.length) {
+            this.showDebugInfo("All images loaded, creating textures...");
+            this.createImageTextures();
+          }
+        };
+        
+        // Try loading each image
+        this.imagePaths.forEach((path, index) => {
+          const img = new Image();
+          
+          img.onload = () => {
+            this.showDebugInfo(`✓ Image loaded: ${path}`);
+            updateProgress();
+          };
+          
+          img.onerror = (err) => {
+            this.showDebugInfo(`❌ Error loading image ${path}`);
+            // Create a fallback image
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = `hsl(${(index * 30) % 360}, 70%, 60%)`;
+            ctx.fillRect(0, 0, 512, 512);
+            ctx.fillStyle = 'white';
+            ctx.font = '24px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`Image ${index + this.imageStartIndex}`, 256, 256);
+            
+            // Replace the image with our canvas
+            this.images[index] = canvas;
+            updateProgress();
+          };
+          
+          // Start loading the image
+          img.src = path;
+          this.images.push(img);
+        });
+      }
+      
+      createImageTextures() {
+        const gl = this.gl;
+        
+        try {
+          this.images.forEach((image, index) => {
+            const texture = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+            this.textures.push(texture);
+            this.showDebugInfo(`Created texture ${index + 1}`);
+          });
+        } catch (error) {
+          this.showDebugInfo(`Error creating textures: ${error.message}`);
+          console.error("Error creating textures:", error);
+        }
+        
+        this.loadingIndicator.style.display = 'none';
+        this.resizeCanvas();
+        this.showDebugInfo("Starting animation loop");
+        this.render(); // Start rendering when all images are loaded
+      }
+
+      loadDispTexture() {
+        const gl = this.gl;
+        this.dispVideoTexture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, this.dispVideoTexture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        
+        // Create an empty placeholder pixel
+        const emptyPixel = new Uint8Array([128, 128, 255, 255]);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, emptyPixel);
+        
+        this.showDebugInfo("Displacement texture created");
+      }
+
+      updateVideoTexture() {
+        try {
+          if (this.video.readyState >= this.video.HAVE_CURRENT_DATA) {
+            const gl = this.gl;
+            gl.bindTexture(gl.TEXTURE_2D, this.dispVideoTexture);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.video);
+          }
+        } catch (error) {
+          console.error("Error updating video texture:", error);
+        }
+      }
+      
+      setupEventListeners() {
+        // For desktop: mouse movement with improved handling
+        window.addEventListener('mousemove', e => {
+          const now = performance.now() / 1000;
+          
+          this.mouseX = e.clientX;
+          this.mouseY = e.clientY;
+          this.lastMouseMoveTime = now;
+          
+          // Map mouse X to horizontal angle (phi)
+          const newTargetPhi = ((e.clientX / window.innerWidth) * Math.PI * 2) % (Math.PI * 2);
+          
+          // Check if we're crossing the 0/2π boundary for smoother transitions
+          if (Math.abs(newTargetPhi - this.targetPhi) > Math.PI) {
+            // Adjust current phi to avoid the long way around
+            if (newTargetPhi < this.targetPhi) {
+              this.phi += Math.PI * 2;
+            } else {
+              this.phi -= Math.PI * 2;
+            }
+          }
+          
+          this.targetPhi = newTargetPhi;
+          
+          // Map mouse Y to vertical angle (theta)
+          const verticalRange = Math.PI * 0.8;
+          this.targetTheta = Math.PI/2 + (((e.clientY / window.innerHeight) - 0.5) * verticalRange);
+        });
+
+        // Handle touch events for mobile with improved handling
+        window.addEventListener('touchmove', e => {
+          if (e.touches.length > 0) {
+            const now = performance.now() / 1000;
+            
+            this.mouseX = e.touches[0].clientX;
+            this.mouseY = e.touches[0].clientY;
+            this.lastMouseMoveTime = now;
+            
+            // Map to spherical coordinates similar to mouse movement
+            const newTargetPhi = ((e.touches[0].clientX / window.innerWidth) * Math.PI * 2) % (Math.PI * 2);
+            
+            // Smooth boundary crossing
+            if (Math.abs(newTargetPhi - this.targetPhi) > Math.PI) {
+              if (newTargetPhi < this.targetPhi) {
+                this.phi += Math.PI * 2;
+              } else {
+                this.phi -= Math.PI * 2;
+              }
+            }
+            
+            this.targetPhi = newTargetPhi;
+            
+            const verticalRange = Math.PI * 0.8;
+            this.targetTheta = Math.PI/2 + (((e.touches[0].clientY / window.innerHeight) - 0.5) * verticalRange);
+          }
+          e.preventDefault(); // Prevent scrolling
+        }, { passive: false });
+
+        window.addEventListener('resize', () => {
+          this.resizeCanvas();
+        });
+
+        // Device orientation for mobile AR experience with improved handling
+        if (window.DeviceOrientationEvent) {
+          const motionBtn = document.getElementById('motionBtn');
+          
+          // For iOS devices that require permission
+          if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+            motionBtn.style.display = 'block';
+            motionBtn.addEventListener('click', () => {
+              DeviceOrientationEvent.requestPermission()
+                .then(response => {
+                  if (response === 'granted') {
+                    this.setupDeviceOrientation();
+                    motionBtn.style.display = 'none';
+                  }
+                })
+                .catch(error => {
+                  this.showDebugInfo(`Device orientation permission error: ${error.message}`);
+                  console.error("Device orientation permission error:", error);
+                });
+            });
+          } else {
+            // For Android and other devices
+            this.setupDeviceOrientation();
+          }
+        }
+        
+        this.showDebugInfo("Event listeners set up");
+      }
+      
+      setupDeviceOrientation() {
+        // Track the last values to calculate deltas
+        let lastAlpha = null;
+        
+        window.addEventListener('deviceorientation', e => {
+          // Get device orientation values
+          let alpha = e.alpha || 0;  // Z-axis rotation [0, 360)
+          let beta = e.beta || 0;    // X-axis rotation [-180, 180]
+          let gamma = e.gamma || 0;  // Y-axis rotation [-90, 90]
+          
+          // Create smoother alpha transitions (handle the 0/360 boundary)
+          if (lastAlpha !== null) {
+            // If crossing the boundary, adjust for smoother transition
+            if (Math.abs(alpha - lastAlpha) > 180) {
+              if (alpha < lastAlpha) {
+                this.phi += Math.PI * 2 * (alpha / 360);
+              } else {
+                this.phi -= Math.PI * 2 * ((360 - alpha) / 360);
+              }
+            }
+          }
+          lastAlpha = alpha;
+          
+          // Map alpha to horizontal angle (phi) with smoother transitions
+          this.targetPhi = ((alpha / 360) * Math.PI * 2) % (Math.PI * 2);
+          
+          // Map beta to vertical angle (theta) with smoothing
+          const betaRadians = (beta / 180) * Math.PI;
+          this.targetTheta = Math.max(0.1, Math.min(Math.PI - 0.1, betaRadians + Math.PI/2));
+          
+          this.lastMouseMoveTime = performance.now() / 1000;
+        }, true);
+        
+        this.showDebugInfo("Device orientation set up");
+      }
+      
+      resizeCanvas() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+        this.showDebugInfo(`Canvas resized: ${this.canvas.width}x${this.canvas.height}`);
+      }
+
+      render() {
+        try {
+          const gl = this.gl;
+          const now = performance.now() / 1000;
+          const dt = now - this.lastFrameTime;
+          this.lastFrameTime = now;
+
+          // Enhanced smooth transitions for spherical coordinates
+          // Use easeInOutCubic for more natural feeling movements
+          const phiDelta = this.targetPhi - this.phi;
+          const thetaDelta = this.targetTheta - this.theta;
+          
+          // Apply variable easing based on movement speed
+          const movingNow = (now - this.lastMouseMoveTime < 0.3);
+          const easingStrength = movingNow ? 0.06 : 0.03; // Slower easing when movement stops
+          
+          // Apply easing and wrap around for phi
+          this.phi += phiDelta * easingStrength;
+          this.phi = (this.phi + Math.PI * 2) % (Math.PI * 2);
+          
+          // Apply easing for theta with bounds
+          this.theta += thetaDelta * easingStrength;
+          this.theta = Math.max(0.1, Math.min(Math.PI - 0.1, this.theta));
+
+          // Video control - more responsive to movement
+          const timeSinceMove = now - this.lastMouseMoveTime;
+          if (timeSinceMove < this.moveThreshold) {
+            if (this.video.paused) {
+              this.video.play().catch(err => console.error("Video play error:", err));
+            }
+          } else {
+            if (!this.video.paused) {
+              this.video.pause();
+            }
+          }
+
+          // Enhanced fractal time calculation
+          const dx = this.mouseX - this.lastMouseX;
+          const dy = this.mouseY - this.lastMouseY;
+          const distance = Math.sqrt(dx*dx + dy*dy);
+          
+          // Make fractal time advance more smoothly
+          const speedFactor = 0.015;
+          this.fractalTime += distance * speedFactor + dt * 0.05; // Added a small constant rate for subtle movement
+          
+          this.lastMouseX = this.mouseX;
+          this.lastMouseY = this.mouseY;
+
+          // Update video texture
+          this.updateVideoTexture();
+
+          // Clear canvas
+          gl.clearColor(0, 0, 0, 1);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+
+          // Make sure textures are loaded before rendering
+          if (!this.textures || this.textures.length < 2) {
+            requestAnimationFrame(() => this.render());
+            return;
+          }
+
+          // Use the shader program
+          gl.useProgram(this.program);
+
+          // Set up attribute pointers
+          const posLoc = gl.getAttribLocation(this.program, 'a_position');
+          const texLoc = gl.getAttribLocation(this.program, 'a_texCoord');
+
+          gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
+          gl.enableVertexAttribArray(posLoc);
+          gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+          gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
+          gl.enableVertexAttribArray(texLoc);
+          gl.vertexAttribPointer(texLoc, 2, gl.FLOAT, false, 0, 0);
+
+          // Calculate image indices based on spherical coordinates
+          const imageCount = this.textures.length;
+          
+          // Map phi (horizontal) to primary image selection
+          const primaryImageFloat = (this.phi / (Math.PI * 2)) * imageCount;
+          const primaryImageIndex = Math.floor(primaryImageFloat) % imageCount;
+          const nextPrimaryImageIndex = (primaryImageIndex + 1) % imageCount;
+          const primaryBlendFactor = primaryImageFloat - Math.floor(primaryImageFloat);
+          
+          // Track current transition to detect image changes
+          const targetTransition = primaryBlendFactor;
+          
+          // Slower, smoother transitions with cubic easing - using this.transitionSpeed from class properties
+          this.currentTransition += (targetTransition - this.currentTransition) * this.transitionSpeed;
+          
+          // Apply easing curve to transition for smoother blends
+          const smoothTransition = this.easeInOutCubic(this.currentTransition);
+
+          // Enhanced fractal intensity calculation
+          // Create a radial mapping like in the original code but with more dynamics
+          const centerX = this.canvas.width * 0.5;
+          const centerY = this.canvas.height * 0.5;
+          const maxRadius = Math.sqrt(centerX*centerX + centerY*centerY);
+
+          let dxC = this.mouseX - centerX;
+          let dyC = this.mouseY - centerY;
+          let rawR = Math.sqrt(dxC*dxC + dyC*dyC) / maxRadius;
+          
+          // Apply enhanced curve for fractal intensity
+          let fractalIntensity = Math.pow(rawR, 0.5);
+          
+          // Add subtle pulsing to fractal intensity
+          fractalIntensity *= 0.8 + 0.2 * Math.sin(now * 0.5);
+          
+          // Increase fractal intensity during transitions
+          const transitionFactor = Math.sin(smoothTransition * Math.PI);
+          fractalIntensity = Math.max(fractalIntensity, transitionFactor * 0.4);
+
+          // Calculate blend mode from angle with additional time-based variation
+          let angle = Math.atan2(dyC, dxC);
+          let blendMode = (angle + Math.PI) / (2.0 * Math.PI);
+          
+          // Add subtle time-based variation to blend mode
+          blendMode = (blendMode + 0.05 * Math.sin(now * 0.1)) % 1.0;
+
+          // Get uniform locations
+          const resLoc              = gl.getUniformLocation(this.program, 'u_resolution');
+          const timeLoc             = gl.getUniformLocation(this.program, 'u_time');
+          const transLoc            = gl.getUniformLocation(this.program, 'u_transitionProgress');
+          const fractalIntensityLoc = gl.getUniformLocation(this.program, 'u_fractalIntensity');
+          const blendModeLoc        = gl.getUniformLocation(this.program, 'u_blendMode');
+          
+          const img0Loc             = gl.getUniformLocation(this.program, 'u_image0');
+          const img1Loc             = gl.getUniformLocation(this.program, 'u_image1');
+          const dispVideoLoc        = gl.getUniformLocation(this.program, 'u_dispVideo');
+          const dispAmountLoc       = gl.getUniformLocation(this.program, 'u_dispAmount');
+          const dispScaleLoc        = gl.getUniformLocation(this.program, 'u_dispScale');
+
+          // Pass uniforms
+          gl.uniform2f(resLoc, this.canvas.width, this.canvas.height);
+          gl.uniform1f(timeLoc, this.fractalTime);
+          gl.uniform1f(transLoc, smoothTransition);
+          gl.uniform1f(fractalIntensityLoc, fractalIntensity);
+          gl.uniform1f(blendModeLoc, blendMode);
+
+          // Base images
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, this.textures[primaryImageIndex]);
+          gl.uniform1i(img0Loc, 0);
+
+          gl.activeTexture(gl.TEXTURE1);
+          gl.bindTexture(gl.TEXTURE_2D, this.textures[nextPrimaryImageIndex]);
+          gl.uniform1i(img1Loc, 1);
+
+          // Displacement video
+          gl.activeTexture(gl.TEXTURE2);
+          gl.bindTexture(gl.TEXTURE_2D, this.dispVideoTexture);
+          gl.uniform1i(dispVideoLoc, 2);
+
+          // Dynamic displacement amount that increases during transitions
+          const baseDispAmount = 0.05;
+          const transitionBoost = 0.03 * transitionFactor; // More displacement during transitions
+          gl.uniform1f(dispAmountLoc, baseDispAmount + transitionBoost);
+          
+          // Scale displacement based on transition progress
+          const baseDispScale = 1.0;
+          const scaleVariation = 0.1 * Math.sin(now * 0.2); // Subtle scale variation over time
+          gl.uniform1f(dispScaleLoc, baseDispScale + scaleVariation);
+
+          // Draw the scene
+          gl.drawArrays(gl.TRIANGLES, 0, 6);
+          
+        } catch (error) {
+          this.showDebugInfo(`Render error: ${error.message}`);
+          console.error("Render error:", error);
+        }
+        
+        // Continue animation loop
+        requestAnimationFrame(() => this.render());
+      }
+    }
+
+    // Initialize the experience when the page loads
+    window.addEventListener('load', () => {
+      try {
+        const experience = new SphericalARExperience();
+      } catch (error) {
+        console.error("Failed to initialize experience:", error);
+        document.getElementById('debugInfo').innerHTML += `Fatal error: ${error.message}<br>`;
+      }
+    });
+  </script>
+</body>
+</html>
