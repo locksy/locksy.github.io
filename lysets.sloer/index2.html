@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>lysets.slør</title>
+  <title>lysets.slør – Mouse-Based Image Transition</title>
   <style>
     body, html {
       margin: 0;
@@ -15,6 +15,8 @@
       width: 100vw;
       height: 100vh;
       display: block;
+      opacity: 0; /* Start with opacity 0 */
+      transition: opacity 7s cubic-bezier(0.17, 0.84, 0.44, 1); /* Extended to 7s with more pronounced easing */
     }
     /* The motion button is no longer used for device orientation */
     #motionBtn {
@@ -107,13 +109,27 @@
           out vec4 outColor;
   
           /////////////////////////////////
-          // Base Transition (Distorted Version)
+          // Base Transition (Center Zoom Version)
           /////////////////////////////////
           vec4 baseTransition() {
             float transitionVal = u_transition * u_imageCount;
             float blendFactor = fract(transitionVal);
             
-            // Displacement effect
+            // Calculate center of texture coordinates
+            vec2 center = vec2(0.5, 0.5);
+            
+            // Create a zoom effect - vector from center
+            vec2 fromCenter = v_texCoord - center;
+            
+            // Scale factors for zoom effect - image getting larger as it fades out
+            float scale0 = 1.0 + (0.05 * blendFactor); // First image grows as it fades out
+            float scale1 = 1.0 + (0.05 * (1.0 - blendFactor)); // Second image shrinks as it fades in
+            
+            // Calculate the new UV coordinates with zoom
+            vec2 zoomedUV0 = center + fromCenter / scale0;
+            vec2 zoomedUV1 = center + fromCenter / scale1;
+            
+            // Add some organic displacement based on the video texture
             vec2 timeOffset = vec2(0.015 * sin(u_time * 0.25), 0.015 * cos(u_time * 0.25));
             vec2 dispCoord = v_texCoord * u_dispScale + timeOffset;
             vec2 videoDisp = texture(u_dispVideo, dispCoord).rg;
@@ -124,11 +140,18 @@
               watermarkMask = 1.0 - (xFade * yFade);
               videoDisp = mix(videoDisp, vec2(0.5, 0.5), 1.0 - watermarkMask);
             }
-            float dynamicDisp = u_dispAmount * (1.0 + 0.4 * sin(u_time * 0.15));
-            vec2 displacement = (videoDisp - 0.5) * dynamicDisp * 1.5 * watermarkMask;
-  
-            vec2 displacedUV0 = clamp(v_texCoord + displacement * (1.0 - blendFactor), 0.0, 1.0);
-            vec2 displacedUV1 = clamp(v_texCoord - displacement * blendFactor, 0.0, 1.0);
+            
+            // Reduce the displacement amount to emphasize the zoom effect
+            float dynamicDisp = u_dispAmount * (1.0 + 0.2 * sin(u_time * 0.15)) * 0.7;
+            vec2 displacement = (videoDisp - 0.5) * dynamicDisp * watermarkMask;
+            
+            // Apply displacement in a radial pattern from center
+            float distFromCenter = length(fromCenter) * 2.0;
+            vec2 radialDisp = normalize(fromCenter) * distFromCenter * dynamicDisp * 0.02;
+            
+            // Combine zoom with displacement
+            vec2 displacedUV0 = clamp(zoomedUV0 + displacement * (1.0 - blendFactor) + radialDisp * blendFactor, 0.0, 1.0);
+            vec2 displacedUV1 = clamp(zoomedUV1 - displacement * blendFactor - radialDisp * (1.0 - blendFactor), 0.0, 1.0);
   
             vec4 color0 = texture(u_image0, displacedUV0);
             vec4 color1 = texture(u_image1, displacedUV1);
@@ -342,7 +365,18 @@
             this.textures.push(texture);
           });
           this.resizeCanvas();
+          
+          // Trigger the fade-in effect once textures are loaded
+          this.triggerFadeIn();
         }).catch(err => console.error('Error loading base images:', err));
+      }
+      
+      // New method to trigger the fade-in effect
+      triggerFadeIn() {
+        // Small delay to ensure everything is ready
+        setTimeout(() => {
+          this.canvas.style.opacity = '1';
+        }, 200);
       }
   
       loadDispTexture() {
