@@ -16,12 +16,10 @@
       font-family: 'Oswald', sans-serif;
       overflow: hidden;
     }
-
     #container {
       position: relative;
       display: inline-block;
     }
-
     #splash {
       display: block;
       width: 100%;
@@ -29,7 +27,6 @@
       max-width: 100vw;
       max-height: 100vh;
     }
-
     .loader-text-wrapper {
       position: absolute;
       top: 50%;
@@ -39,24 +36,20 @@
       mix-blend-mode: hard-light;
       opacity: 0.9;
     }
-
     .loader-text,
     .loader-fill {
       font-size: 100px;
       font-weight: 700;
       letter-spacing: 2px;
     }
-
     .loader-text {
       color: rgba(255, 255, 255, 0.1);
     }
-
     .loader-fill {
       position: absolute;
       top: 0;
       left: 0;
       white-space: nowrap;
-
       background: linear-gradient(
         90deg,
         rgba(255, 0, 204, 0.5),
@@ -67,7 +60,6 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       color: transparent;
-
       mask-image: linear-gradient(
         to right,
         transparent 0%,
@@ -91,7 +83,6 @@
       mask-size: var(--progress, 0%) 100%;
       -webkit-mask-size: var(--progress, 0%) 100%;
     }
-
     .fade-screen {
       position: fixed;
       top: 0;
@@ -103,11 +94,9 @@
       opacity: 1;
       transition: opacity 1.4s ease-in-out;
     }
-
     .fade-screen.fade-out {
       opacity: 0;
     }
-
     .fade-screen.fade-in {
       opacity: 1;
     }
@@ -130,10 +119,18 @@
     const fadeScreen = document.getElementById('fadeScreen');
     let progress = 0;
 
-    const ASSETS = [
-      "1.JPG", "2.JPG", "3.JPG", "4.JPG", "5.JPG", "6.JPG", "7.JPG",
-      "dispvid4.mp4"
-    ];
+    // Detect mobile vs desktop
+    const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+
+    // Build full asset list:
+    const ASSETS = [];
+    const folder = isMobile ? 'img/mobile/' : 'img/desktop/';
+    // Images 2.JPG to 33.JPG
+    for (let i = 2; i <= 33; i++) {
+      ASSETS.push(folder + i + '.JPG');
+    }
+    // Displacement video for this device
+    ASSETS.push(isMobile ? 'dispvid4mobile.mp4' : 'dispvid4.mp4');
 
     function updateProgress(pct) {
       fill.style.setProperty('--progress', pct + '%');
@@ -154,25 +151,24 @@
     }
 
     window.addEventListener('load', () => {
+      // slight initial delay
       setTimeout(() => {
         fadeScreen.classList.add('fade-out');
 
+        // Once fade-out starts, begin preloading
         preloadAssets().then(() => console.log("✅ All assets preloaded."));
 
-        // Wait 0.5s before starting progress bar
+        // Wait then kick off the loader bar
         setTimeout(() => {
           const interval = setInterval(() => {
             progress += 1;
             updateProgress(progress);
             if (progress >= 100) {
               clearInterval(interval);
-
-              // Wait 0.7s before fading to black
+              // Fade back in to black, then navigate
               setTimeout(() => {
                 fadeScreen.classList.remove('fade-out');
                 fadeScreen.classList.add('fade-in');
-
-                // After fade, go to index2.html
                 setTimeout(() => {
                   window.location.href = 'index2.html';
                 }, 1400);
