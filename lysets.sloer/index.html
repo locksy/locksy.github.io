@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Prism Text Loader</title>
+  <title>lysets.sloer>loading</title>
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&display=swap" rel="stylesheet">
   <style>
     html, body {
@@ -50,6 +50,12 @@
       top: 0;
       left: 0;
       white-space: nowrap;
+
+      /* CLIP ITS OWN WIDTH TO THE PROGRESS PERCENTAGE */
+      width: var(--progress, 0%);
+      overflow: hidden;
+
+      /* gradient text styling */
       background: linear-gradient(
         90deg,
         rgba(255, 0, 204, 0.5),
@@ -60,28 +66,6 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       color: transparent;
-      mask-image: linear-gradient(
-        to right,
-        transparent 0%,
-        rgba(0,0,0,0.7) 10%,
-        black 30%,
-        black 70%,
-        rgba(0,0,0,0.85) 90%,
-        transparent 100%
-      );
-      -webkit-mask-image: linear-gradient(
-        to right,
-        transparent 0%,
-        rgba(0,0,0,0.7) 10%,
-        black 30%,
-        black 70%,
-        rgba(0,0,0,0.85) 90%,
-        transparent 100%
-      );
-      mask-repeat: no-repeat;
-      -webkit-mask-repeat: no-repeat;
-      mask-size: var(--progress, 0%) 100%;
-      -webkit-mask-size: var(--progress, 0%) 100%;
     }
     .fade-screen {
       position: fixed;
@@ -119,17 +103,15 @@
     const fadeScreen = document.getElementById('fadeScreen');
     let progress = 0;
 
-    // Detect mobile vs desktop
+    // detect mobile vs. desktop
     const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
-    // Build full asset list:
+    // build full asset list: images 2–33 plus the proper video
     const ASSETS = [];
     const folder = isMobile ? 'img/mobile/' : 'img/desktop/';
-    // Images 2.JPG to 33.JPG
     for (let i = 2; i <= 33; i++) {
       ASSETS.push(folder + i + '.JPG');
     }
-    // Displacement video for this device
     ASSETS.push(isMobile ? 'dispvid4mobile.mp4' : 'dispvid4.mp4');
 
     function updateProgress(pct) {
@@ -139,33 +121,23 @@
     function preloadAssets() {
       return Promise.all(
         ASSETS.map(url =>
-          fetch(url, { method: 'GET' })
-            .then(res => {
-              if (!res.ok) throw new Error(`Failed to preload ${url}`);
-            })
-            .catch(err => {
-              console.warn('Preload failed:', url, err);
-            })
+          fetch(url).then(res => {
+            if (!res.ok) throw new Error(`Failed to preload ${url}`);
+          }).catch(err => console.warn('Preload failed:', url, err))
         )
       );
     }
 
     window.addEventListener('load', () => {
-      // slight initial delay
       setTimeout(() => {
         fadeScreen.classList.add('fade-out');
-
-        // Once fade-out starts, begin preloading
-        preloadAssets().then(() => console.log("✅ All assets preloaded."));
-
-        // Wait then kick off the loader bar
+        preloadAssets().then(() => console.log('✅ All assets preloaded.'));
         setTimeout(() => {
           const interval = setInterval(() => {
-            progress += 1;
+            progress++;
             updateProgress(progress);
             if (progress >= 100) {
               clearInterval(interval);
-              // Fade back in to black, then navigate
               setTimeout(() => {
                 fadeScreen.classList.remove('fade-out');
                 fadeScreen.classList.add('fade-in');
