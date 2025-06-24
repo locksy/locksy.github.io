@@ -1,133 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>lysets.slør</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lysets.slør</title>
   <style>
-    body { margin: 0; overflow: hidden; }
-    canvas { display: block; }
+    /* full-screen container */
+    html, body { margin: 0; height: 100%; overflow: hidden; }
+    #container { width: 100vw; height: 100vh; position: relative; }
+    #container img { 
+      position: absolute; 
+      top: 0; left: 0; 
+      width: 100%; height: 100%; 
+      object-fit: cover;
+    }
   </style>
 </head>
 <body>
-  <!-- hidden displacement-map video -->
-  <video
-    id="dispVid"
-    src="dispvid4.mp4"
-    loop
-    muted
-    playsinline
-    style="display: none;"
-  ></video>
-
-  <script type="module">
-    import {
-      Renderer,
-      Camera,
-      Transform,
-      Program,
-      Mesh,
-      Geometry,
-      Texture
-    } from './js/src/ogl.module.js';
-
-    // Renderer & canvas
-    const renderer = new Renderer({ dpr: Math.min(window.devicePixelRatio, 2) });
-    const gl = renderer.gl;
-    document.body.appendChild(gl.canvas);
-
-    // Camera & scene
-    const camera = new Camera(gl, { fov: 45 });
-    camera.position.z = 2;
-    const scene = new Transform();
-
-    // Displacement texture from video
-    const dispVid = document.getElementById('dispVid');
-    dispVid.play();
-    const dispTex = new Texture(gl, { generateMipmaps: false });
-    function updateDisp() {
-      dispTex.image = dispVid;
-      requestAnimationFrame(updateDisp);
-    }
-    dispVid.addEventListener('play', updateDisp);
-
-    // Load image sequence 2–33
-    const textures = [];
-    for (let i = 2; i <= 33; i++) {
-      const tex = new Texture(gl, { generateMipmaps: false });
-      tex.image = new Image();
-      tex.image.src = `img/${i}.JPG`;
-      textures.push(tex);
-    }
-
-    let current = 0;
-    let next = 1;
-
-    // Full-screen quad
-    const quadGeo = new Geometry(gl, {
-      position: { size: 2, data: new Float32Array([-1, -1, 3, -1, -1, 3]) }
-    });
-
-    // Fluid-transition shader
-    const program = new Program(gl, {
-      vertex: `
-        attribute vec2 position;
-        varying vec2 vUv;
-        void main() {
-          vUv = position * 0.5 + 0.5;
-          gl_Position = vec4(position, 0.0, 1.0);
-        }
-      `,
-      fragment: `
-        precision highp float;
-        varying vec2 vUv;
-        uniform sampler2D tPrev;
-        uniform sampler2D tNext;
-        uniform sampler2D uDisp;
-        uniform float progress;
-        void main() {
-          vec2 disp = (texture2D(uDisp, vUv).rg * 2.0 - 1.0) * 0.3;
-          vec2 uv0 = vUv + disp * (1.0 - progress);
-          vec2 uv1 = vUv - disp * progress;
-          vec4 from = texture2D(tPrev, uv0);
-          vec4 to   = texture2D(tNext, uv1);
-          gl_FragColor = mix(from, to, progress);
-        }
-      `,
-      uniforms: {
-        tPrev:    { value: textures[current] },
-        tNext:    { value: textures[next] },
-        uDisp:    { value: dispTex },
-        progress: { value: 0 }
-      }
-    });
-
-    new Mesh(gl, { geometry: quadGeo, program, parent: scene });
-
-    // Animation loop
-    let startTime = null;
-    function render(time) {
-      if (!startTime) startTime = time;
-      const elapsed = (time - startTime) / 1000;
-      program.uniforms.progress.value = Math.min(elapsed / 2, 1);
-
-      if (elapsed >= 2) {
-        startTime = time;
-        current = next;
-        next = (next + 1) % textures.length;
-        program.uniforms.tPrev.value = textures[current];
-        program.uniforms.tNext.value = textures[next];
-      }
-
-      renderer.render({ scene, camera });
-      requestAnimationFrame(render);
-    }
-    requestAnimationFrame(render);
-
-    // Resize handler
-    window.addEventListener('resize', () => {
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-  </script>
+  <div id="container"></div>
+  <script src="js/script.js"></script>
 </body>
 </html>
