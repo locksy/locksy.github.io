@@ -38,6 +38,9 @@
       mix-blend-mode: difference;
       pointer-events: none;
       z-index: 1;
+      /* you can set a max-width if it’s huge */
+      max-width: 80vw;
+      height: auto;
     }
     .loader-text-wrapper {
       position: absolute;
@@ -76,7 +79,6 @@
       background-clip: text;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      color: transparent;
       transition: width 0.2s ease-out;
     }
     .loader-subtext {
@@ -121,21 +123,22 @@
   <div class="fade-screen" id="fadeScreen"></div>
 
   <script>
-    const fill = document.getElementById('loaderFill');
-    const fadeScreen = document.getElementById('fadeScreen');
     const splash = document.getElementById('splash');
     const loadingGifEl = document.getElementById('loadingGif');
+    const fadeScreen = document.getElementById('fadeScreen');
+    const fill = document.getElementById('loaderFill');
 
-    // simple mobile check
-    const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    // more robust mobile detection
+    const ua = navigator.userAgent;
+    const isMobile = /Android|iPhone|iPad|iPod|Mobi/i.test(ua);
+    console.log('userAgent:', ua);
+    console.log('isMobile?', isMobile);
 
-    // set the correct loader GIF
+    // pick correct loader GIF
     const loaderGifFile = isMobile ? './loading-mobile.gif' : './loading.gif';
     loadingGifEl.src = loaderGifFile;
 
-    // build assets list, swapping loader GIF too
-    let totalAssets = 0;
-    let loadedAssets = 0;
+    // prepare asset list
     const ASSETS = [];
     const folder = isMobile ? 'img/mobile/' : 'img/desktop/';
     for (let i = 2; i <= 33; i++) {
@@ -143,13 +146,15 @@
     }
     ASSETS.push(isMobile ? 'dispvid4mobile.mp4' : 'dispvid4.mp4');
     ASSETS.push(loaderGifFile);
-    totalAssets = ASSETS.length;
+
+    let loaded = 0;
+    const total = ASSETS.length;
 
     function updateProgress() {
-      const progressPercent = Math.min(100, Math.round((loadedAssets / totalAssets) * 100));
-      fill.style.width = progressPercent + '%';
-      splash.style.opacity = progressPercent / 100;
-      if (loadedAssets >= totalAssets) {
+      const pct = Math.min(100, Math.round((loaded / total) * 100));
+      fill.style.width = pct + '%';
+      splash.style.opacity = (pct / 100);
+      if (loaded >= total) {
         setTimeout(() => {
           fadeScreen.classList.remove('fade-out');
           fadeScreen.classList.add('fade-in');
@@ -158,27 +163,28 @@
       }
     }
 
-    function preloadAssets() {
+    function preload() {
       ASSETS.forEach(url => {
-        if (url.endsWith('.mp4')) {
-          const video = document.createElement('video');
-          video.preload = 'auto';
-          video.src = url;
-          video.oncanplaythrough = () => { loadedAssets++; updateProgress(); video.oncanplaythrough = null; };
-          video.onerror = () => { loadedAssets++; updateProgress(); video.onerror = null; };
+        if (url.match(/\.mp4$/i)) {
+          const v = document.createElement('video');
+          v.preload = 'auto';
+          v.src = url;
+          v.oncanplaythrough = () => { loaded++; updateProgress(); };
+          v.onerror = () => { loaded++; updateProgress(); };
         } else {
           const img = new Image();
           img.src = url;
-          img.onload = () => { loadedAssets++; updateProgress(); };
-          img.onerror = () => { loadedAssets++; updateProgress(); };
+          img.onload = () => { loaded++; updateProgress(); };
+          img.onerror = () => { loaded++; updateProgress(); };
         }
       });
     }
 
     window.addEventListener('load', () => {
+      // start by fading screen away
       setTimeout(() => {
         fadeScreen.classList.add('fade-out');
-        preloadAssets();
+        preload();
       }, 100);
     });
   </script>
