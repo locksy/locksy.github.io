@@ -26,6 +26,7 @@
       height: auto;
       max-width: 100vw;
       max-height: 100vh;
+      opacity: 0;
     }
     .loader-text-wrapper {
       position: absolute;
@@ -50,12 +51,8 @@
       top: 0;
       left: 0;
       white-space: nowrap;
-
-      /* CLIP ITS OWN WIDTH TO THE PROGRESS PERCENTAGE */
       width: var(--progress, 0%);
       overflow: hidden;
-
-      /* gradient text styling */
       background: linear-gradient(
         90deg,
         rgba(255, 0, 204, 0.5),
@@ -101,6 +98,7 @@
   <script>
     const fill = document.getElementById('loaderFill');
     const fadeScreen = document.getElementById('fadeScreen');
+    const splash = document.getElementById('splash');
     let totalAssets = 0;
     let loadedAssets = 0;
 
@@ -114,14 +112,14 @@
       ASSETS.push(folder + i + '.JPG');
     }
     ASSETS.push(isMobile ? 'dispvid4mobile.mp4' : 'dispvid4.mp4');
-    
     totalAssets = ASSETS.length;
 
     function updateProgress() {
       const progressPercent = Math.min(100, Math.round((loadedAssets / totalAssets) * 100));
       fill.style.setProperty('--progress', progressPercent + '%');
-      
-      // If all assets are loaded, redirect after a short delay
+      splash.style.opacity = progressPercent / 100;
+
+      // If all assets are loaded, transition
       if (loadedAssets >= totalAssets) {
         setTimeout(() => {
           fadeScreen.classList.remove('fade-out');
@@ -136,51 +134,38 @@
     function preloadAssets() {
       ASSETS.forEach(url => {
         if (url.endsWith('.mp4')) {
-          // Preload video
           const video = document.createElement('video');
           video.preload = 'auto';
-          
-          // Set up events before setting source
           video.oncanplaythrough = function() {
             loadedAssets++;
             updateProgress();
-            // Remove the event listener to prevent multiple counts
             video.oncanplaythrough = null;
           };
-          
-          // Error handling
           video.onerror = function() {
             console.warn('Failed to preload video:', url);
             loadedAssets++;
             updateProgress();
           };
-          
           video.src = url;
         } else {
-          // Preload image
           const img = new Image();
-          
           img.onload = function() {
             loadedAssets++;
             updateProgress();
           };
-          
           img.onerror = function() {
             console.warn('Failed to preload image:', url);
             loadedAssets++;
             updateProgress();
           };
-          
           img.src = url;
         }
       });
     }
 
     window.addEventListener('load', () => {
-      // Initial fade
       setTimeout(() => {
         fadeScreen.classList.add('fade-out');
-        // Start preloading assets
         preloadAssets();
       }, 100);
     });
