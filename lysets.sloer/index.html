@@ -35,7 +35,7 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      mix-blend-mode: lighten;
+      mix-blend-mode: difference;
       pointer-events: none;
       z-index: 1;
     }
@@ -48,12 +48,14 @@
       mix-blend-mode: hard-light;
       opacity: 0.9;
       z-index: 2;
+      text-align: center;
     }
     .loader-text,
     .loader-fill {
       font-size: 100px;
       font-weight: 700;
       letter-spacing: 2px;
+      line-height: 1;
     }
     .loader-text {
       color: rgba(255, 255, 255, 0.1);
@@ -76,6 +78,11 @@
       -webkit-text-fill-color: transparent;
       color: transparent;
       transition: width 0.2s ease-out;
+    }
+    .loader-subtext {
+      margin-top: 120px;
+      font-size: 20px;
+      color: rgba(255,255,255,0.5);
     }
     .fade-screen {
       position: fixed;
@@ -104,6 +111,7 @@
     <div class="loader-text-wrapper">
       <div class="loader-text">lysets.slør</div>
       <div class="loader-fill" id="loaderFill">lysets.slør</div>
+      <div class="loader-subtext">loading</div>
     </div>
   </div>
 
