@@ -110,7 +110,7 @@
 
   <div id="container">
     <img id="splash" src="./splash.png" alt="Splash Image">
-    <img id="loadingGif" src="./loading.gif" alt="Loading Animation">
+    <img id="loadingGif" src="" alt="Loading Animation">
     <div class="loader-text-wrapper">
       <div class="loader-text">lysets.slør</div>
       <div class="loader-fill" id="loaderFill">lysets.slør</div>
@@ -124,17 +124,25 @@
     const fill = document.getElementById('loaderFill');
     const fadeScreen = document.getElementById('fadeScreen');
     const splash = document.getElementById('splash');
+    const loadingGifEl = document.getElementById('loadingGif');
+
+    // simple mobile check
+    const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+
+    // set the correct loader GIF
+    const loaderGifFile = isMobile ? './loading-mobile.gif' : './loading.gif';
+    loadingGifEl.src = loaderGifFile;
+
+    // build assets list, swapping loader GIF too
     let totalAssets = 0;
     let loadedAssets = 0;
-
-    const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
     const ASSETS = [];
     const folder = isMobile ? 'img/mobile/' : 'img/desktop/';
     for (let i = 2; i <= 33; i++) {
       ASSETS.push(folder + i + '.JPG');
     }
     ASSETS.push(isMobile ? 'dispvid4mobile.mp4' : 'dispvid4.mp4');
-    ASSETS.push('loading.gif');
+    ASSETS.push(loaderGifFile);
     totalAssets = ASSETS.length;
 
     function updateProgress() {
