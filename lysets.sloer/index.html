@@ -27,7 +27,17 @@
       max-width: 100vw;
       max-height: 100vh;
       opacity: 0;
-      transition: opacity 0.2s ease-out;
+      transition: opacity 2.2s ease-in-out;
+      z-index: 0;
+    }
+    #loadingGif {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      mix-blend-mode: lighten;
+      pointer-events: none;
+      z-index: 1;
     }
     .loader-text-wrapper {
       position: absolute;
@@ -37,6 +47,7 @@
       pointer-events: none;
       mix-blend-mode: hard-light;
       opacity: 0.9;
+      z-index: 2;
     }
     .loader-text,
     .loader-fill {
@@ -89,6 +100,7 @@
 
   <div id="container">
     <img id="splash" src="./splash.png" alt="Splash Image">
+    <img id="loadingGif" src="./loading.gif" alt="Loading Animation">
     <div class="loader-text-wrapper">
       <div class="loader-text">lysets.slør</div>
       <div class="loader-fill" id="loaderFill">lysets.slør</div>
@@ -104,31 +116,25 @@
     let totalAssets = 0;
     let loadedAssets = 0;
 
-    // detect mobile vs. desktop
     const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-
-    // build full asset list: images 2–33 plus the proper video
     const ASSETS = [];
     const folder = isMobile ? 'img/mobile/' : 'img/desktop/';
     for (let i = 2; i <= 33; i++) {
       ASSETS.push(folder + i + '.JPG');
     }
     ASSETS.push(isMobile ? 'dispvid4mobile.mp4' : 'dispvid4.mp4');
+    ASSETS.push('loading.gif');
     totalAssets = ASSETS.length;
 
     function updateProgress() {
       const progressPercent = Math.min(100, Math.round((loadedAssets / totalAssets) * 100));
       fill.style.width = progressPercent + '%';
       splash.style.opacity = progressPercent / 100;
-
-      // If all assets are loaded, transition
       if (loadedAssets >= totalAssets) {
         setTimeout(() => {
           fadeScreen.classList.remove('fade-out');
           fadeScreen.classList.add('fade-in');
-          setTimeout(() => {
-            window.location.href = 'index2.html';
-          }, 1400);
+          setTimeout(() => window.location.href = 'index2.html', 1400);
         }, 700);
       }
     }
@@ -138,29 +144,14 @@
         if (url.endsWith('.mp4')) {
           const video = document.createElement('video');
           video.preload = 'auto';
-          video.oncanplaythrough = function() {
-            loadedAssets++;
-            updateProgress();
-            video.oncanplaythrough = null;
-          };
-          video.onerror = function() {
-            console.warn('Failed to preload video:', url);
-            loadedAssets++;
-            updateProgress();
-          };
           video.src = url;
+          video.oncanplaythrough = () => { loadedAssets++; updateProgress(); video.oncanplaythrough = null; };
+          video.onerror = () => { loadedAssets++; updateProgress(); video.onerror = null; };
         } else {
           const img = new Image();
-          img.onload = function() {
-            loadedAssets++;
-            updateProgress();
-          };
-          img.onerror = function() {
-            console.warn('Failed to preload image:', url);
-            loadedAssets++;
-            updateProgress();
-          };
           img.src = url;
+          img.onload = () => { loadedAssets++; updateProgress(); };
+          img.onerror = () => { loadedAssets++; updateProgress(); };
         }
       });
     }
