@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virgo Gabrielle</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400&family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* ============================================================
+           CORE & VARIABLES
+           ============================================================ */
+        :root {
+            --color-black: #050505;
+            --color-cream: #f5f0e8;
+            --color-gold: #c9a962;
+            --color-gold-dim: rgba(201, 169, 98, 0.3);
+            --ease-elegant: cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            width: 100%;
+            min-height: 100vh;
+            background: var(--color-black);
+            font-family: 'Space Grotesk', sans-serif;
+            color: white;
+            overflow-x: hidden;
+        }
+
+        /* ============================================================
+           CANVAS LAYERS
+           ============================================================ */
+        /* Top: Noise (Film Grain) */
+        #noiseCanvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 9999; pointer-events: none; mix-blend-mode: difference; opacity: 0.08;
+        }
+        
+        /* Middle: Main Image Displacement (Behind content, above background) */
+        #canvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1; 
+            mix-blend-mode: lighten; 
+            opacity: 0.8;
+        }
+
+        /* Bottom: The Prism Shader (Behind everything else) */
+        #prismCanvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0;
+            opacity: 0.9;
+        }
+
+        /* ============================================================
+           UI & NAVIGATION
+           ============================================================ */
+        .nav-overlay {
+            position: fixed; top: 0; left: 0; width: 100%;
+            padding: 2.5rem 4rem; z-index: 1000;
+            display: flex; justify-content: space-between; align-items: center;
+            mix-blend-mode: difference;
+        }
+
+        .logo {
+            font-family: 'Cormorant Garamond', serif; font-size: 1.1rem;
+            letter-spacing: 0.35em; text-transform: uppercase; color: white;
+            opacity: 0; transform: translateY(-30px);
+        }
+
+        .nav-menu { display: flex; gap: 3rem; list-style: none; }
+        .nav-menu li { opacity: 0; transform: translateY(-30px); }
+        .nav-menu a {
+            font-family: 'Space Grotesk', sans-serif; color: white;
+            text-decoration: none; font-size: 0.7rem; letter-spacing: 0.25em;
+            text-transform: uppercase; opacity: 0.6; transition: opacity 0.5s;
+            cursor: pointer;
+        }
+        .nav-menu a:hover { opacity: 1; }
+
+        .progress-bar {
+            position: fixed; top: 0; left: 0; height: 2px;
+            background: var(--color-gold); z-index: 10000; width: 0%;
+        }
+
+        /* ============================================================
+           CONTENT SECTIONS
+           ============================================================ */
+        .main-content { position: relative; z-index: 10; }
+
+        /* HERO */
+        .hero-section {
+            height: 100vh; display: flex; align-items: center; justify-content: center;
+            position: relative;
+        }
+        .hero-content { text-align: center; z-index: 2; pointer-events: none; }
+        .hero-eyebrow {
+            font-size: 0.65rem; letter-spacing: 0.6em; text-transform: uppercase;
+            color: var(--color-gold); margin-bottom: 2rem; opacity: 0; transform: translateY(40px);
+        }
+        .hero-title {
+            font-family: 'Cormorant Garamond', serif; font-size: clamp(3.5rem, 12vw, 9rem);
+            font-weight: 300; font-style: italic; line-height: 0.95; margin-bottom: 2rem;
+        }
+        .hero-title-line span { display: inline-block; transform: translateY(120%); }
+        .hero-subtitle {
+            font-size: 0.85rem; font-weight: 300; opacity: 0; transform: translateY(40px);
+            max-width: 420px; margin: 0 auto; color: rgba(255,255,255,0.7);
+        }
+
+        /* TEXT REVEAL */
+        .text-reveal-section {
+            min-height: 80vh; display: flex; align-items: center; padding: 10rem 10vw;
+        }
+        .text-reveal-content { max-width: 900px; }
+        .text-reveal-label {
+            font-size: 0.6rem; letter-spacing: 0.5em; text-transform: uppercase;
+            color: var(--color-gold); margin-bottom: 3rem; opacity: 0;
+        }
+        .text-reveal-paragraph {
+            font-family: 'Cormorant Garamond', serif; font-size: clamp(1.8rem, 4vw, 3rem);
+            font-weight: 300; line-height: 1.4; color: rgba(255,255,255,0.1);
+        }
+        .text-reveal-paragraph .word { display: inline-block; transition: color 1s ease; }
+        .text-reveal-paragraph .word.revealed { color: white; }
+
+        /* HORIZONTAL GALLERY */
+        .horizontal-section { position: relative; height: 400vh; }
+        
+        .horizontal-wrapper {
+            position: sticky; top: 0; height: 100vh;
+            display: flex; align-items: center; overflow: hidden;
+            background: linear-gradient(to bottom, rgba(5,5,5,0.8), rgba(5,5,5,0)); 
+        }
+
+        .horizontal-header {
+            position: absolute; top: 12vh; left: 8vw; z-index: 10;
+        }
+        .horizontal-header h2 {
+            font-family: 'Cormorant Garamond', serif; font-size: 0.9rem;
+            letter-spacing: 0.4em; text-transform: uppercase; color: var(--color-gold);
+        }
+
+        .horizontal-track {
+            display: flex; gap: 6vw; padding: 0 15vw;
+            cursor: grab; user-select: none;
+        }
+        .horizontal-track:active { cursor: grabbing; }
+
+        .gallery-item {
+            flex-shrink: 0; width: 35vw; height: 55vh;
+            opacity: 0; transform: translateY(60px) scale(0.95);
+            /* Subtle glass for gallery items */
+            background: rgba(12, 10, 10, 0.082); 
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(235, 116, 36, 0.1);
+            padding: 2.5rem;
+            display: flex; flex-direction: column; justify-content: flex-end;
+            position: relative;
+            transition: border-color 0.3s;
+        }
+        .gallery-item:hover { border-color: var(--color-gold-dim); }
+        .gallery-item-number {
+            position: absolute; top: 2rem; right: 2.5rem;
+            font-family: 'Cormorant Garamond', serif; font-size: 4rem;
+            font-style: italic; color: rgba(255,255,255,0.1);
+        }
+        .gallery-item-title {
+            font-family: 'Cormorant Garamond', serif; font-size: 2rem; font-style: italic;
+        }
+        .gallery-item-desc {
+            font-size: 0.75rem; margin-top: 0.8rem; opacity: 0.6;
+            letter-spacing: 0.05em;
+        }
+
+        /* STACKING CARDS */
+        .stacking-section {
+            min-height: 100vh; position: relative;
+            display: flex; align-items: center; justify-content: center;
+            padding: 8rem 4rem;
+        }
+        .stack-container {
+            position: relative; width: 60vw; height: 65vh;
+        }
+        .stack-card {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(10, 10, 12, 0.6);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.08);
+            padding: 4rem;
+            display: flex; flex-direction: column; justify-content: flex-end;
+            opacity: 0; transform: translateY(80px) scale(0.95);
+        }
+        .stack-card-eyebrow {
+            font-size: 0.55rem; letter-spacing: 0.5em; text-transform: uppercase;
+            color: var(--color-gold); margin-bottom: 1rem;
+        }
+        .stack-card-title {
+            font-family: 'Cormorant Garamond', serif; font-size: 3rem;
+            font-style: italic; font-weight: 300; line-height: 1.15; margin-bottom: 1rem;
+        }
+        .stack-card-text {
+            font-size: 0.85rem; opacity: 0.7; max-width: 450px;
+            line-height: 1.7;
+        }
+
+        /* PARALLAX SECTION */
+        .parallax-section {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            padding: 0 10vw;
+            background: linear-gradient(to top, rgba(5,5,5,0.9), rgba(5,5,5,0));
+        }
+        .parallax-text-block h2 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: clamp(3rem, 6vw, 5rem); font-style: italic;
+            font-weight: 300; opacity: 0; transform: translateX(-30px);
+        }
+        .parallax-text-block p {
+            max-width: 600px; margin-top: 2rem; font-size: 1rem;
+            line-height: 1.8; opacity: 0; transform: translateX(-30px);
+            color: rgba(255,255,255,0.7);
+        }
+        
+        /* FOOTER */
+        .footer-section {
+            min-height: 70vh;
+            display: flex; align-items: center; justify-content: center;
+            padding: 6rem 4rem;
+        }
+        .footer-glass-card {
+            background: rgba(10, 10, 12, 0.5);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.08);
+            padding: 6rem 10rem;
+            text-align: center;
+            opacity: 0; transform: translateY(50px);
+        }
+        .footer-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 0.75rem; letter-spacing: 0.6em; text-transform: uppercase;
+            margin-bottom: 2.5rem; color: var(--color-gold);
+        }
+        .footer-cta {
+            font-family: 'Space Grotesk', sans-serif;
+            color: white; text-decoration: none; font-size: 0.65rem;
+            letter-spacing: 0.4em; text-transform: uppercase;
+            padding: 1rem 3rem;
+            border: 1px solid rgba(255,255,255,0.3);
+            transition: all 0.4s var(--ease-elegant);
+        }
+        .footer-cta:hover {
+            background: white; color: var(--color-black);
+            border-color: white;
+        }
+
+        /* LOADER */
+        .loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--color-black); z-index: 99999;
+            display: flex; align-items: center; justify-content: center;
+            flex-direction: column;
+            transition: opacity 0.6s ease, visibility 0.6s ease;
+        }
+        .loader.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+        .loader-bar {
+            width: 120px; height: 1px; background: rgba(255,255,255,0.1);
+            overflow: hidden;
+        }
+        .loader-bar-progress {
+            height: 100%; width: 0%; background: var(--color-gold);
+            transition: width 0.3s;
+        }
+        .loader-text {
+            margin-top: 1rem; font-size: 0.6rem; letter-spacing: 0.5em;
+            text-transform: uppercase; opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="loader" id="loader">
+        <div class="loader-bar"><div class="loader-bar-progress" id="loaderProgress"></div></div>
+        <div class="loader-text">Loading...</div>
+    </div>
+
+    <div class="progress-bar" id="progressBar"></div>
+
+    <canvas id="noiseCanvas"></canvas>
+    <canvas id="canvas"></canvas>
+    <canvas id="prismCanvas"></canvas>
+
+    <nav class="nav-overlay">
+        <div class="logo">Virgo Gabrielle</div>
+        <ul class="nav-menu">
+            <li><a href="#essence">Essence</a></li>
+            <li><a href="#portfolio">Portfolio</a></li>
+            <li><a href="#philosophy">Philosophy</a></li>
+            <li><a href="#contact">Contact</a></li>
+        </ul>
+    </nav>
+
+    <div class="main-content">
+        <section class="hero-section" id="essence">
+            <div class="hero-content">
+                <p class="hero-eyebrow">Visual Storyteller · Fine Art Muse</p>
+                <h1 class="hero-title">
+                    <div class="hero-title-line"><span>Virgo</span></div>
+                    <div class="hero-title-line"><span>Gabrielle</span></div>
+                </h1>
+                <p class="hero-subtitle">Embodying grace in stillness and motion. Where artistry meets the ethereal.</p>
+            </div>
+        </section>
+
+        <section class="text-reveal-section" id="philosophy">
+            <div class="text-reveal-content">
+                <p class="text-reveal-label">The Philosophy</p>
+                <p class="text-reveal-paragraph" id="revealText">
+                    Light does not merely illuminate; it sculpts. A shadow is not absence, but presence of another kind. 
+                    In the dance between what is seen and unseen, the image discovers its own quiet truth.
+                </p>
+            </div>
+        </section>
+
+        <section class="horizontal-section" id="portfolio">
+            <div class="horizontal-wrapper">
+                <div class="horizontal-header">
+                    <h2>Selected Works</h2>
+                </div>
+                <div class="horizontal-track" id="horizontalTrack">
+                    <div class="gallery-item">
+                        <span class="gallery-item-number">01</span>
+                        <h3 class="gallery-item-title">Chiaroscuro</h3>
+                        <p class="gallery-item-desc">A study in contrast · 2024</p>
+                    </div>
+                    <div class="gallery-item">
+                        <span class="gallery-item-number">02</span>
+                        <h3 class="gallery-item-title">Elysium</h3>
+                        <p class="gallery-item-desc">Editorial campaign · Vogue Italia</p>
+                    </div>
+                    <div class="gallery-item">
+                        <span class="gallery-item-number">03</span>
+                        <h3 class="gallery-item-title">Penumbra</h3>
+                        <p class="gallery-item-desc">Personal project · Monochrome series</p>
+                    </div>
+                    <div class="gallery-item">
+                        <span class="gallery-item-number">04</span>
+                        <h3 class="gallery-item-title">Aurum</h3>
+                        <p class="gallery-item-desc">Golden hour · Tuscany</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="stacking-section">
+            <div class="stack-container">
+                <div class="stack-card" id="stackCard1">
+                    <p class="stack-card-eyebrow">Collaboration</p>
+                    <h3 class="stack-card-title">A Vision Shared</h3>
+                    <p class="stack-card-text">Every project begins with a conversation—an exchange of ideas that transforms a brief into a visual narrative.</p>
+                </div>
+                <div class="stack-card" id="stackCard2">
+                    <p class="stack-card-eyebrow">Process</p>
+                    <h3 class="stack-card-title">The Gentle Art</h3>
+                    <p class="stack-card-text">Patience in pursuit of a single perfect frame. Presence over production. The subtle over the spectacular.</p>
+                </div>
+                <div class="stack-card" id="stackCard3">
+                    <p class="stack-card-eyebrow">Result</p>
+                    <h3 class="stack-card-title">Timeless Imagery</h3>
+                    <p class="stack-card-text">Images that resonate beyond the moment of their creation, speaking a quiet language understood across time.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="parallax-section">
+            <div class="parallax-text-block" id="parallaxTextBlock">
+                <h2>Where light finds form.</h2>
+                <p>The portfolio is a curated selection of collaborative projects spanning fashion editorials, fine art photography, and conceptual campaigns. Each image is a partnership, a shared vision brought to life.</p>
+            </div>
+        </section>
+
+        <footer class="footer-section" id="contact">
+            <div class="footer-glass-card">
+                <h2 class="footer-title">INITIATE SERMONEM</h2>
+                <a href="/cdn-cgi/l/email-protection#7e161b1212113e12110c1b13170e0d0b13501d1113" class="footer-cta">INQUIRE</a>
+            </div>
+        </footer>
+
+    </div>
+
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="https://unpkg.com/lenis@1.1.13/dist/lenis.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/Draggable.min.js"></script>
+
+    <script>
+        // ============================================================
+        // CONFIGURATION
+        // ============================================================
+        const CONFIG = {
+            images: ['1.JPG', '2.JPG', '3.JPG', '4.JPG', '5.JPG', '6.JPG', '7.JPG', '8.JPG', '9.JPG', '10.JPG'],
+            scrollSensitivity: 0.0005,
+            displacementIntensity: 0.5,
+            zoomAmount: 0.3,
+            chromaticOffset: 3.5
+        };
+
+        // ============================================================
+        // SHADERS
+        // ============================================================
+        const vertexShaderSource = `attribute vec2 a_position;attribute vec2 a_texCoord;varying vec2 v_texCoord;void main(){gl_Position=vec4(a_position,0.0,1.0);v_texCoord=a_texCoord;}`;
+        const fragmentShaderSource = `precision highp float;varying vec2 v_texCoord;uniform sampler2D u_currentImage;uniform sampler2D u_nextImage;uniform float u_progress;uniform float u_displacementIntensity;uniform float u_zoomAmount;uniform vec2 u_chromaticOffset;uniform vec2 u_resolution;uniform vec2 u_currentImageSize;uniform vec2 u_nextImageSize;vec2 containVertical(vec2 uv,vec2 imageSize,vec2 screenSize){float screenAspect=screenSize.x/screenSize.y;float imageAspect=imageSize.x/imageSize.y;float imageWidthNorm=imageAspect/screenAspect;float xOffset=(1.0-imageWidthNorm)*0.5;return vec2((uv.x-xOffset)/imageWidthNorm,uv.y);}float inBounds(vec2 uv){return step(0.0,uv.x)*step(uv.x,1.0)*step(0.0,uv.y)*step(uv.y,1.0);}void main(){vec2 uv=v_texCoord;vec2 screenSize=u_resolution;float transitionCurve=smoothstep(0.0,1.0,u_progress);float transitionPeak=sin(u_progress*3.14159);float currentZoom=1.0+u_zoomAmount*transitionCurve;vec2 zoomedUV_current=(uv-0.5)/currentZoom+0.5;vec2 zoomedUV_next=uv;vec2 currentUV=containVertical(zoomedUV_current,u_currentImageSize,screenSize);vec2 nextUV=containVertical(zoomedUV_next,u_nextImageSize,screenSize);vec3 dispSample=texture2D(u_nextImage,clamp(nextUV,0.0,1.0)).rgb;float displacement=dot(dispSample,vec3(0.299,0.587,0.114));vec2 dispOffset=vec2(displacement-0.5)*u_displacementIntensity*transitionPeak;currentUV+=dispOffset;nextUV-=dispOffset*0.5;vec2 chromaticUV=u_chromaticOffset/screenSize;vec2 depthOffset=chromaticUV*(1.0+displacement*2.0);vec2 rUV=currentUV+depthOffset;vec2 bUV=currentUV-depthOffset;float cR=texture2D(u_currentImage,clamp(rUV,0.0,1.0)).r*inBounds(rUV);float cG=texture2D(u_currentImage,clamp(currentUV,0.0,1.0)).g*inBounds(currentUV);float cB=texture2D(u_currentImage,clamp(bUV,0.0,1.0)).b*inBounds(bUV);vec3 currentColor=vec3(cR,cG,cB);vec2 nrUV=nextUV+depthOffset*0.5;vec2 nbUV=nextUV-depthOffset*0.5;float nR=texture2D(u_nextImage,clamp(nrUV,0.0,1.0)).r*inBounds(nrUV);float nG=texture2D(u_nextImage,clamp(nextUV,0.0,1.0)).g*inBounds(nextUV);float nB=texture2D(u_nextImage,clamp(nbUV,0.0,1.0)).b*inBounds(nbUV);vec3 nextColor=vec3(nR,nG,nB);vec3 finalColor=mix(currentColor,nextColor,transitionCurve);float dist=distance(uv,vec2(0.5));finalColor*=smoothstep(0.8,0.2,dist*0.5);gl_FragColor=vec4(finalColor,1.0);}`;
+        const fragmentShaderNoiseSource = `precision highp float;varying vec2 v_texCoord;uniform float u_time;float random(vec2 st){return fract(sin(dot(st.xy,vec2(12.9898,78.233)))*43758.5453123);}void main(){float noise=random(v_texCoord+u_time);gl_FragColor=vec4(vec3(noise),1.0);}`;
+
+        // ============================================================
+        // PRISM SHADER - Buffer A (accumulation/simulation pass)
+        // ============================================================
+        const fragmentShaderPrismBufferA = `
+            precision highp float;
+            varying vec2 v_texCoord;
+            uniform float u_time;
+            uniform vec2 u_resolution;
+            uniform vec2 u_mouse;
+            uniform sampler2D u_buffer;
+
+            #define R u_resolution
+
+            vec2 tile(vec2 v) {
+                return ((fract(v) * 2.0 - 1.0) * sign(fract(0.5 * v) * 2.0 - 1.0)) * 0.5 + 0.5;
+            }
+
+            vec4 A(vec2 U) {
+                return texture2D(u_buffer, tile(U / R));
+            }
+
+            void main() {
+                vec2 U = v_texCoord * R;
+                
+                // First light source - automatic movement
+                vec2 e = (0.5 + 0.4 * vec2(sin(0.3 * u_time), cos(u_time))) * R;
+                
+                // Mouse interaction - use mouse position directly (no click required)
+                e = u_mouse;
+                
+                vec4 Q = vec4(100.0) * exp(-2e2 * length(U - e) / R.y);
+                
+                // Second light source - automatic movement
+                e = (0.5 + 0.4 * vec2(sin(0.9 * u_time), cos(-0.4 * u_time))) * R;
+                Q += vec4(10.0 + 10.0 * sin(u_time), 10.0 - 10.0 * sin(u_time), -10.0 * sin(0.25 * u_time), 10.0) * exp(-12e1 * length(U - e) / R.y);
+                
+                // Rotation
+                float a = 0.04213 * u_time;
+                float c = cos(a), s = sin(a);
+                mat2 m = mat2(c, -s, s, c);
+                
+                vec3 o = vec3(U - 0.5 * R, 0.0);
+                o.xy *= m;
+                
+                a = 0.1 * sin(0.1 * u_time);
+                c = cos(a); s = sin(a);
+                m = mat2(c, -s, s, c);
+                o.yz *= m;
+                
+                // Layer accumulation
+                for (float i = -20.0; i < 20.0; i++) {
+                    vec2 u = (1.3 + 0.3 * sin(0.21 * u_time)) * -o.xy + 0.5 * R + 0.005 * R.y * i;
+                    Q += 0.115 * A(u) * exp(-1.3 * abs(2.0 - 0.2 * i - vec4(1.0, 2.0, 3.0, 4.0)));
+                }
+                
+                gl_FragColor = Q;
+            }
+        `;
+
+        // ============================================================
+        // PRISM SHADER - Image pass (final color mapping)
+        // ============================================================
+        const fragmentShaderPrismImage = `
+            precision highp float;
+            varying vec2 v_texCoord;
+            uniform vec2 u_resolution;
+            uniform sampler2D u_buffer;
+
+            #define R u_resolution
+
+            vec4 A(vec2 U) {
+                return texture2D(u_buffer, U / R);
+            }
+
+            void main() {
+                vec2 U = v_texCoord * R;
+                vec4 a = A(U);
+                
+                vec4 Q = vec4(0.0);
+                Q += a.x * exp(-abs(0.5 - vec4(1.0, 2.0, 3.0, 4.0)));
+                Q += a.y * exp(-abs(1.5 - vec4(1.0, 2.0, 3.0, 4.0)));
+                Q += a.z * exp(-abs(2.5 - vec4(1.0, 2.0, 3.0, 4.0)));
+                Q += a.w * exp(-abs(3.5 - vec4(1.0, 2.0, 3.0, 4.0)));
+                
+                gl_FragColor = Q;
+            }
+        `;
+
+        // ============================================================
+        // WEBGL ENGINE
+        // ============================================================
+        class WebGLRenderer {
+            constructor(canvasId, fragmentSource) {
+                this.canvas = document.getElementById(canvasId);
+                this.gl = this.canvas.getContext('webgl', { antialias: true, alpha: true });
+                this.fragmentSource = fragmentSource;
+                this.program = null;
+                this.uniforms = {};
+                this.startTime = Date.now();
+                this.mouseX = window.innerWidth / 2;
+                this.mouseY = window.innerHeight / 2;
+                this.resize();
+            }
+            init() {
+                if(!this.gl) return;
+                this.createShaders();
+                this.createGeometry();
+                this.setupUniforms();
+                window.addEventListener('resize', () => this.resize());
+                window.addEventListener('mousemove', (e) => { 
+                    this.mouseX = e.clientX; 
+                    this.mouseY = e.clientY; 
+                });
+            }
+            resize() {
+                this.canvas.width = window.innerWidth * Math.min(window.devicePixelRatio, 2);
+                this.canvas.height = window.innerHeight * Math.min(window.devicePixelRatio, 2);
+                this.gl.viewport(0,0,this.canvas.width, this.canvas.height);
+            }
+            createShaders() {
+                const gl = this.gl;
+                const vs = gl.createShader(gl.VERTEX_SHADER);
+                gl.shaderSource(vs, vertexShaderSource);
+                gl.compileShader(vs);
+                const fs = gl.createShader(gl.FRAGMENT_SHADER);
+                gl.shaderSource(fs, this.fragmentSource);
+                gl.compileShader(fs);
+                this.program = gl.createProgram();
+                gl.attachShader(this.program, vs);
+                gl.attachShader(this.program, fs);
+                gl.linkProgram(this.program);
+                gl.useProgram(this.program);
+            }
+            createGeometry() {
+                const gl = this.gl;
+                const pos = new Float32Array([-1,-1, 1,-1, -1,1, 1,1]);
+                const tex = new Float32Array([0,1, 1,1, 0,0, 1,0]);
+                const pb = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, pb);
+                gl.bufferData(gl.ARRAY_BUFFER, pos, gl.STATIC_DRAW);
+                const pl = gl.getAttribLocation(this.program, 'a_position');
+                gl.enableVertexAttribArray(pl);
+                gl.vertexAttribPointer(pl, 2, gl.FLOAT, false, 0, 0);
+                const tb = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, tb);
+                gl.bufferData(gl.ARRAY_BUFFER, tex, gl.STATIC_DRAW);
+                const tl = gl.getAttribLocation(this.program, 'a_texCoord');
+                gl.enableVertexAttribArray(tl);
+                gl.vertexAttribPointer(tl, 2, gl.FLOAT, false, 0, 0);
+            }
+            setupUniforms() {
+                const gl = this.gl;
+                gl.useProgram(this.program);
+                this.uniforms.time = gl.getUniformLocation(this.program, 'u_time');
+                this.uniforms.resolution = gl.getUniformLocation(this.program, 'u_resolution');
+                this.uniforms.mouse = gl.getUniformLocation(this.program, 'u_mouse');
+            }
+            render() {
+                const gl = this.gl;
+                gl.useProgram(this.program);
+                gl.uniform1f(this.uniforms.time, (Date.now() - this.startTime)/1000);
+                gl.uniform2f(this.uniforms.resolution, this.canvas.width, this.canvas.height);
+                gl.uniform2f(this.uniforms.mouse, this.mouseX, window.innerHeight - this.mouseY);
+                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+                requestAnimationFrame(() => this.render());
+            }
+        }
+
+        // ============================================================
+        // PRISM SHADER CLASS (Multi-pass with FBO ping-pong)
+        // ============================================================
+        class PrismShader {
+            constructor() {
+                this.canvas = document.getElementById('prismCanvas');
+                this.gl = this.canvas.getContext('webgl', { antialias: false, alpha: true });
+                this.startTime = Date.now();
+                this.mouseX = window.innerWidth / 2;
+                this.mouseY = window.innerHeight / 2;
+                
+                // FBO ping-pong buffers
+                this.bufferA = null;
+                this.bufferB = null;
+                this.fbos = [];
+                this.currentBuffer = 0;
+                
+                // Programs
+                this.bufferProgram = null;
+                this.imageProgram = null;
+                
+                this.init();
+            }
+            
+            init() {
+                if (!this.gl) return;
+                
+                this.resize();
+                this.createShaderPrograms();
+                this.createGeometry();
+                this.createFramebuffers();
+                
+                window.addEventListener('resize', () => this.handleResize());
+                window.addEventListener('mousemove', (e) => {
+                    this.mouseX = e.clientX * Math.min(window.devicePixelRatio, 2);
+                    this.mouseY = e.clientY * Math.min(window.devicePixelRatio, 2);
+                });
+                
+                this.render();
+            }
+            
+            resize() {
+                this.canvas.width = window.innerWidth * Math.min(window.devicePixelRatio, 2);
+                this.canvas.height = window.innerHeight * Math.min(window.devicePixelRatio, 2);
+                this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+            }
+            
+            handleResize() {
+                this.resize();
+                this.createFramebuffers();
+            }
+            
+            createShaderProgram(fragmentSource) {
+                const gl = this.gl;
+                
+                // Vertex shader
+                const vs = gl.createShader(gl.VERTEX_SHADER);
+                gl.shaderSource(vs, vertexShaderSource);
+                gl.compileShader(vs);
+                
+                if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) {
+                    console.error('Vertex shader error:', gl.getShaderInfoLog(vs));
+                }
+                
+                // Fragment shader
+                const fs = gl.createShader(gl.FRAGMENT_SHADER);
+                gl.shaderSource(fs, fragmentSource);
+                gl.compileShader(fs);
+                
+                if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
+                    console.error('Fragment shader error:', gl.getShaderInfoLog(fs));
+                }
+                
+                // Program
+                const program = gl.createProgram();
+                gl.attachShader(program, vs);
+                gl.attachShader(program, fs);
+                gl.linkProgram(program);
+                
+                if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                    console.error('Program link error:', gl.getProgramInfoLog(program));
+                }
+                
+                return program;
+            }
+            
+            createShaderPrograms() {
+                this.bufferProgram = this.createShaderProgram(fragmentShaderPrismBufferA);
+                this.imageProgram = this.createShaderProgram(fragmentShaderPrismImage);
+                
+                // Get uniform locations for buffer program
+                const gl = this.gl;
+                this.bufferUniforms = {
+                    time: gl.getUniformLocation(this.bufferProgram, 'u_time'),
+                    resolution: gl.getUniformLocation(this.bufferProgram, 'u_resolution'),
+                    mouse: gl.getUniformLocation(this.bufferProgram, 'u_mouse'),
+                    buffer: gl.getUniformLocation(this.bufferProgram, 'u_buffer')
+                };
+                
+                // Get uniform locations for image program
+                this.imageUniforms = {
+                    resolution: gl.getUniformLocation(this.imageProgram, 'u_resolution'),
+                    buffer: gl.getUniformLocation(this.imageProgram, 'u_buffer')
+                };
+            }
+            
+            createGeometry() {
+                const gl = this.gl;
+                const pos = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
+                const tex = new Float32Array([0, 1, 1, 1, 0, 0, 1, 0]);
+                
+                // Position buffer
+                this.posBuffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.posBuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, pos, gl.STATIC_DRAW);
+                
+                // Texture coord buffer
+                this.texBuffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.texBuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, tex, gl.STATIC_DRAW);
+            }
+            
+            createFramebuffers() {
+                const gl = this.gl;
+                const width = this.canvas.width;
+                const height = this.canvas.height;
+                
+                // Clean up old FBOs
+                this.fbos.forEach(fbo => {
+                    if (fbo.texture) gl.deleteTexture(fbo.texture);
+                    if (fbo.framebuffer) gl.deleteFramebuffer(fbo.framebuffer);
+                });
+                this.fbos = [];
+                
+                // Create two FBOs for ping-pong rendering
+                for (let i = 0; i < 2; i++) {
+                    const texture = gl.createTexture();
+                    gl.bindTexture(gl.TEXTURE_2D, texture);
+                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                    
+                    const framebuffer = gl.createFramebuffer();
+                    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+                    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+                    
+                    this.fbos.push({ texture, framebuffer });
+                }
+                
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            }
+            
+            setupAttributes(program) {
+                const gl = this.gl;
+                
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.posBuffer);
+                const posLoc = gl.getAttribLocation(program, 'a_position');
+                gl.enableVertexAttribArray(posLoc);
+                gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+                
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.texBuffer);
+                const texLoc = gl.getAttribLocation(program, 'a_texCoord');
+                gl.enableVertexAttribArray(texLoc);
+                gl.vertexAttribPointer(texLoc, 2, gl.FLOAT, false, 0, 0);
+            }
+            
+            render() {
+                const gl = this.gl;
+                const time = (Date.now() - this.startTime) / 1000;
+                
+                // Pass 1: Render to buffer (Buffer A equivalent)
+                const readBuffer = this.fbos[this.currentBuffer];
+                const writeBuffer = this.fbos[1 - this.currentBuffer];
+                
+                gl.bindFramebuffer(gl.FRAMEBUFFER, writeBuffer.framebuffer);
+                gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+                
+                gl.useProgram(this.bufferProgram);
+                this.setupAttributes(this.bufferProgram);
+                
+                gl.uniform1f(this.bufferUniforms.time, time);
+                gl.uniform2f(this.bufferUniforms.resolution, this.canvas.width, this.canvas.height);
+                gl.uniform2f(this.bufferUniforms.mouse, this.mouseX, this.canvas.height - this.mouseY);
+                
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, readBuffer.texture);
+                gl.uniform1i(this.bufferUniforms.buffer, 0);
+                
+                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+                
+                // Swap buffers
+                this.currentBuffer = 1 - this.currentBuffer;
+                
+                // Pass 2: Render to screen (Image pass equivalent)
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+                
+                gl.useProgram(this.imageProgram);
+                this.setupAttributes(this.imageProgram);
+                
+                gl.uniform2f(this.imageUniforms.resolution, this.canvas.width, this.canvas.height);
+                
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, writeBuffer.texture);
+                gl.uniform1i(this.imageUniforms.buffer, 0);
+                
+                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+                
+                requestAnimationFrame(() => this.render());
+            }
+        }
+
+        // Shader Classes
+        class NoiseShader extends WebGLRenderer { constructor() { super('noiseCanvas', fragmentShaderNoiseSource); this.init(); this.render(); } }
+
+        // Main Image Scroller
+        class MainScroller extends WebGLRenderer {
+            constructor() {
+                super('canvas', fragmentShaderSource);
+                this.images = []; this.textures = []; this.imageSizes = []; this.globalProgress = 0;
+                this.initAsync();
+            }
+            async initAsync() {
+                const lp = document.getElementById('loaderProgress');
+                let loaded = 0;
+                for(let src of CONFIG.images) {
+                    const img = await new Promise((resolve) => {
+                        const i = new Image();
+                        i.onload = () => resolve(i);
+                        i.src = src;
+                    });
+                    this.images.push(img);
+                    this.imageSizes.push({w: img.naturalWidth, h: img.naturalHeight});
+                    loaded++;
+                    lp.style.width = `${(loaded/CONFIG.images.length)*100}%`;
+                }
+                this.init();
+                this.createTextures();
+                this.setupScrollerUniforms();
+                setTimeout(() => {
+                    document.getElementById('loader').classList.add('hidden');
+                    initAnimations();
+                }, 500);
+                this.render();
+            }
+            createTextures() {
+                const gl = this.gl;
+                this.images.forEach(img => {
+                    const t = gl.createTexture();
+                    gl.bindTexture(gl.TEXTURE_2D, t);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+                    this.textures.push(t);
+                });
+            }
+            setupScrollerUniforms() {
+                super.setupUniforms();
+                const gl = this.gl;
+                Object.assign(this.uniforms, {
+                    currentImage: gl.getUniformLocation(this.program, 'u_currentImage'),
+                    nextImage: gl.getUniformLocation(this.program, 'u_nextImage'),
+                    progress: gl.getUniformLocation(this.program, 'u_progress'),
+                    displacementIntensity: gl.getUniformLocation(this.program, 'u_displacementIntensity'),
+                    zoomAmount: gl.getUniformLocation(this.program, 'u_zoomAmount'),
+                    chromaticOffset: gl.getUniformLocation(this.program, 'u_chromaticOffset'),
+                    currentImageSize: gl.getUniformLocation(this.program, 'u_currentImageSize'),
+                    nextImageSize: gl.getUniformLocation(this.program, 'u_nextImageSize'),
+                });
+            }
+            setScrollProgress(p) { this.globalProgress = p * (this.images.length - 1); }
+            render() {
+                const gl = this.gl;
+                gl.useProgram(this.program);
+                const currentIndex = Math.floor(this.globalProgress);
+                const nextIndex = Math.min(currentIndex + 1, this.textures.length - 1);
+                const progress = this.globalProgress - currentIndex;
+                gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.textures[Math.min(currentIndex, this.textures.length-1)]); gl.uniform1i(this.uniforms.currentImage, 0);
+                gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, this.textures[nextIndex]); gl.uniform1i(this.uniforms.nextImage, 1);
+                gl.uniform1f(this.uniforms.progress, progress);
+                gl.uniform1f(this.uniforms.displacementIntensity, CONFIG.displacementIntensity);
+                gl.uniform1f(this.uniforms.zoomAmount, CONFIG.zoomAmount);
+                const dx = (this.mouseX / window.innerWidth - 0.5) * CONFIG.chromaticOffset * 10;
+                const dy = (this.mouseY / window.innerHeight - 0.5) * CONFIG.chromaticOffset * 5;
+                gl.uniform2f(this.uniforms.chromaticOffset, dx, dy);
+                const cs = this.imageSizes[Math.min(currentIndex, this.imageSizes.length-1)];
+                const ns = this.imageSizes[nextIndex];
+                gl.uniform2f(this.uniforms.currentImageSize, cs.w, cs.h);
+                gl.uniform2f(this.uniforms.nextImageSize, ns.w, ns.h);
+                gl.uniform2f(this.uniforms.resolution, this.canvas.width, this.canvas.height);
+                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+                requestAnimationFrame(() => this.render());
+            }
+        }
+
+        // ============================================================
+        // ANIMATION & LOGIC
+        // ============================================================
+        let scroller;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            new NoiseShader();
+            new PrismShader(); 
+            scroller = new MainScroller(); 
+        });
+
+        function initAnimations() {
+            gsap.registerPlugin(ScrollTrigger, Draggable);
+
+            // 1. LENIS
+            const lenis = new Lenis({
+                duration: 1.5,
+                easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+                smoothWheel: true,
+                orientation: 'vertical', 
+            });
+
+            lenis.on('scroll', (e) => {
+                ScrollTrigger.update();
+                const totalHeight = document.body.scrollHeight - window.innerHeight;
+                const scrollProgress = Math.max(0, Math.min(1, e.scroll / totalHeight));
+                document.getElementById('progressBar').style.width = `${scrollProgress * 100}%`;
+                if(scroller) scroller.setScrollProgress(scrollProgress);
+            });
+
+            gsap.ticker.add((time) => { lenis.raf(time * 1000); });
+            gsap.ticker.lagSmoothing(0);
+
+            // 2. NAV
+            const navLinks = document.querySelectorAll('.nav-menu a');
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const targetId = link.getAttribute('href');
+                    const targetSection = document.querySelector(targetId);
+                    if (targetSection) {
+                        lenis.scrollTo(targetSection, {
+                            duration: 2.5,
+                            easing: (t) => 1 - Math.pow(1 - t, 4)
+                        });
+                    }
+                });
+            });
+
+            // 3. TEXT & HERO
+            const revealText = document.getElementById('revealText');
+            const text = revealText.textContent;
+            revealText.innerHTML = '';
+            text.split(' ').forEach(word => {
+                const span = document.createElement('span');
+                span.className = 'word'; span.textContent = word + ' ';
+                revealText.appendChild(span);
+            });
+
+            gsap.to('.logo', { opacity: 1, y: 0, duration: 1.5, delay: 0.5 });
+            gsap.to('.nav-menu li', { opacity: 1, y: 0, duration: 1, stagger: 0.1, delay: 0.7 });
+
+            const tl = gsap.timeline({ delay: 0.8 });
+            tl.to('.hero-eyebrow', { opacity: 1, y: 0, duration: 1.5 })
+              .to('.hero-title-line span', { y: 0, duration: 1.8, stagger: 0.1, ease: 'power4.out' }, '-=1')
+              .to('.hero-subtitle', { opacity: 1, y: 0, duration: 1.5 }, '-=1');
+
+            gsap.to('.hero-content', {
+                opacity: 0, y: -100,
+                scrollTrigger: { trigger: '.hero-section', start: 'top top', end: 'bottom top', scrub: 1 }
+            });
+
+            // 4. TEXT REVEAL
+            ScrollTrigger.create({
+                trigger: '.text-reveal-section', start: 'top 60%', end: 'bottom 40%', scrub: 1,
+                onUpdate: self => {
+                    gsap.to('.text-reveal-label', {opacity: 1, y: 0, duration: 1});
+                    const words = document.querySelectorAll('.word');
+                    const idx = Math.floor(self.progress * words.length);
+                    words.forEach((w, i) => w.classList.toggle('revealed', i <= idx));
+                }
+            });
+
+            // 5. HORIZONTAL DRAGGABLE
+            const track = document.getElementById('horizontalTrack');
+            const section = document.querySelector('.horizontal-section');
+            const scrollDistance = track.scrollWidth - window.innerWidth;
+
+            const scrollTween = gsap.to(track, {
+                x: -scrollDistance, ease: "none",
+                scrollTrigger: {
+                    trigger: section, start: "top top", end: () => `+=${scrollDistance}`,
+                    pin: true, scrub: 1, invalidateOnRefresh: true
+                }
+            });
+
+            Draggable.create(document.createElement("div"), { 
+                trigger: track, type: "x", inertia: true,
+                onDrag: function() {
+                    const dragY = this.deltaX * -1.5;
+                    lenis.scrollTo(lenis.scroll + dragY, { immediate: true });
+                }
+            });
+            
+            document.querySelectorAll('.gallery-item').forEach((item, i) => {
+                gsap.to(item, {
+                    opacity: 1, y: 0, scale: 1,
+                    scrollTrigger: { trigger: ".horizontal-section", start: "top 70%", scrub: 1, end: "top 20%" }
+                });
+            });
+
+            // 6. STACKING CARDS
+            const cards = ['.stack-card#stackCard1', '.stack-card#stackCard2', '.stack-card#stackCard3'];
+            const stackHeight = window.innerHeight * 3;
+
+            cards.forEach((card, i) => { gsap.set(card, { zIndex: i + 1 }); });
+
+            const stackTimeline = gsap.timeline({
+                scrollTrigger: { trigger: '.stacking-section', start: 'top top', end: `+=${stackHeight}`, scrub: true, pin: true }
+            });
+
+            cards.forEach((card, i) => {
+                stackTimeline.to(card, { opacity: 1, y: 0, scale: 1, duration: 1, ease: "power2.out" });
+                if (i < cards.length - 1) {
+                    stackTimeline.to(card, { opacity: 0, scale: 0.9, y: -50, duration: 1, ease: "power2.in" }, ">-0.2");
+                } else {
+                    stackTimeline.to({}, { duration: 1 });
+                }
+            });
+
+            // 7. FOOTER & PARALLAX
+            gsap.to('#parallaxTextBlock h2, #parallaxTextBlock p', {
+                opacity: 1, x: 0, stagger: 0.2, duration: 1.5,
+                scrollTrigger: { trigger: '.parallax-section', start: 'top 60%' }
+            });
+
+            gsap.to('.footer-glass-card', {
+                opacity: 1, y: 0, duration: 1.5,
+                scrollTrigger: { trigger: '.footer-section', start: 'top 70%' }
+            });
+        }
+    </script>
+</body>
+</html>
