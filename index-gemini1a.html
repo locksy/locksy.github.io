@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virgo Gabrielle</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400&family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* ============================================================
+           CORE & VARIABLES
+           ============================================================ */
+        :root {
+            --color-black: #050505;
+            --color-cream: #f5f0e8;
+            --color-gold: #c9a962;
+            --color-gold-dim: rgba(201, 169, 98, 0.3);
+            --ease-elegant: cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            width: 100%;
+            min-height: 100vh;
+            background: var(--color-black);
+            font-family: 'Space Grotesk', sans-serif;
+            color: white;
+            overflow-x: hidden;
+        }
+
+        /* ============================================================
+           CANVAS LAYERS
+           ============================================================ */
+        /* Top: Noise (Film Grain) */
+        #noiseCanvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 9999; pointer-events: none; mix-blend-mode: overlay; opacity: 0.08;
+        }
+        
+        /* Middle: Main Image Displacement (Behind content, above background) */
+        #canvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1; 
+            mix-blend-mode: screen; 
+            opacity: 0.8;
+        }
+
+        /* Bottom: The Plasma Shader (Behind everything else) - NOW PRISM SHADER */
+        #plasmaCanvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0;
+            opacity: 0.9;
+        }
+        
+        /* Auxiliary canvas for the two-pass shader */
+        #bufferACanvas {
+            display: none; /* Hide the buffer canvas */
+        }
+
+        /* ============================================================
+           UI & NAVIGATION
+           ============================================================ */
+        .nav-overlay {
+            position: fixed; top: 0; left: 0; width: 100%;
+            padding: 2.5rem 4rem; z-index: 1000;
+            display: flex; justify-content: space-between; align-items: center;
+            mix-blend-mode: difference;
+        }
+
+        .logo {
+            font-family: 'Cormorant Garamond', serif; font-size: 1.1rem;
+            letter-spacing: 0.35em; text-transform: uppercase; color: white;
+            opacity: 0; transform: translateY(-30px);
+        }
+
+        .nav-menu { display: flex; gap: 3rem; list-style: none; }
+        .nav-menu li { opacity: 0; transform: translateY(-30px); }
+        .nav-menu a {
+            font-family: 'Space Grotesk', sans-serif; color: white;
+            text-decoration: none; font-size: 0.7rem; letter-spacing: 0.25em;
+            text-transform: uppercase; opacity: 0.6; transition: opacity 0.5s;
+            cursor: pointer;
+        }
+        .nav-menu a:hover { opacity: 1; }
+
+        .progress-bar {
+            position: fixed; top: 0; left: 0; height: 2px;
+            background: var(--color-gold); z-index: 10000; width: 0%;
+        }
+
+        /* ============================================================
+           CONTENT SECTIONS
+           ============================================================ */
+        .main-content { position: relative; z-index: 10; }
+
+        /* HERO */
+        .hero-section {
+            height: 100vh; display: flex; align-items: center; justify-content: center;
+            position: relative;
+        }
+        .hero-content { text-align: center; z-index: 2; pointer-events: none; }
+        .hero-eyebrow {
+            font-size: 0.65rem; letter-spacing: 0.6em; text-transform: uppercase;
+            color: var(--color-gold); margin-bottom: 2rem; opacity: 0; transform: translateY(40px);
+        }
+        .hero-title {
+            font-family: 'Cormorant Garamond', serif; font-size: clamp(3.5rem, 12vw, 9rem);
+            font-weight: 300; font-style: italic; line-height: 0.95; margin-bottom: 2rem;
+        }
+        .hero-title-line span { display: inline-block; transform: translateY(120%); }
+        .hero-subtitle {
+            font-size: 0.85rem; font-weight: 300; opacity: 0; transform: translateY(40px);
+            max-width: 420px; margin: 0 auto; color: rgba(255,255,255,0.7);
+        }
+
+        /* TEXT REVEAL */
+        .text-reveal-section {
+            min-height: 80vh; display: flex; align-items: center; padding: 10rem 10vw;
+        }
+        .text-reveal-content { max-width: 900px; }
+        .text-reveal-label {
+            font-size: 0.6rem; letter-spacing: 0.5em; text-transform: uppercase;
+            color: var(--color-gold); margin-bottom: 3rem; opacity: 0;
+        }
+        .text-reveal-paragraph {
+            font-family: 'Cormorant Garamond', serif; font-size: clamp(1.8rem, 4vw, 3rem);
+            font-weight: 300; line-height: 1.4; color: rgba(255,255,255,0.1);
+        }
+        .text-reveal-paragraph .word { display: inline-block; transition: color 1s ease; }
+        .text-reveal-paragraph .word.revealed { color: white; }
+
+        /* HORIZONTAL GALLERY */
+        .horizontal-section { position: relative; height: 400vh; }
+        
+        .horizontal-wrapper {
+            position: sticky; top: 0; height: 100vh;
+            display: flex; align-items: center; overflow: hidden;
+            background: linear-gradient(to bottom, rgba(5,5,5,0.8), rgba(5,5,5,0)); 
+        }
+
+        .horizontal-header {
+            position: absolute; top: 12vh; left: 8vw; z-index: 10;
+        }
+        .horizontal-header h2 {
+            font-family: 'Cormorant Garamond', serif; font-size: 0.9rem;
+            letter-spacing: 0.4em; text-transform: uppercase; color: var(--color-gold);
+        }
+
+        .horizontal-track {
+            display: flex; gap: 6vw; padding: 0 15vw;
+            cursor: grab; user-select: none;
+        }
+        .horizontal-track:active { cursor: grabbing; }
+
+        .gallery-item {
+            flex-shrink: 0; width: 35vw; height: 55vh;
+            opacity: 0; transform: translateY(60px) scale(0.95);
+            /* Subtle glass for gallery items */
+            background: rgba(10, 10, 12, 0.4); 
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 2.5rem;
+            display: flex; flex-direction: column; justify-content: flex-end;
+            position: relative;
+            transition: border-color 0.3s;
+        }
+        .gallery-item:hover { border-color: var(--color-gold-dim); }
+        .gallery-item-number {
+            position: absolute; top: 2rem; right: 2.5rem;
+            font-family: 'Cormorant Garamond', serif; font-size: 4rem;
+            font-style: italic; color: rgba(255,255,255,0.1);
+        }
+        .gallery-item-title {
+            font-family: 'Cormorant Garamond', serif; font-size: 2rem; font-style: italic;
+        }
+
+        /* STACKING CARDS (GLASSMORPHIC) */
+        .stacking-section { position: relative; height: 400vh; }
+        
+        .stacking-wrapper {
+            position: sticky; top: 0; height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden;
+        }
+
+        .stack-card {
+            position: absolute; 
+            width: 65vw; max-width: 800px; min-height: 50vh;
+            
+            /* Glassmorphism Styles */
+            background: rgba(8, 8, 10, 0.65);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.02);
+            
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            padding: 4rem; text-align: center;
+            opacity: 0; transform: translateY(100px) scale(0.9);
+            border-radius: 4px;
+        }
+        
+        .stack-card-title {
+            font-family: 'Cormorant Garamond', serif; font-size: 3.5rem;
+            font-style: italic; margin: 1.5rem 0;
+        }
+        .stack-card-text {
+            font-family: 'Space Grotesk', sans-serif; opacity: 0.7;
+            line-height: 1.8; max-width: 450px;
+        }
+
+        /* PARALLAX */
+        .parallax-section {
+            min-height: 150vh; padding: 10rem 8vw;
+            display: grid; grid-template-columns: 1fr 1fr;
+            align-items: center; gap: 4rem; position: relative; z-index: 5;
+        }
+        .parallax-text-block h2 {
+            font-family: 'Cormorant Garamond', serif; font-size: 3.5rem;
+            font-style: italic; margin-bottom: 2rem;
+            opacity: 0; transform: translateX(-50px);
+        }
+        .parallax-text-block p {
+            line-height: 1.8; opacity: 0; transform: translateX(-50px);
+        }
+        .parallax-visuals { position: relative; height: 60vh; }
+        .parallax-box {
+            position: absolute; border: 1px solid rgba(255,255,255,0.2);
+            width: 60%; height: 50%;
+            background: rgba(255,255,255,0.03); backdrop-filter: blur(5px);
+        }
+        .pb-1 { top: 0; left: 0; }
+        .pb-2 { top: 25%; left: 30%; z-index: 2; border-color: var(--color-gold-dim);}
+        .pb-3 { top: 50%; left: 10%; z-index: 3; }
+
+        /* FOOTER (GLASSMORPHIC MODAL) */
+        .footer-section {
+            height: 80vh; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            position: relative; z-index: 5;
+        }
+
+        .footer-glass-card {
+            width: 90%; max-width: 600px;
+            padding: 6rem 3rem;
+            
+            /* Glassmorphism Styles matching Cards */
+            background: rgba(8, 8, 10, 0.65);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+            
+            display: flex; flex-direction: column;
+            align-items: center; text-align: center;
+            border-radius: 4px;
+        }
+
+        .footer-title {
+            font-family: 'Cormorant Garamond', serif; font-size: 4rem;
+            font-style: italic; margin-bottom: 3rem;
+        }
+        .footer-cta {
+            padding: 1.2rem 3.5rem; border: 1px solid rgba(255,255,255,0.3);
+            text-decoration: none; color: white; text-transform: uppercase;
+            letter-spacing: 0.2em; font-size: 0.7rem; transition: all 0.3s;
+        }
+        .footer-cta:hover { background: white; color: black; }
+
+        /* LOADER */
+        .loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 20000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 1s var(--ease-elegant);
+        }
+        .loader.hidden { opacity: 0; pointer-events: none; }
+        .loader-text {
+            letter-spacing: 0.5em; text-transform: uppercase;
+            color: var(--color-gold); margin-bottom: 1rem;
+        }
+        .loader-bar { width: 200px; height: 1px; background: rgba(255,255,255,0.1); }
+        .loader-progress { height: 100%; background: white; width: 0%; transition: width 0.1s linear; }
+
+        @media(max-width: 900px) {
+            .nav-menu { display: none; }
+            .parallax-section { grid-template-columns: 1fr; }
+            .gallery-item { width: 80vw; }
+            .stack-card { width: 85vw; padding: 2rem; }
+            .stack-card-title { font-size: 2.5rem; }
+            .footer-glass-card { width: 90%; padding: 3rem 1.5rem; }
+            .footer-title { font-size: 2.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="loader" id="loader">
+        <div class="loader-text">LOADING EXPERIENCE</div>
+        <div class="loader-bar">
+            <div class="loader-progress" id="loaderProgress"></div>
+        </div>
+    </div>
+
+    <canvas id="noiseCanvas"></canvas>
+    <canvas id="canvas"></canvas>
+    <canvas id="plasmaCanvas"></canvas>
+    <canvas id="bufferACanvas"></canvas> <div class="progress-bar" id="progressBar"></div>
+
+    <nav class="nav-overlay">
+        <div class="logo">Virgo Gabrielle</div>
+        <ul class="nav-menu">
+            <li><a href="#about">about the artist</a></li>
+            <li><a href="#gallery">gallery</a></li>
+            <li><a href="#work">music</a></li>
+            <li><a href="#contact">connect</a></li>
+        </ul>
+    </nav>
+
+    <div class="main-content">
+        
+        <section class="hero-section">
+            <div class="hero-content">
+                <div class="hero-eyebrow">DOLOR SIT AMET</div>
+                <h1 class="hero-title">
+                    <span class="hero-title-line"><span>Virgo</span></span>
+                    <span class="hero-title-line"><span>Gabrielle</span></span>
+                </h1>
+                <p class="hero-subtitle">Consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam.</p>
+            </div>
+        </section>
+
+        <section class="text-reveal-section" id="about">
+            <div class="text-reveal-content">
+                <div class="text-reveal-label">IPSUM PHRASES</div>
+                <p class="text-reveal-paragraph" id="revealText">
+                    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+                </p>
+            </div>
+        </section>
+
+        <section class="horizontal-section" id="gallery">
+            <div class="horizontal-wrapper">
+                <div class="horizontal-header"><h2>LOREM DOLOR SIT</h2></div>
+                <div class="horizontal-track" id="horizontalTrack">
+                    <div class="gallery-item">
+                        <span class="gallery-item-number">01</span>
+                        <h3 class="gallery-item-title">Placeholder Title 01</h3>
+                    </div>
+                    <div class="gallery-item">
+                        <span class="gallery-item-number">02</span>
+                        <h3 class="gallery-item-title">Placeholder Title 02</h3>
+                    </div>
+                    <div class="gallery-item">
+                        <span class="gallery-item-number">03</span>
+                        <h3 class="gallery-item-title">Placeholder Title 03</h3>
+                    </div>
+                    <div class="gallery-item">
+                        <span class="gallery-item-number">04</span>
+                        <h3 class="gallery-item-title">Placeholder Title 04</h3>
+                    </div>
+                    <div class="gallery-item">
+                        <span class="gallery-item-number">05</span>
+                        <h3 class="gallery-item-title">Placeholder Title 05</h3>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="stacking-section" id="work">
+            <div class="stacking-wrapper">
+                <div class="stack-card" id="stackCard1">
+                    <div class="text-reveal-label">01 — VISIONE</div>
+                    <h2 class="stack-card-title">VIDERE ULTERIUS</h2>
+                    <p class="stack-card-text">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam.</p>
+                </div>
+                <div class="stack-card" id="stackCard2">
+                    <div class="text-reveal-label">02 — ARTIFICIUM</div>
+                    <h2 class="stack-card-title">FABRICATIO</h2>
+                    <p class="stack-card-text">Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit.</p>
+                </div>
+                <div class="stack-card" id="stackCard3">
+                    <div class="text-reveal-label">03 — IMPETUS</div>
+                    <h2 class="stack-card-title">IMPRESSIO</h2>
+                    <p class="stack-card-text">Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="parallax-section">
+            <div class="parallax-text-block" id="parallaxTextBlock">
+                <h2>CREARE TRANSCENDENTIA</h2>
+                <p>Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.</p>
+            </div>
+            <div class="parallax-visuals">
+                <div class="parallax-box pb-1"></div>
+                <div class="parallax-box pb-2"></div>
+                <div class="parallax-box pb-3"></div>
+            </div>
+        </section>
+
+        <footer class="footer-section" id="contact">
+            <div class="footer-glass-card">
+                <h2 class="footer-title">INITIATE SERMONEM</h2>
+                <a href="mailto:hello@loremipsum.com" class="footer-cta">INQUIRE</a>
+            </div>
+        </footer>
+
+    </div>
+
+    <script src="https://unpkg.com/lenis@1.1.13/dist/lenis.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/Draggable.min.js"></script>
+
+    <script>
+        // ============================================================
+        // CONFIGURATION
+        // ============================================================
+        const CONFIG = {
+            images: ['1.JPG', '2.JPG', '3.JPG', '4.JPG', '5.JPG', '6.JPG', '7.JPG', '8.JPG', '9.JPG', '10.JPG'],
+            scrollSensitivity: 0.0005,
+            displacementIntensity: 0.2,
+            zoomAmount: 0.3,
+            chromaticOffset: 3.5
+        };
+
+        // ============================================================
+        // SHADERS
+        // ============================================================
+        // Standard Vertex Shader
+        const vertexShaderSource = `attribute vec2 a_position;attribute vec2 a_texCoord;varying vec2 v_texCoord;void main(){gl_Position=vec4(a_position,0.0,1.0);v_texCoord=a_texCoord;}`;
+        
+        // Main Image Scroller Fragment Shader
+        const fragmentShaderSource = `precision highp float;varying vec2 v_texCoord;uniform sampler2D u_currentImage;uniform sampler2D u_nextImage;uniform float u_progress;uniform float u_displacementIntensity;uniform float u_zoomAmount;uniform vec2 u_chromaticOffset;uniform vec2 u_resolution;uniform vec2 u_currentImageSize;uniform vec2 u_nextImageSize;vec2 containVertical(vec2 uv,vec2 imageSize,vec2 screenSize){float screenAspect=screenSize.x/screenSize.y;float imageAspect=imageSize.x/imageSize.y;float imageWidthNorm=imageAspect/screenAspect;float xOffset=(1.0-imageWidthNorm)*0.5;return vec2((uv.x-xOffset)/imageWidthNorm,uv.y);}float inBounds(vec2 uv){return step(0.0,uv.x)*step(uv.x,1.0)*step(0.0,uv.y)*step(uv.y,1.0);}void main(){vec2 uv=v_texCoord;vec2 screenSize=u_resolution;float transitionCurve=smoothstep(0.0,1.0,u_progress);float transitionPeak=sin(u_progress*3.14159);float currentZoom=1.0+u_zoomAmount*transitionCurve;vec2 zoomedUV_current=(uv-0.5)/currentZoom+0.5;vec2 zoomedUV_next=uv;vec2 currentUV=containVertical(zoomedUV_current,u_currentImageSize,screenSize);vec2 nextUV=containVertical(zoomedUV_next,u_nextImageSize,screenSize);vec3 dispSample=texture2D(u_nextImage,clamp(nextUV,0.0,1.0)).rgb;float displacement=dot(dispSample,vec3(0.299,0.587,0.114));vec2 dispOffset=vec2(displacement-0.5)*u_displacementIntensity*transitionPeak;currentUV+=dispOffset;nextUV-=dispOffset*0.5;vec2 chromaticUV=u_chromaticOffset/screenSize;vec2 depthOffset=chromaticUV*(1.0+displacement*2.0);vec2 rUV=currentUV+depthOffset;vec2 bUV=currentUV-depthOffset;float cR=texture2D(u_currentImage,clamp(rUV,0.0,1.0)).r*inBounds(rUV);float cG=texture2D(u_currentImage,clamp(currentUV,0.0,1.0)).g*inBounds(currentUV);float cB=texture2D(u_currentImage,clamp(bUV,0.0,1.0)).b*inBounds(bUV);vec3 currentColor=vec3(cR,cG,cB);vec2 nrUV=nextUV+depthOffset*0.5;vec2 nbUV=nextUV-depthOffset*0.5;float nR=texture2D(u_nextImage,clamp(nrUV,0.0,1.0)).r*inBounds(nrUV);float nG=texture2D(u_nextImage,clamp(nextUV,0.0,1.0)).g*inBounds(nextUV);float nB=texture2D(u_nextImage,clamp(nbUV,0.0,1.0)).b*inBounds(nbUV);vec3 nextColor=vec3(nR,nG,nB);vec3 finalColor=mix(currentColor,nextColor,transitionCurve);float dist=distance(uv,vec2(0.5));finalColor*=smoothstep(0.8,0.2,dist*0.5);gl_FragColor=vec4(finalColor,1.0);}`;
+        
+        // Noise Shader Fragment Source
+        const fragmentShaderNoiseSource = `precision highp float;varying vec2 v_texCoord;uniform float u_time;float random(vec2 st){return fract(sin(dot(st.xy,vec2(12.9898,78.233)))*43758.5453123);}void main(){float noise=random(v_texCoord+u_time);gl_FragColor=vec4(vec3(noise),1.0);}`;
+
+        // ============================================================
+        // PRISM SHADER (REPLACEMENT FOR PLASMA) - TWO PASS
+        // Uniforms are renamed to match original implementation: iResolution -> u_resolution, iTime -> u_time, iMouse -> u_mouse
+        // u_mouse.z will be set to 0 to simulate *no click*, as requested for mouse movement only.
+        // The GLSL function names are preserved (A, mainImage) to match the provided source structure.
+        // ============================================================
+
+        // Buffer A Fragment Source (New)
+        const fragmentShaderBufferASource = `
+            precision highp float;
+            varying vec2 v_texCoord;
+            uniform vec2 u_resolution; // iResolution
+            uniform float u_time; // iTime
+            uniform vec4 u_mouse; // iMouse
+            uniform sampler2D u_channel0; // iChannel0 (for tiling texture)
+
+            #define R u_resolution
+            
+            // Tiling function equivalent to the one in the Buffer A tab
+            vec2 tile (vec2 v) {
+                return ((fract(v)*2.-1.)*sign(fract(0.5*v)*2.-1.))*0.5+0.5;
+            }
+            
+            vec4 A (vec2 U) {
+                // Use u_channel0 (which is the previous buffer's result in the next pass, but here we use it to tile)
+                return texture(u_channel0, tile(U/R)); 
+            }
+            
+            void main() {
+                vec2 U = v_texCoord * R;
+                vec4 Q = vec4(0);
+                
+                // Mouse position logic - Replaced iMouse.z check with a simple mouse position driven center
+                vec2 e = (.5+.4*vec2(sin(.3*u_time),cos(u_time)))*R;
+                
+                // Use u_mouse.xy / R.x to normalize the mouse input for the effect's center
+                // The provided GLSL uses iMouse.z (click state) to switch the center.
+                // To prioritize mouse movement, we'll blend the centers slightly based on mouse position
+                vec2 mouse_norm = u_mouse.xy / R;
+                vec2 mouse_center = mouse_norm * R;
+                
+                // Blend the automatic center with the mouse center (simplified replacement for the iMouse.z logic)
+                // We'll use the mouse X position to shift the effect center
+                e.x = e.x * 0.9 + mouse_center.x * 0.1; 
+                e.y = e.y * 0.9 + (R.y - mouse_center.y) * 0.1; // GLSL Y is usually inverted from screen Y
+                
+                Q = vec4(100)*exp(-2e2*length(U-e)/R.y);
+                
+                e = (.5+.4*vec2(sin(.9*u_time),cos(-.4*u_time)))*R;
+                Q += vec4(10.+10.*sin(u_time),10.-10.*sin(u_time),-10.*sin(.25*u_time),10)*exp(-12e1*length(U-e)/R.y);
+                
+                float a = .04213*u_time, c = cos(a), s = sin(a);
+                mat2 m = mat2(c,-s,s,c);
+                vec3 o = vec3(U-0.5*R,0);
+                o.xy *= m;
+                a = .1*sin(.1*u_time); c = cos(a); s = sin(a);
+                m = mat2(c,-s,s,c);
+                o.yz *= m;
+                
+                for (float i = -20.;i<20.;i++) {
+                    vec2 u = (1.3+.3*sin(.21*u_time))*-o.xy+0.5*R+.005*R.y*i;
+                    Q += .115*A(u)*exp(-1.3*abs(2.-.2*i-vec4(1,2,3,4)));
+                }
+                
+                Q = clamp(Q, 0.0, 1.0); // Clamp output to [0, 1]
+                gl_FragColor = Q;
+            }
+        `;
+
+        // Image Tab Fragment Source (New - Output)
+        const fragmentShaderPrismSource = `
+            precision highp float;
+            varying vec2 v_texCoord;
+            uniform vec2 u_resolution; // iResolution
+            uniform sampler2D u_channel0; // iChannel0 (Result from Buffer A)
+
+            #define R u_resolution
+            
+            vec4 A (vec2 U) {
+                return texture(u_channel0, U/R); // Sample from Buffer A result
+            }
+            
+            void main() {
+                vec2 U = v_texCoord * R;
+                vec4 a = A(U);
+                vec4 Q = vec4(0);
+                
+                // The provided formula creates the prismatic color shift based on the four channels (RGBA)
+                Q += a.x*exp(-abs(.5-vec4(1,2,3,4))); // Red channel
+                Q += a.y*exp(-abs(1.5-vec4(1,2,3,4))); // Green channel
+                Q += a.z*exp(-abs(2.5-vec4(1,2,3,4))); // Blue channel
+                Q += a.w*exp(-abs(3.5-vec4(1,2,3,4))); // Alpha/W channel
+                
+                // The output is multiplied by a small value to keep it dark and subtle, suitable for a background.
+                Q *= 0.15; 
+                
+                gl_FragColor = Q;
+            }
+        `;
+
+
+        // ============================================================
+        // WEBGL ENGINE
+        // ============================================================
+        class WebGLRenderer {
+            constructor(canvasId, fragmentSource) {
+                this.canvas = document.getElementById(canvasId);
+                // Use 'webgl' instead of 'webgl2' to ensure broader compatibility
+                this.gl = this.canvas.getContext('webgl', { antialias: true, alpha: true });
+                this.fragmentSource = fragmentSource;
+                this.program = null;
+                this.uniforms = {};
+                this.startTime = Date.now();
+                this.mouseX = 0; this.mouseY = 0;
+                this.resize();
+            }
+            init() {
+                if(!this.gl) return;
+                this.createShaders();
+                this.createGeometry();
+                this.setupUniforms();
+                window.addEventListener('resize', () => this.resize());
+                // The mouse listener is moved outside to the main logic to ensure both shaders use the same coordinate
+            }
+            resize() {
+                this.canvas.width = window.innerWidth * Math.min(window.devicePixelRatio, 2);
+                this.canvas.height = window.innerHeight * Math.min(window.devicePixelRatio, 2);
+                this.gl.viewport(0,0,this.canvas.width, this.canvas.height);
+            }
+            createShaders() {
+                const gl = this.gl;
+                const vs = gl.createShader(gl.VERTEX_SHADER);
+                gl.shaderSource(vs, vertexShaderSource);
+                gl.compileShader(vs);
+                if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) { console.error('Vertex Shader Compile Error:', gl.getShaderInfoLog(vs)); }
+
+                const fs = gl.createShader(gl.FRAGMENT_SHADER);
+                gl.shaderSource(fs, this.fragmentSource);
+                gl.compileShader(fs);
+                if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) { console.error('Fragment Shader Compile Error:', gl.getShaderInfoLog(fs)); }
+
+                this.program = gl.createProgram();
+                gl.attachShader(this.program, vs);
+                gl.attachShader(this.program, fs);
+                gl.linkProgram(this.program);
+                if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) { console.error('Program Link Error:', gl.getProgramInfoLog(this.program)); }
+                gl.useProgram(this.program);
+            }
+            createGeometry() {
+                const gl = this.gl;
+                const pos = new Float32Array([-1,-1, 1,-1, -1,1, 1,1]);
+                const tex = new Float32Array([0,1, 1,1, 0,0, 1,0]);
+                const pb = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, pb);
+                gl.bufferData(gl.ARRAY_BUFFER, pos, gl.STATIC_DRAW);
+                const pl = gl.getAttribLocation(this.program, 'a_position');
+                gl.enableVertexAttribArray(pl);
+                gl.vertexAttribPointer(pl, 2, gl.FLOAT, false, 0, 0);
+                const tb = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, tb);
+                gl.bufferData(gl.ARRAY_BUFFER, tex, gl.STATIC_DRAW);
+                const tl = gl.getAttribLocation(this.program, 'a_texCoord');
+                gl.enableVertexAttribArray(tl);
+                gl.vertexAttribPointer(tl, 2, gl.FLOAT, false, 0, 0);
+            }
+            setupUniforms() {
+                const gl = this.gl;
+                gl.useProgram(this.program);
+                this.uniforms.time = gl.getUniformLocation(this.program, 'u_time');
+                this.uniforms.resolution = gl.getUniformLocation(this.program, 'u_resolution');
+                this.uniforms.mouse = gl.getUniformLocation(this.program, 'u_mouse');
+                this.uniforms.channel0 = gl.getUniformLocation(this.program, 'u_channel0');
+            }
+            
+            // Generic render method, will be overridden for multi-pass
+            render() {
+                const gl = this.gl;
+                gl.useProgram(this.program);
+                gl.uniform1f(this.uniforms.time, (Date.now() - this.startTime)/1000);
+                gl.uniform2f(this.uniforms.resolution, this.canvas.width, this.canvas.height);
+                gl.uniform4f(this.uniforms.mouse, this.mouseX, window.innerHeight - this.mouseY, 0, 0); // Mouse X, Y (inverted), Z(click)=0, W=0
+                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+                requestAnimationFrame(() => this.render());
+            }
+        }
+        
+        // --- Shader Classes ---
+        
+        // Noise Shader remains the same
+        class NoiseShader extends WebGLRenderer { 
+            constructor() { 
+                super('noiseCanvas', fragmentShaderNoiseSource); 
+                this.init(); 
+                this.render(); 
+            } 
+            // Override setupUniforms to skip iChannel0/iMouse if they don't exist
+            setupUniforms() {
+                const gl = this.gl;
+                gl.useProgram(this.program);
+                this.uniforms.time = gl.getUniformLocation(this.program, 'u_time');
+            }
+            render() {
+                const gl = this.gl;
+                gl.useProgram(this.program);
+                gl.uniform1f(this.uniforms.time, (Date.now() - this.startTime)/1000);
+                // No resolution or mouse needed for this simple noise shader
+                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+                requestAnimationFrame(() => this.render());
+            }
+        }
+        
+        // Prism Shader (Multi-pass)
+        class PrismShader {
+            constructor() {
+                this.bufferA = new WebGLRenderer('bufferACanvas', fragmentShaderBufferASource);
+                this.output = new WebGLRenderer('plasmaCanvas', fragmentShaderPrismSource);
+                
+                // Initialize Buffer A
+                this.bufferA.init();
+                // Initialize Output
+                this.output.init();
+                
+                // Setup Framebuffer for Buffer A to render to a texture
+                const glA = this.bufferA.gl;
+                this.textureA = glA.createTexture();
+                glA.bindTexture(glA.TEXTURE_2D, this.textureA);
+                glA.texParameteri(glA.TEXTURE_2D, glA.TEXTURE_WRAP_S, glA.CLAMP_TO_EDGE);
+                glA.texParameteri(glA.TEXTURE_2D, glA.TEXTURE_WRAP_T, glA.CLAMP_TO_EDGE);
+                glA.texParameteri(glA.TEXTURE_2D, glA.TEXTURE_MIN_FILTER, glA.LINEAR);
+                glA.texParameteri(glA.TEXTURE_2D, glA.TEXTURE_MAG_FILTER, glA.LINEAR);
+
+                this.framebufferA = glA.createFramebuffer();
+                glA.bindFramebuffer(glA.FRAMEBUFFER, this.framebufferA);
+                glA.framebufferTexture2D(glA.FRAMEBUFFER, glA.COLOR_ATTACHMENT0, glA.TEXTURE_2D, this.textureA, 0);
+
+                // Initial resize and texture allocation
+                this.resize();
+
+                // Mouse coordinates for all shaders
+                this.mouseX = 0;
+                this.mouseY = 0;
+                window.addEventListener('mousemove', (e) => { 
+                    this.mouseX = e.clientX; 
+                    this.mouseY = e.clientY; 
+                });
+                window.addEventListener('resize', () => this.resize());
+                
+                this.render();
+            }
+
+            resize() {
+                // Resize buffer A
+                this.bufferA.resize();
+                
+                const glA = this.bufferA.gl;
+                glA.bindTexture(glA.TEXTURE_2D, this.textureA);
+                glA.texImage2D(glA.TEXTURE_2D, 0, glA.RGBA, this.bufferA.canvas.width, this.bufferA.canvas.height, 0, glA.RGBA, glA.UNSIGNED_BYTE, null);
+
+                // Resize output
+                this.output.resize();
+            }
+
+            render() {
+                const time = (Date.now() - this.bufferA.startTime) / 1000;
+                const mouseX = this.mouseX;
+                const mouseY = this.mouseY;
+                const invertedMouseY = window.innerHeight - mouseY;
+                const mouseVec4 = [mouseX, invertedMouseY, 0, 0]; // iMouse.z=0 (no click/drag)
+
+                // --- Pass 1: Render Buffer A to its texture ---
+                const glA = this.bufferA.gl;
+                glA.bindFramebuffer(glA.FRAMEBUFFER, this.framebufferA);
+                glA.viewport(0, 0, this.bufferA.canvas.width, this.bufferA.canvas.height);
+                glA.useProgram(this.bufferA.program);
+
+                glA.uniform1f(this.bufferA.uniforms.time, time);
+                glA.uniform2f(this.bufferA.uniforms.resolution, this.bufferA.canvas.width, this.bufferA.canvas.height);
+                glA.uniform4f(this.bufferA.uniforms.mouse, ...mouseVec4);
+                
+                // For Buffer A, iChannel0 is used for the tiling, so we self-bind the texture
+                glA.activeTexture(glA.TEXTURE0); 
+                glA.bindTexture(glA.TEXTURE_2D, this.textureA); 
+                glA.uniform1i(this.bufferA.uniforms.channel0, 0);
+
+                glA.drawArrays(glA.TRIANGLE_STRIP, 0, 4);
+
+                // --- Pass 2: Render Output (Main Image) to the screen ---
+                const glO = this.output.gl;
+                glO.bindFramebuffer(glO.FRAMEBUFFER, null); // Render to canvas
+                glO.viewport(0, 0, this.output.canvas.width, this.output.canvas.height);
+                glO.useProgram(this.output.program);
+
+                glO.uniform1f(this.output.uniforms.time, time); // Time not strictly needed but good practice
+                glO.uniform2f(this.output.uniforms.resolution, this.output.canvas.width, this.output.canvas.height);
+                glO.uniform4f(this.output.uniforms.mouse, ...mouseVec4); // Mouse not strictly needed but good practice
+
+                // Bind the result of Buffer A as iChannel0 for the Output Pass
+                glO.activeTexture(glO.TEXTURE0);
+                glO.bindTexture(glO.TEXTURE_2D, this.textureA); 
+                glO.uniform1i(this.output.uniforms.channel0, 0);
+
+                glO.drawArrays(glO.TRIANGLE_STRIP, 0, 4);
+
+                requestAnimationFrame(() => this.render());
+            }
+        }
+
+        // Main Image Scroller - remains the same
+        class MainScroller extends WebGLRenderer {
+            constructor() {
+                super('canvas', fragmentShaderSource);
+                this.images = []; this.textures = []; this.imageSizes = []; this.globalProgress = 0;
+                this.initAsync();
+            }
+            async initAsync() {
+                const lp = document.getElementById('loaderProgress');
+                let loaded = 0;
+                for(let src of CONFIG.images) {
+                    const img = await new Promise((resolve) => {
+                        const i = new Image();
+                        i.onload = () => resolve(i);
+                        i.src = src;
+                    });
+                    this.images.push(img);
+                    this.imageSizes.push({w: img.naturalWidth, h: img.naturalHeight});
+                    loaded++;
+                    lp.style.width = `${(loaded/CONFIG.images.length)*100}%`;
+                }
+                this.init();
+                this.createTextures();
+                this.setupScrollerUniforms();
+                setTimeout(() => {
+                    document.getElementById('loader').classList.add('hidden');
+                    initAnimations();
+                }, 500);
+                this.render();
+            }
+            createTextures() {
+                const gl = this.gl;
+                this.images.forEach(img => {
+                    const t = gl.createTexture();
+                    gl.bindTexture(gl.TEXTURE_2D, t);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+                    this.textures.push(t);
+                });
+            }
+            setupScrollerUniforms() {
+                // Not calling super.setupUniforms() as this class has specific uniforms
+                const gl = this.gl;
+                gl.useProgram(this.program);
+                Object.assign(this.uniforms, {
+                    // Renamed from original GLSL (i.e. 'u_currentImage' for 'iChannel0')
+                    currentImage: gl.getUniformLocation(this.program, 'u_currentImage'),
+                    nextImage: gl.getUniformLocation(this.program, 'u_nextImage'),
+                    progress: gl.getUniformLocation(this.program, 'u_progress'),
+                    displacementIntensity: gl.getUniformLocation(this.program, 'u_displacementIntensity'),
+                    zoomAmount: gl.getUniformLocation(this.program, 'u_zoomAmount'),
+                    chromaticOffset: gl.getUniformLocation(this.program, 'u_chromaticOffset'),
+                    currentImageSize: gl.getUniformLocation(this.program, 'u_currentImageSize'),
+                    nextImageSize: gl.getUniformLocation(this.program, 'u_nextImageSize'),
+                    resolution: gl.getUniformLocation(this.program, 'u_resolution'),
+                });
+            }
+            setScrollProgress(p) { this.globalProgress = p * (this.images.length - 1); }
+            render() {
+                const gl = this.gl;
+                gl.useProgram(this.program);
+                const currentIndex = Math.floor(this.globalProgress);
+                const nextIndex = Math.min(currentIndex + 1, this.textures.length - 1);
+                const progress = this.globalProgress - currentIndex;
+                gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.textures[Math.min(currentIndex, this.textures.length-1)]); gl.uniform1i(this.uniforms.currentImage, 0);
+                gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, this.textures[nextIndex]); gl.uniform1i(this.uniforms.nextImage, 1);
+                gl.uniform1f(this.uniforms.progress, progress);
+                gl.uniform1f(this.uniforms.displacementIntensity, CONFIG.displacementIntensity);
+                gl.uniform1f(this.uniforms.zoomAmount, CONFIG.zoomAmount);
+                const dx = (this.mouseX / window.innerWidth - 0.5) * CONFIG.chromaticOffset * 10;
+                const dy = (this.mouseY / window.innerHeight - 0.5) * CONFIG.chromaticOffset * 5;
+                gl.uniform2f(this.uniforms.chromaticOffset, dx, dy);
+                const cs = this.imageSizes[Math.min(currentIndex, this.imageSizes.length-1)];
+                const ns = this.imageSizes[nextIndex];
+                gl.uniform2f(this.uniforms.currentImageSize, cs.w, cs.h);
+                gl.uniform2f(this.uniforms.nextImageSize, ns.w, ns.h);
+                gl.uniform2f(this.uniforms.resolution, this.canvas.width, this.canvas.height);
+                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+                requestAnimationFrame(() => this.render());
+            }
+        }
+
+        // ============================================================
+        // ANIMATION & LOGIC
+        // ============================================================
+        let scroller;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            new NoiseShader();
+            // Replaced PlasmaShader with PrismShader
+            new PrismShader(); 
+            scroller = new MainScroller(); 
+        });
+
+        function initAnimations() {
+            gsap.registerPlugin(ScrollTrigger, Draggable);
+
+            // 1. LENIS
+            const lenis = new Lenis({
+                duration: 1.5,
+                easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+                smoothWheel: true,
+                orientation: 'vertical', 
+            });
+
+            lenis.on('scroll', (e) => {
+                ScrollTrigger.update();
+                const totalHeight = document.body.scrollHeight - window.innerHeight;
+                const scrollProgress = Math.max(0, Math.min(1, e.scroll / totalHeight));
+                document.getElementById('progressBar').style.width = `${scrollProgress * 100}%`;
+                if(scroller) scroller.setScrollProgress(scrollProgress);
+            });
+
+            gsap.ticker.add((time) => { lenis.raf(time * 1000); });
+            gsap.ticker.lagSmoothing(0);
+
+            // 2. NAV
+            const navLinks = document.querySelectorAll('.nav-menu a');
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const targetId = link.getAttribute('href');
+                    const targetSection = document.querySelector(targetId);
+                    if (targetSection) {
+                        lenis.scrollTo(targetSection, {
+                            duration: 2.5,
+                            easing: (t) => 1 - Math.pow(1 - t, 4)
+                        });
+                    }
+                });
+            });
+
+            // 3. TEXT & HERO
+            const revealText = document.getElementById('revealText');
+            const text = revealText.textContent;
+            revealText.innerHTML = '';
+            text.split(' ').forEach(word => {
+                const span = document.createElement('span');
+                span.className = 'word'; span.textContent = word + ' ';
+                revealText.appendChild(span);
+            });
+
+            gsap.to('.logo', { opacity: 1, y: 0, duration: 1.5, delay: 0.5 });
+            gsap.to('.nav-menu li', { opacity: 1, y: 0, duration: 1, stagger: 0.1, delay: 0.7 });
+
+            const tl = gsap.timeline({ delay: 0.8 });
+            tl.to('.hero-eyebrow', { opacity: 1, y: 0, duration: 1.5 })
+              .to('.hero-title-line span', { y: 0, duration: 1.8, stagger: 0.1, ease: 'power4.out' }, '-=1')
+              .to('.hero-subtitle', { opacity: 1, y: 0, duration: 1.5 }, '-=1');
+
+            gsap.to('.hero-content', {
+                opacity: 0, y: -100,
+                scrollTrigger: { trigger: '.hero-section', start: 'top top', end: 'bottom top', scrub: 1 }
+            });
+
+            // 4. TEXT REVEAL
+            ScrollTrigger.create({
+                trigger: '.text-reveal-section', start: 'top 60%', end: 'bottom 40%', scrub: 1,
+                onUpdate: self => {
+                    gsap.to('.text-reveal-label', {opacity: 1, y: 0, duration: 1});
+                    const words = document.querySelectorAll('.word');
+                    const idx = Math.floor(self.progress * words.length);
+                    words.forEach((w, i) => w.classList.toggle('revealed', i <= idx));
+                }
+            });
+
+            // 5. HORIZONTAL DRAGGABLE
+            const track = document.getElementById('horizontalTrack');
+            const section = document.querySelector('.horizontal-section');
+            const scrollDistance = track.scrollWidth - window.innerWidth;
+
+            const scrollTween = gsap.to(track, {
+                x: -scrollDistance, ease: "none",
+                scrollTrigger: {
+                    trigger: section, start: "top top", end: () => `+=${scrollDistance}`,
+                    pin: true, scrub: 1, invalidateOnRefresh: true
+                }
+            });
+
+            Draggable.create(document.createElement("div"), { 
+                trigger: track, type: "x", inertia: true,
+                onDrag: function() {
+                    const dragY = this.deltaX * -1.5;
+                    lenis.scrollTo(lenis.scroll + dragY, { immediate: true });
+                }
+            });
+            
+            document.querySelectorAll('.gallery-item').forEach((item, i) => {
+                gsap.to(item, {
+                    opacity: 1, y: 0, scale: 1,
+                    scrollTrigger: { trigger: ".horizontal-section", start: "top 70%", scrub: 1, end: "top 20%" }
+                });
+            });
+
+            // 6. STACKING CARDS
+            const cards = ['.stack-card#stackCard1', '.stack-card#stackCard2', '.stack-card#stackCard3'];
+            const stackHeight = window.innerHeight * 3;
+
+            cards.forEach((card, i) => { gsap.set(card, { zIndex: i + 1 }); });
+
+            const stackTimeline = gsap.timeline({
+                scrollTrigger: { trigger: '.stacking-section', start: 'top top', end: `+=${stackHeight}`, scrub: true, pin: true }
+            });
+
+            cards.forEach((card, i) => {
+                stackTimeline.to(card, { opacity: 1, y: 0, scale: 1, duration: 1, ease: "power2.out" });
+                if (i < cards.length - 1) {
+                    stackTimeline.to(card, { opacity: 0, scale: 0.9, y: -50, duration: 1, ease: "power2.in" }, ">-0.2");
+                } else {
+                    stackTimeline.to({}, { duration: 1 });
+                }
+            });
+
+            // 7. FOOTER & PARALLAX
+            gsap.to('#parallaxTextBlock h2, #parallaxTextBlock p', {
+                opacity: 1, x: 0, stagger: 0.2, duration: 1.5,
+                scrollTrigger: { trigger: '.parallax-section', start: 'top 60%' }
+            });
+
+            gsap.to('.footer-title', { opacity: 1, y: 0, duration: 1.5, scrollTrigger: {trigger: '.footer-section', start: 'top 60%'}});
+        }
+    </script>
+</body>
+</html>
