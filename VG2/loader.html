@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Virgo Gabrielle - Loading</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Virgo Gabrielle - Loader</title>
     
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -13,35 +13,32 @@
             height: 100%;
             background: #000000;
             overflow: hidden;
-            touch-action: none;
+            touch-action: none; /* Prevents unwanted scrolling/zooming */
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             display: flex;
             justify-content: center;
-            align-items: flex-start; /* Align top like before */
+            align-items: flex-start;
         }
 
-        /* Image canvas - Middle Layer 
-           FIX: Added max-dimensions so it scales down on mobile 
-        */
+        /* Image canvas - Middle Layer (The main 3D-effect image) */
         #depthCanvas {
             position: absolute;
             top: 0;
-            /* Center horizontally */
             left: 50%;
             transform: translateX(-50%);
             
-            /* Responsive constraints */
+            /* Crucial Responsive Constraints for Mobile Visibility */
             max-width: 100vw;
             max-height: 100vh;
             width: auto;
             height: auto;
-            object-fit: contain;
+            object-fit: contain; /* Ensures image fits within bounds */
             
             z-index: 1; 
             pointer-events: none; 
         }
 
-        /* Prism shader - Top Layer */
+        /* Prism shader - Top Layer (The glowing overlay effect) */
         #prismCanvas {
             position: fixed;
             top: 0; left: 0;
@@ -133,13 +130,17 @@
             imagePath: '/loader-img.png',
             depthPath: '/loader-depth.png',
             
-            // Tuned Settings
-            parallaxStrength: 15,        // Greatly reduced to keep it subtle and clean
-            inputSensitivity: 5.0,       // High sensitivity to compensate for low strength
-            smoothing: 0.08,             
+            // TWEAKED SETTINGS
+            parallaxStrength: 8,         // Reduced to be very subtle
+            inputSensitivity: 7.0,       // Increased for high responsiveness
+            smoothing: 0.1,              // Slightly smoother movement
             
-            // Border Fix
-            zoomLevel: 0.92,             // 0.92 = 8% Zoom in to create safety buffer for edges
+            // Visual Effects (from index-gemini1-1.html)
+            chromaticAberration: 0.007,  // Subtle channel splitting
+            noiseAmount: 0.03,           // Light static noise
+            
+            // Border Fix (UV Zoom)
+            zoomLevel: 0.92,             // 8% Zoom in to hide edges during parallax
         };
 
         // ============================================================
@@ -148,14 +149,14 @@
         const state = {
             sensor: { x: 0, y: 0, active: false },
             manual: { x: 0, y: 0, active: false },
-            viewX: 0,
-            viewY: 0,
-            targetX: 0,
-            targetY: 0,
+            viewX: 0, // Smoothed X input for rendering
+            viewY: 0, // Smoothed Y input for rendering
+            targetX: 0, // Combined target X
+            targetY: 0, // Combined target Y
         };
 
         // ============================================================
-        // VERTEX SHADER
+        // VERTEX SHADER (Standard)
         // ============================================================
         const vertexShader = `
             attribute vec2 a_position;
@@ -168,7 +169,7 @@
         `;
 
         // ============================================================
-        // DEPTH PARALLAX SHADER (With Zoom/Crop Fix)
+        // DEPTH PARALLAX SHADER (With Zoom, CA, and Noise)
         // ============================================================
         const depthParallaxShader = `
             precision highp float;
@@ -178,36 +179,67 @@
             uniform sampler2D u_depth;
             uniform vec2 u_viewOffset;
             uniform float u_strength;
-            uniform float u_zoom; /* New Uniform */
+            uniform float u_zoom;
+            uniform float u_ca;          // Chromatic Aberration strength
+            uniform float u_noise;       // Noise strength
+            uniform float u_time;
+            uniform vec2 u_resolution;
             
+            // Simple hash function for pseudo-random noise
+            float hash(vec2 p) {
+                return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+            }
+            
+            vec4 sampleDisplaced(vec2 uv, vec2 offset) {
+                // Get depth value (0.0 to 1.0)
+                float depth = texture2D(u_depth, uv).r;
+                
+                // Calculate base offset
+                vec2 baseOffset = -u_viewOffset * depth * u_strength;
+                
+                // --- Chromatic Aberration ---
+                // Sample different channels with slight offsets based on depth and view
+                vec2 offsetR = baseOffset + u_viewOffset * u_ca * depth;
+                vec2 offsetB = baseOffset - u_viewOffset * u_ca * depth;
+
+                float r = texture2D(u_image, uv + offsetR).r;
+                float g = texture2D(u_image, uv + baseOffset).g;
+                float b = texture2D(u_image, uv + offsetB).b;
+
+                vec4 color = vec4(r, g, b, 1.0);
+
+                // Check edges and fade alpha if pulled outside the zoomed bounds
+                if (uv.x + offsetR.x < 0.0 || uv.x + offsetR.x > 1.0 || 
+                    uv.y + offsetR.y < 0.0 || uv.y + offsetR.y > 1.0 ||
+                    uv.x + offsetB.x < 0.0 || uv.x + offsetB.x > 1.0 || 
+                    uv.y + offsetB.y < 0.0 || uv.y + offsetB.y > 1.0) {
+                    color.a = 0.0;
+                }
+
+                return color;
+            }
+
             void main() {
                 // 1. Apply Zoom (Crop into the image)
-                // Maps 0..1 to e.g. 0.04..0.96
+                // This creates the "safety buffer" of pixels
                 float margin = (1.0 - u_zoom) * 0.5;
                 vec2 uv = v_texCoord * u_zoom + margin;
                 
-                // 2. Sample Depth
-                float depth = texture2D(u_depth, uv).r;
+                vec4 finalColor = sampleDisplaced(uv, u_viewOffset);
                 
-                // 3. Parallax offset
-                vec2 offset = -u_viewOffset * depth * u_strength;
-                vec2 displacedUV = uv + offset;
+                // 2. --- Noise Effect ---
+                // Add pseudo-random noise based on screen coordinate and time
+                float noise = hash(floor(v_texCoord * u_resolution * 0.5) + u_time * 0.1) * 2.0 - 1.0;
                 
-                // 4. Sample Image
-                vec4 color = texture2D(u_image, displacedUV);
-                
-                // 5. Clean edges (Only if we pull BEYOND the texture bounds)
-                if (displacedUV.x < 0.0 || displacedUV.x > 1.0 || 
-                    displacedUV.y < 0.0 || displacedUV.y > 1.0) {
-                    color.a = 0.0;
-                }
-                
-                gl_FragColor = color;
+                // Apply noise evenly to RGB channels
+                finalColor.rgb += noise * u_noise * finalColor.a;
+
+                gl_FragColor = finalColor;
             }
         `;
 
         // ============================================================
-        // PRISM SHADER
+        // PRISM SHADER (Unchanged from previous iteration)
         // ============================================================
         const prismBufferShader = `
             precision highp float;
@@ -281,25 +313,33 @@
             const shader = gl.createShader(type);
             gl.shaderSource(shader, source);
             gl.compileShader(shader);
-            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) return null;
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                 console.error('Shader compilation error:', gl.getShaderInfoLog(shader));
+                 return null;
+            }
             return shader;
         }
 
         function createProgram(gl, vsSource, fsSource) {
+            const program = gl.createProgram();
             const vs = createShader(gl, gl.VERTEX_SHADER, vsSource);
             const fs = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
-            const program = gl.createProgram();
+            if (!vs || !fs) return null;
+            
             gl.attachShader(program, vs);
             gl.attachShader(program, fs);
             gl.linkProgram(program);
-            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return null;
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                console.error('Program linking error:', gl.getProgramInfoLog(program));
+                return null;
+            }
             return program;
         }
 
         function loadImage(src) {
             return new Promise((resolve, reject) => {
                 const img = new Image();
-                img.crossOrigin = "anonymous"; // Mobile safe
+                img.crossOrigin = "anonymous"; 
                 img.onload = () => resolve(img);
                 img.onerror = () => reject(new Error(`Failed to load ${src}`));
                 img.src = src;
@@ -312,6 +352,7 @@
         class DepthParallaxRenderer {
             constructor(canvas) {
                 this.canvas = canvas;
+                // Attempt to get context, handle potential mobile issues (too large canvas, etc.)
                 this.gl = canvas.getContext('webgl', { 
                     antialias: true, 
                     alpha: true,
@@ -322,7 +363,10 @@
             
             async init(imageSrc, depthSrc) {
                 const gl = this.gl;
-                if (!gl) return;
+                if (!gl) {
+                    console.error("WebGL context not available. Mobile issue?");
+                    return;
+                }
                 
                 try {
                     const [image, depth] = await Promise.all([
@@ -330,14 +374,14 @@
                         loadImage(depthSrc)
                     ]);
                     
-                    // Set internal resolution to match image
+                    // Set internal resolution to match image. CSS handles scaling.
                     this.canvas.width = image.naturalWidth;
                     this.canvas.height = image.naturalHeight;
-                    // Note: CSS controls visual size (max-width: 100vw)
                     
                     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
                     
                     this.program = createProgram(gl, vertexShader, depthParallaxShader);
+                    if (!this.program) throw new Error("Shader program failed to initialize.");
                     
                     const positions = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
                     const texCoords = new Float32Array([0, 1, 1, 1, 0, 0, 1, 0]);
@@ -359,7 +403,11 @@
                         depth: gl.getUniformLocation(this.program, 'u_depth'),
                         viewOffset: gl.getUniformLocation(this.program, 'u_viewOffset'),
                         strength: gl.getUniformLocation(this.program, 'u_strength'),
-                        zoom: gl.getUniformLocation(this.program, 'u_zoom'), // New uniform
+                        zoom: gl.getUniformLocation(this.program, 'u_zoom'),
+                        ca: gl.getUniformLocation(this.program, 'u_ca'),        // CA uniform
+                        noise: gl.getUniformLocation(this.program, 'u_noise'),  // Noise uniform
+                        time: gl.getUniformLocation(this.program, 'u_time'),    // Time uniform
+                        resolution: gl.getUniformLocation(this.program, 'u_resolution'), // Resolution uniform
                         posLoc: gl.getAttribLocation(this.program, 'a_position'),
                         texLoc: gl.getAttribLocation(this.program, 'a_texCoord')
                     };
@@ -372,9 +420,12 @@
                     gl.enableVertexAttribArray(this.uniforms.texLoc);
                     gl.vertexAttribPointer(this.uniforms.texLoc, 2, gl.FLOAT, false, 0, 0);
                     
+                    this.startTime = Date.now();
                     this.ready = true;
+                    document.getElementById('mainStatus').innerText = 'READY'; // Final ready state
                 } catch(e) {
                     console.error("Depth init failed", e);
+                    document.getElementById('mainStatus').innerText = 'ERROR';
                 }
             }
             
@@ -382,7 +433,6 @@
                 const gl = this.gl;
                 const texture = gl.createTexture();
                 gl.bindTexture(gl.TEXTURE_2D, texture);
-                // Clamp to edge is crucial for depth maps
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
@@ -394,6 +444,7 @@
             render() {
                 if (!this.ready) return;
                 const gl = this.gl;
+                const time = (Date.now() - this.startTime) / 1000;
                 
                 gl.clearColor(0, 0, 0, 0);
                 gl.clear(gl.COLOR_BUFFER_BIT);
@@ -407,17 +458,24 @@
                 gl.bindTexture(gl.TEXTURE_2D, this.depthTexture);
                 gl.uniform1i(this.uniforms.depth, 1);
                 
+                // Calculate strength as UV units
                 const uvStrength = CONFIG.parallaxStrength / this.canvas.width;
+                
+                // Pass uniforms
                 gl.uniform2f(this.uniforms.viewOffset, state.viewX, state.viewY);
                 gl.uniform1f(this.uniforms.strength, uvStrength);
-                gl.uniform1f(this.uniforms.zoom, CONFIG.zoomLevel); // Apply zoom
+                gl.uniform1f(this.uniforms.zoom, CONFIG.zoomLevel);
+                gl.uniform1f(this.uniforms.ca, CONFIG.chromaticAberration);
+                gl.uniform1f(this.uniforms.noise, CONFIG.noiseAmount);
+                gl.uniform1f(this.uniforms.time, time);
+                gl.uniform2f(this.uniforms.resolution, this.canvas.width, this.canvas.height);
                 
                 gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
             }
         }
 
         // ============================================================
-        // PRISM RENDERER
+        // PRISM RENDERER (Unchanged)
         // ============================================================
         class PrismRenderer {
             constructor(canvas) {
@@ -436,6 +494,10 @@
                 
                 this.bufferProgram = createProgram(gl, vertexShader, prismBufferShader);
                 this.imageProgram = createProgram(gl, vertexShader, prismImageShader);
+                if (!this.bufferProgram || !this.imageProgram) {
+                     this.ready = false;
+                     return;
+                }
                 
                 this.createGeometry();
                 this.setupUniforms();
@@ -450,7 +512,7 @@
             }
             
             resize() {
-                // Limit DPR on mobile to prevent crashes
+                // Limit DPR on mobile to prevent crashes from excessive resolution
                 const dpr = Math.min(window.devicePixelRatio, 1.5); 
                 this.canvas.width = window.innerWidth * dpr;
                 this.canvas.height = window.innerHeight * dpr;
@@ -489,11 +551,13 @@
             
             createFramebuffers() {
                 const gl = this.gl;
+                // Clean up existing buffers
                 this.fbos.forEach(fbo => {
                     if (fbo.texture) gl.deleteTexture(fbo.texture);
                     if (fbo.framebuffer) gl.deleteFramebuffer(fbo.framebuffer);
                 });
                 this.fbos = [];
+                
                 for (let i = 0; i < 2; i++) {
                     const texture = gl.createTexture();
                     gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -529,14 +593,14 @@
                 const gl = this.gl;
                 const time = (Date.now() - this.startTime) / 1000;
                 
-                // Sensitivity is handled in input mapping, so viewX is already amplified
-                // Map viewX (-1 to 1) to screen space
+                // Map viewX (-1 to 1) to screen space for prism/mouse uniform
                 const mouseX = (state.viewX * 0.5 + 0.5) * this.canvas.width;
                 const mouseY = (-state.viewY * 0.5 + 0.5) * this.canvas.height;
                 
                 const readBuffer = this.fbos[this.currentBuffer];
                 const writeBuffer = this.fbos[1 - this.currentBuffer];
                 
+                // 1. Render to buffer (ping-pong)
                 gl.bindFramebuffer(gl.FRAMEBUFFER, writeBuffer.framebuffer);
                 gl.viewport(0, 0, this.canvas.width, this.canvas.height);
                 gl.useProgram(this.bufferProgram);
@@ -552,8 +616,9 @@
                 
                 gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
                 
-                this.currentBuffer = 1 - this.currentBuffer;
+                this.currentBuffer = 1 - this.currentBuffer; // Flip buffer
                 
+                // 2. Render to screen
                 gl.bindFramebuffer(gl.FRAMEBUFFER, null);
                 gl.viewport(0, 0, this.canvas.width, this.canvas.height);
                 gl.useProgram(this.imageProgram);
@@ -581,11 +646,15 @@
                 if (!state.sensor.active) {
                     state.sensor.active = true;
                     document.getElementById('ind-sensor').classList.add('active');
+                    if (state.manual.active) { 
+                        document.getElementById('ind-manual').classList.remove('active'); 
+                        state.manual.active = false;
+                    }
                 }
             }, {
                 smoothEye: 0.8,
                 smoothDist: 0.2,
-                threshold: 0.5 // Lower threshold to catch face easier
+                threshold: 0.5 
             });
         }
         
@@ -600,18 +669,23 @@
                     if (e.gamma === null) return;
                     
                     // Gyro sensitivity 
+                    // e.gamma is rotation around Z-axis (left/right tilt)
+                    // e.beta is rotation around X-axis (front/back tilt) - standard resting position is ~45 for mobile
                     state.sensor.x = Math.max(-2, Math.min(2, (e.gamma / 30) * CONFIG.inputSensitivity));
                     state.sensor.y = Math.max(-2, Math.min(2, ((e.beta - 45) / 30) * CONFIG.inputSensitivity));
                     
                     if (!state.sensor.active) {
                         state.sensor.active = true;
                         document.getElementById('ind-sensor').classList.add('active');
+                        if (state.manual.active) { 
+                            document.getElementById('ind-manual').classList.remove('active'); 
+                            state.manual.active = false;
+                        }
                     }
                 };
                 
-                // iOS 13+ permission
+                // iOS 13+ permission request
                 if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                    // This often needs a user click, but we try auto first
                     DeviceOrientationEvent.requestPermission()
                         .then(response => {
                             if (response === 'granted') {
@@ -628,29 +702,46 @@
             });
         }
         
-        function initTouch() {
-            let lastX = 0, lastY = 0;
+        function initManualInput() {
             let offsetX = 0, offsetY = 0;
+            const sensitivity = 5.0; // Touch drag sensitivity multiplier
             
-            document.addEventListener('touchstart', (e) => {
-                const touch = e.touches[0];
-                lastX = touch.clientX;
-                lastY = touch.clientY;
-                
+            function activateManual() {
                 if (!state.manual.active) {
                     state.manual.active = true;
                     document.getElementById('ind-manual').classList.add('active');
+                    if (state.sensor.active) { 
+                        document.getElementById('ind-sensor').classList.remove('active'); 
+                        state.sensor.active = false;
+                    }
                 }
+            }
+
+            // Mouse Input
+            document.addEventListener('mousemove', (e) => {
+                activateManual();
+                // Map mouse position to -1.5 to 1.5 range
+                state.manual.x = (e.clientX / window.innerWidth - 0.5) * 3;
+                state.manual.y = -(e.clientY / window.innerHeight - 0.5) * 3;
+            });
+
+            // Touch Input
+            let lastX = 0, lastY = 0;
+            document.addEventListener('touchstart', (e) => {
+                activateManual();
+                const touch = e.touches[0];
+                lastX = touch.clientX;
+                lastY = touch.clientY;
             }, { passive: true });
             
             document.addEventListener('touchmove', (e) => {
                 const touch = e.touches[0];
-                // Increase touch sensitivity slightly for manual override
-                const dx = ((touch.clientX - lastX) / window.innerWidth) * 5.0; 
-                const dy = ((touch.clientY - lastY) / window.innerHeight) * 5.0;
+                const dx = ((touch.clientX - lastX) / window.innerWidth) * sensitivity; 
+                const dy = ((touch.clientY - lastY) / window.innerHeight) * sensitivity;
                 
+                // Accumulate offsets and clamp to prevent excessive drift
                 offsetX = Math.max(-1.5, Math.min(1.5, offsetX + dx));
-                offsetY = Math.max(-1.5, Math.min(1.5, offsetY - dy));
+                offsetY = Math.max(-1.5, Math.min(1.5, offsetY - dy)); // Invert Y for touch drag
                 
                 state.manual.x = offsetX;
                 state.manual.y = offsetY;
@@ -659,44 +750,7 @@
                 lastY = touch.clientY;
             }, { passive: true });
         }
-        
-        function initMouse() {
-            document.addEventListener('mousemove', (e) => {
-                // Mouse input is direct mapping -1 to 1, effectively highly sensitive naturally
-                state.manual.x = (e.clientX / window.innerWidth - 0.5) * 3;
-                state.manual.y = -(e.clientY / window.innerHeight - 0.5) * 3;
-                
-                if (!state.manual.active) {
-                    state.manual.active = true;
-                    document.getElementById('ind-manual').classList.add('active');
-                }
-            });
-        }
 
-        // ============================================================
-        // PRELOADER
-        // ============================================================
-        const ASSETS_TO_LOAD = [
-            'index-gemini1.html',
-            ...Array.from({length: 10}, (_, i) => `${i + 1}.JPG`)
-        ];
-
-        async function preloadAssets() {
-            const promises = ASSETS_TO_LOAD.map(url => {
-                return new Promise((resolve) => {
-                    if (url.endsWith('.html')) {
-                        fetch(url).then(r => r.text()).then(resolve).catch(resolve);
-                    } else {
-                        const img = new Image();
-                        img.onload = resolve;
-                        img.onerror = resolve;
-                        img.src = url;
-                    }
-                });
-            });
-            await Promise.all(promises);
-            document.getElementById('mainStatus').innerText = 'READY';
-        }
 
         // ============================================================
         // MAIN
@@ -711,17 +765,25 @@
                 await depthRenderer.init(CONFIG.imagePath, CONFIG.depthPath);
                 prismRenderer.init();
             } catch (e) {
-                console.error('Failed to initialize:', e);
+                console.error('Failed to initialize renderers:', e);
             }
             
             function render() {
-                // Additive Inputs
-                const combinedX = Math.max(-1.5, Math.min(1.5, state.sensor.x + state.manual.x));
-                const combinedY = Math.max(-1.5, Math.min(1.5, state.sensor.y + state.manual.y));
+                // Combine and clamp inputs (Sensor takes priority if active, but manual can still influence)
+                let targetX = 0, targetY = 0;
+                
+                if (state.sensor.active) {
+                    targetX = state.sensor.x;
+                    targetY = state.sensor.y;
+                } else if (state.manual.active) {
+                    targetX = state.manual.x;
+                    targetY = state.manual.y;
+                }
+                
+                state.targetX = targetX;
+                state.targetY = targetY;
 
-                state.targetX = combinedX;
-                state.targetY = combinedY;
-
+                // Smooth movement
                 state.viewX += (state.targetX - state.viewX) * CONFIG.smoothing;
                 state.viewY += (state.targetY - state.viewY) * CONFIG.smoothing;
                 
@@ -732,15 +794,14 @@
             }
             render();
             
-            // Init Inputs
-            initMouse();
-            if ('ontouchstart' in window) initTouch();
+            // Init Inputs: Manual input is always available. Sensor takes control if successful.
+            initManualInput();
             
+            // Try Face/Gyro Tracking (Sensor)
             initFaceTracking().catch(() => {
                 if ('ontouchstart' in window) initGyroscope().catch(() => {});
             });
 
-            // preloadAssets();
         }
         
         window.addEventListener('DOMContentLoaded', init);
