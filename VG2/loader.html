@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Virgo Gabrielle - Loading</title>
     
     <style>
@@ -11,19 +11,33 @@
         html, body {
             width: 100%;
             height: 100%;
-            background: #050505;
+            background: #000000;
             overflow: hidden;
             touch-action: none;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align top like before */
         }
 
-        /* Image canvas - Middle Layer */
+        /* Image canvas - Middle Layer 
+           FIX: Added max-dimensions so it scales down on mobile 
+        */
         #depthCanvas {
             position: absolute;
             top: 0;
+            /* Center horizontally */
             left: 50%;
             transform: translateX(-50%);
-            z-index: 1; /* Moved behind prism */
+            
+            /* Responsive constraints */
+            max-width: 100vw;
+            max-height: 100vh;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            
+            z-index: 1; 
             pointer-events: none; 
         }
 
@@ -32,10 +46,10 @@
             position: fixed;
             top: 0; left: 0;
             width: 100%; height: 100%;
-            z-index: 2; /* Moved on top */
+            z-index: 2;
             pointer-events: none;
-            mix-blend-mode: lighten; /* 'Lighten' is subtle on light images, visible on black */
-            opacity: 0.6; /* Balanced visibility */
+            mix-blend-mode: lighten;
+            opacity: 0.6;
         }
 
         /* Loading / Status Indicator */
@@ -46,6 +60,8 @@
             transform: translateX(-50%);
             z-index: 100;
             text-align: center;
+            width: 100%;
+            pointer-events: none;
         }
 
         .loading-text {
@@ -116,21 +132,22 @@
         const CONFIG = {
             imagePath: '/loader-img.png',
             depthPath: '/loader-depth.png',
-            // Parallax settings
-            parallaxStrength: 30,        // Reduced from 60 to prevent breaking the illusion
-            smoothing: 0.08,             // Smoothing factor
-            inputSensitivity: 2.5,       // Multiplier for Sensor input to compensate for lower parallax
+            
+            // Tuned Settings
+            parallaxStrength: 15,        // Greatly reduced to keep it subtle and clean
+            inputSensitivity: 5.0,       // High sensitivity to compensate for low strength
+            smoothing: 0.08,             
+            
+            // Border Fix
+            zoomLevel: 0.92,             // 0.92 = 8% Zoom in to create safety buffer for edges
         };
 
         // ============================================================
         // GLOBAL STATE
         // ============================================================
         const state = {
-            // Separated inputs for additive control
-            sensor: { x: 0, y: 0, active: false },  // Face or Gyro
-            manual: { x: 0, y: 0, active: false },  // Mouse or Touch
-            
-            // Final View State
+            sensor: { x: 0, y: 0, active: false },
+            manual: { x: 0, y: 0, active: false },
             viewX: 0,
             viewY: 0,
             targetX: 0,
@@ -138,7 +155,7 @@
         };
 
         // ============================================================
-        // VERTEX SHADER (shared)
+        // VERTEX SHADER
         // ============================================================
         const vertexShader = `
             attribute vec2 a_position;
@@ -151,7 +168,7 @@
         `;
 
         // ============================================================
-        // DEPTH PARALLAX SHADER
+        // DEPTH PARALLAX SHADER (With Zoom/Crop Fix)
         // ============================================================
         const depthParallaxShader = `
             precision highp float;
@@ -161,19 +178,25 @@
             uniform sampler2D u_depth;
             uniform vec2 u_viewOffset;
             uniform float u_strength;
+            uniform float u_zoom; /* New Uniform */
             
             void main() {
-                vec2 uv = v_texCoord;
+                // 1. Apply Zoom (Crop into the image)
+                // Maps 0..1 to e.g. 0.04..0.96
+                float margin = (1.0 - u_zoom) * 0.5;
+                vec2 uv = v_texCoord * u_zoom + margin;
                 
+                // 2. Sample Depth
                 float depth = texture2D(u_depth, uv).r;
                 
-                // Parallax offset
+                // 3. Parallax offset
                 vec2 offset = -u_viewOffset * depth * u_strength;
                 vec2 displacedUV = uv + offset;
                 
+                // 4. Sample Image
                 vec4 color = texture2D(u_image, displacedUV);
                 
-                // Clean edges
+                // 5. Clean edges (Only if we pull BEYOND the texture bounds)
                 if (displacedUV.x < 0.0 || displacedUV.x > 1.0 || 
                     displacedUV.y < 0.0 || displacedUV.y > 1.0) {
                     color.a = 0.0;
@@ -184,7 +207,7 @@
         `;
 
         // ============================================================
-        // PRISM SHADER - Buffer A (Visuals bumped up)
+        // PRISM SHADER
         // ============================================================
         const prismBufferShader = `
             precision highp float;
@@ -206,19 +229,13 @@
 
             void main() {
                 vec2 U = v_texCoord * R;
-                
-                // Primary light follows input
                 vec2 e = u_mouse;
-                // High intensity for core
                 vec4 Q = vec4(120.0) * exp(-2e2 * length(U - e) / R.y);
                 
-                // Secondary ambient light
                 e = (0.5 + 0.35 * vec2(sin(0.15 * u_time), cos(0.1 * u_time))) * R;
-                // High intensity for swirls
                 Q += vec4(12.0 + 8.0 * sin(u_time * 0.3), 10.0 - 8.0 * sin(u_time * 0.3), -8.0 * sin(0.2 * u_time), 10.0) 
                      * exp(-10e1 * length(U - e) / R.y);
                 
-                // Rotation
                 float a = 0.02 * u_time;
                 float c = cos(a), s = sin(a);
                 mat2 m = mat2(c, -s, s, c);
@@ -231,52 +248,40 @@
                 m = mat2(c, -s, s, c);
                 o.yz *= m;
                 
-                // Layer accumulation
                 for (float i = -15.0; i < 15.0; i++) {
                     vec2 u = (1.2 + 0.2 * sin(0.15 * u_time)) * -o.xy + 0.5 * R + 0.004 * R.y * i;
                     Q += 0.1 * A(u) * exp(-1.2 * abs(2.0 - 0.2 * i - vec4(1.0, 2.0, 3.0, 4.0)));
                 }
-                
                 gl_FragColor = Q;
             }
         `;
 
-        // ============================================================
-        // PRISM SHADER - Image pass
-        // ============================================================
         const prismImageShader = `
             precision highp float;
             varying vec2 v_texCoord;
             uniform vec2 u_resolution;
             uniform sampler2D u_buffer;
-
             #define R u_resolution
-
             void main() {
                 vec2 U = v_texCoord * R;
                 vec4 a = texture2D(u_buffer, U / R);
-                
                 vec4 Q = vec4(0.0);
                 Q += a.x * exp(-abs(0.5 - vec4(1.0, 2.0, 3.0, 4.0)));
                 Q += a.y * exp(-abs(1.5 - vec4(1.0, 2.0, 3.0, 4.0)));
                 Q += a.z * exp(-abs(2.5 - vec4(1.0, 2.0, 3.0, 4.0)));
                 Q += a.w * exp(-abs(3.5 - vec4(1.0, 2.0, 3.0, 4.0)));
-                
                 gl_FragColor = Q;
             }
         `;
 
         // ============================================================
-        // WEBGL UTILITIES
+        // UTILS
         // ============================================================
         function createShader(gl, type, source) {
             const shader = gl.createShader(type);
             gl.shaderSource(shader, source);
             gl.compileShader(shader);
-            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-                console.error('Shader error:', gl.getShaderInfoLog(shader));
-                return null;
-            }
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) return null;
             return shader;
         }
 
@@ -287,16 +292,14 @@
             gl.attachShader(program, vs);
             gl.attachShader(program, fs);
             gl.linkProgram(program);
-            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-                console.error('Program error:', gl.getProgramInfoLog(program));
-                return null;
-            }
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return null;
             return program;
         }
 
         function loadImage(src) {
             return new Promise((resolve, reject) => {
                 const img = new Image();
+                img.crossOrigin = "anonymous"; // Mobile safe
                 img.onload = () => resolve(img);
                 img.onerror = () => reject(new Error(`Failed to load ${src}`));
                 img.src = src;
@@ -304,7 +307,7 @@
         }
 
         // ============================================================
-        // RENDERERS
+        // DEPTH RENDERER
         // ============================================================
         class DepthParallaxRenderer {
             constructor(canvas) {
@@ -321,61 +324,65 @@
                 const gl = this.gl;
                 if (!gl) return;
                 
-                const [image, depth] = await Promise.all([
-                    loadImage(imageSrc),
-                    loadImage(depthSrc)
-                ]);
-                
-                // Match canvas to image natural size
-                this.canvas.width = image.naturalWidth;
-                this.canvas.height = image.naturalHeight;
-                this.canvas.style.width = image.naturalWidth + 'px';
-                this.canvas.style.height = image.naturalHeight + 'px';
-                gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-                
-                this.program = createProgram(gl, vertexShader, depthParallaxShader);
-                
-                // Full screen quad geometry
-                const positions = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
-                const texCoords = new Float32Array([0, 1, 1, 1, 0, 0, 1, 0]); // Flip Y
-                
-                const posBuffer = gl.createBuffer();
-                gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
-                gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
-                
-                const texBuffer = gl.createBuffer();
-                gl.bindBuffer(gl.ARRAY_BUFFER, texBuffer);
-                gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STATIC_DRAW);
-                
-                this.imageTexture = this.createTexture(image);
-                this.depthTexture = this.createTexture(depth);
-                
-                gl.useProgram(this.program);
-                this.uniforms = {
-                    image: gl.getUniformLocation(this.program, 'u_image'),
-                    depth: gl.getUniformLocation(this.program, 'u_depth'),
-                    viewOffset: gl.getUniformLocation(this.program, 'u_viewOffset'),
-                    strength: gl.getUniformLocation(this.program, 'u_strength'),
-                    posLoc: gl.getAttribLocation(this.program, 'a_position'),
-                    texLoc: gl.getAttribLocation(this.program, 'a_texCoord')
-                };
+                try {
+                    const [image, depth] = await Promise.all([
+                        loadImage(imageSrc),
+                        loadImage(depthSrc)
+                    ]);
+                    
+                    // Set internal resolution to match image
+                    this.canvas.width = image.naturalWidth;
+                    this.canvas.height = image.naturalHeight;
+                    // Note: CSS controls visual size (max-width: 100vw)
+                    
+                    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+                    
+                    this.program = createProgram(gl, vertexShader, depthParallaxShader);
+                    
+                    const positions = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
+                    const texCoords = new Float32Array([0, 1, 1, 1, 0, 0, 1, 0]);
+                    
+                    const posBuffer = gl.createBuffer();
+                    gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+                    gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+                    
+                    const texBuffer = gl.createBuffer();
+                    gl.bindBuffer(gl.ARRAY_BUFFER, texBuffer);
+                    gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STATIC_DRAW);
+                    
+                    this.imageTexture = this.createTexture(image);
+                    this.depthTexture = this.createTexture(depth);
+                    
+                    gl.useProgram(this.program);
+                    this.uniforms = {
+                        image: gl.getUniformLocation(this.program, 'u_image'),
+                        depth: gl.getUniformLocation(this.program, 'u_depth'),
+                        viewOffset: gl.getUniformLocation(this.program, 'u_viewOffset'),
+                        strength: gl.getUniformLocation(this.program, 'u_strength'),
+                        zoom: gl.getUniformLocation(this.program, 'u_zoom'), // New uniform
+                        posLoc: gl.getAttribLocation(this.program, 'a_position'),
+                        texLoc: gl.getAttribLocation(this.program, 'a_texCoord')
+                    };
 
-                // Bind attributes once since they don't change
-                gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
-                gl.enableVertexAttribArray(this.uniforms.posLoc);
-                gl.vertexAttribPointer(this.uniforms.posLoc, 2, gl.FLOAT, false, 0, 0);
-                
-                gl.bindBuffer(gl.ARRAY_BUFFER, texBuffer);
-                gl.enableVertexAttribArray(this.uniforms.texLoc);
-                gl.vertexAttribPointer(this.uniforms.texLoc, 2, gl.FLOAT, false, 0, 0);
-                
-                this.ready = true;
+                    gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+                    gl.enableVertexAttribArray(this.uniforms.posLoc);
+                    gl.vertexAttribPointer(this.uniforms.posLoc, 2, gl.FLOAT, false, 0, 0);
+                    
+                    gl.bindBuffer(gl.ARRAY_BUFFER, texBuffer);
+                    gl.enableVertexAttribArray(this.uniforms.texLoc);
+                    gl.vertexAttribPointer(this.uniforms.texLoc, 2, gl.FLOAT, false, 0, 0);
+                    
+                    this.ready = true;
+                } catch(e) {
+                    console.error("Depth init failed", e);
+                }
             }
             
             createTexture(image) {
                 const gl = this.gl;
                 const texture = gl.createTexture();
                 gl.bindTexture(gl.TEXTURE_2D, texture);
+                // Clamp to edge is crucial for depth maps
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
@@ -400,15 +407,18 @@
                 gl.bindTexture(gl.TEXTURE_2D, this.depthTexture);
                 gl.uniform1i(this.uniforms.depth, 1);
                 
-                // Convert pixel strength to UV space
                 const uvStrength = CONFIG.parallaxStrength / this.canvas.width;
                 gl.uniform2f(this.uniforms.viewOffset, state.viewX, state.viewY);
                 gl.uniform1f(this.uniforms.strength, uvStrength);
+                gl.uniform1f(this.uniforms.zoom, CONFIG.zoomLevel); // Apply zoom
                 
                 gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
             }
         }
 
+        // ============================================================
+        // PRISM RENDERER
+        // ============================================================
         class PrismRenderer {
             constructor(canvas) {
                 this.canvas = canvas;
@@ -440,7 +450,8 @@
             }
             
             resize() {
-                const dpr = Math.min(window.devicePixelRatio, 2);
+                // Limit DPR on mobile to prevent crashes
+                const dpr = Math.min(window.devicePixelRatio, 1.5); 
                 this.canvas.width = window.innerWidth * dpr;
                 this.canvas.height = window.innerHeight * dpr;
                 this.canvas.style.width = window.innerWidth + 'px';
@@ -518,8 +529,8 @@
                 const gl = this.gl;
                 const time = (Date.now() - this.startTime) / 1000;
                 
-                // Mouse for prism follows combined view state
-                // Center + (Direction * Amplitude)
+                // Sensitivity is handled in input mapping, so viewX is already amplified
+                // Map viewX (-1 to 1) to screen space
                 const mouseX = (state.viewX * 0.5 + 0.5) * this.canvas.width;
                 const mouseY = (-state.viewY * 0.5 + 0.5) * this.canvas.height;
                 
@@ -556,15 +567,14 @@
         }
 
         // ============================================================
-        // INPUT HANDLERS (ADDITIVE LOGIC)
+        // INPUT HANDLERS
         // ============================================================
         
-        // 1. Face Tracking (Sensor)
         function initFaceTracking() {
             if (typeof Parallax === 'undefined') return Promise.reject('Parallax library not loaded');
             
             return Parallax.init(view => {
-                // Apply Sensitivity Multiplier
+                // Apply Sensitivity 
                 state.sensor.x = view.x * CONFIG.inputSensitivity;
                 state.sensor.y = -view.y * CONFIG.inputSensitivity;
                 
@@ -573,13 +583,12 @@
                     document.getElementById('ind-sensor').classList.add('active');
                 }
             }, {
-                smoothEye: 0.85,
-                smoothDist: 0.3,
-                threshold: 0.75
+                smoothEye: 0.8,
+                smoothDist: 0.2,
+                threshold: 0.5 // Lower threshold to catch face easier
             });
         }
         
-        // 2. Gyroscope (Sensor)
         function initGyroscope() {
             return new Promise((resolve, reject) => {
                 if (!window.DeviceOrientationEvent) {
@@ -590,8 +599,7 @@
                 const handler = (e) => {
                     if (e.gamma === null) return;
                     
-                    // Apply Sensitivity Multiplier to Gyro
-                    // Clamp to prevent extreme values from user spinning device
+                    // Gyro sensitivity 
                     state.sensor.x = Math.max(-2, Math.min(2, (e.gamma / 30) * CONFIG.inputSensitivity));
                     state.sensor.y = Math.max(-2, Math.min(2, ((e.beta - 45) / 30) * CONFIG.inputSensitivity));
                     
@@ -601,7 +609,9 @@
                     }
                 };
                 
+                // iOS 13+ permission
                 if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                    // This often needs a user click, but we try auto first
                     DeviceOrientationEvent.requestPermission()
                         .then(response => {
                             if (response === 'granted') {
@@ -618,7 +628,6 @@
             });
         }
         
-        // 3. Touch (Manual)
         function initTouch() {
             let lastX = 0, lastY = 0;
             let offsetX = 0, offsetY = 0;
@@ -636,11 +645,12 @@
             
             document.addEventListener('touchmove', (e) => {
                 const touch = e.touches[0];
-                const dx = (touch.clientX - lastX) / window.innerWidth * 4;
-                const dy = (touch.clientY - lastY) / window.innerHeight * 4;
+                // Increase touch sensitivity slightly for manual override
+                const dx = ((touch.clientX - lastX) / window.innerWidth) * 5.0; 
+                const dy = ((touch.clientY - lastY) / window.innerHeight) * 5.0;
                 
-                offsetX = Math.max(-1, Math.min(1, offsetX + dx));
-                offsetY = Math.max(-1, Math.min(1, offsetY - dy));
+                offsetX = Math.max(-1.5, Math.min(1.5, offsetX + dx));
+                offsetY = Math.max(-1.5, Math.min(1.5, offsetY - dy));
                 
                 state.manual.x = offsetX;
                 state.manual.y = offsetY;
@@ -650,11 +660,11 @@
             }, { passive: true });
         }
         
-        // 4. Mouse (Manual)
         function initMouse() {
             document.addEventListener('mousemove', (e) => {
-                state.manual.x = (e.clientX / window.innerWidth - 0.5) * 2;
-                state.manual.y = -(e.clientY / window.innerHeight - 0.5) * 2;
+                // Mouse input is direct mapping -1 to 1, effectively highly sensitive naturally
+                state.manual.x = (e.clientX / window.innerWidth - 0.5) * 3;
+                state.manual.y = -(e.clientY / window.innerHeight - 0.5) * 3;
                 
                 if (!state.manual.active) {
                     state.manual.active = true;
@@ -664,38 +674,28 @@
         }
 
         // ============================================================
-        // PRELOADER LOGIC
+        // PRELOADER
         // ============================================================
-        
         const ASSETS_TO_LOAD = [
             'index-gemini1.html',
-            ...Array.from({length: 10}, (_, i) => `${i + 1}.JPG`) // 1.JPG to 10.JPG
+            ...Array.from({length: 10}, (_, i) => `${i + 1}.JPG`)
         ];
 
         async function preloadAssets() {
-            console.log('Starting preload...');
             const promises = ASSETS_TO_LOAD.map(url => {
-                return new Promise((resolve, reject) => {
-                    
+                return new Promise((resolve) => {
                     if (url.endsWith('.html')) {
-                        // Preload HTML via fetch
                         fetch(url).then(r => r.text()).then(resolve).catch(resolve);
                     } else {
-                        // Preload Images
                         const img = new Image();
-                        img.src = url;
                         img.onload = resolve;
-                        img.onerror = resolve; // Continue even on error
+                        img.onerror = resolve;
+                        img.src = url;
                     }
                 });
             });
-
             await Promise.all(promises);
-            console.log('All assets preloaded.');
             document.getElementById('mainStatus').innerText = 'READY';
-            
-            // Optional: Auto redirect when ready?
-            // window.location.href = 'index-gemini1.html';
         }
 
         // ============================================================
@@ -704,7 +704,6 @@
         let depthRenderer, prismRenderer;
         
         async function init() {
-            // Initialize renderers
             depthRenderer = new DepthParallaxRenderer(document.getElementById('depthCanvas'));
             prismRenderer = new PrismRenderer(document.getElementById('prismCanvas'));
             
@@ -713,20 +712,16 @@
                 prismRenderer.init();
             } catch (e) {
                 console.error('Failed to initialize:', e);
-                return;
             }
             
-            // Start render loop
             function render() {
-                // ADDITIVE LOGIC: Combine Sensor + Manual input
-                // This allows mouse to "push" the view even if face tracking is active
+                // Additive Inputs
                 const combinedX = Math.max(-1.5, Math.min(1.5, state.sensor.x + state.manual.x));
                 const combinedY = Math.max(-1.5, Math.min(1.5, state.sensor.y + state.manual.y));
 
                 state.targetX = combinedX;
                 state.targetY = combinedY;
 
-                // Smoothing
                 state.viewX += (state.targetX - state.viewX) * CONFIG.smoothing;
                 state.viewY += (state.targetY - state.viewY) * CONFIG.smoothing;
                 
@@ -737,20 +732,14 @@
             }
             render();
             
-            // Start Inputs - Initialize ALL of them (not cascading)
-            // This ensures Mouse/Touch always works, and Sensor kicks in if available
+            // Init Inputs
             initMouse();
             if ('ontouchstart' in window) initTouch();
             
             initFaceTracking().catch(() => {
-                // If face tracking fails or isn't permissioned yet, try gyro
-                if ('ontouchstart' in window) initGyroscope().catch(e => console.log('Gyro unavailable'));
+                if ('ontouchstart' in window) initGyroscope().catch(() => {});
             });
 
-            // =========================================
-            // PRELOADER TRIGGER
-            // Uncomment the line below to enable preloading
-            // =========================================
             // preloadAssets();
         }
         
