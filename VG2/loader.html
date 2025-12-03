@@ -6,6 +6,13 @@
     <title>Virgo Gabrielle - Loader</title>
     
     <style>
+        @font-face {
+            font-family: 'Hyena';
+            src: url('./hyena.otf') format('opentype');
+            font-weight: normal;
+            font-style: normal;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         html, body {
@@ -20,7 +27,7 @@
             align-items: flex-start;
         }
 
-        /* Image canvas - Middle Layer */
+        /* Image canvas */
         #depthCanvas {
             position: absolute;
             top: 0;
@@ -35,15 +42,36 @@
             pointer-events: none; 
         }
 
-        /* Prism shader - Top Layer */
-        #prismCanvas {
+        /* Title Container */
+        .title-container {
             position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            z-index: 2;
+            bottom: 15%;
+            left: 0;
+            width: 100%;
+            z-index: 10;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             pointer-events: none;
-            mix-blend-mode: lighten;
-            opacity: 0.6;
+        }
+
+        .title-text {
+            font-family: 'Hyena', Arial Black, sans-serif;
+            font-size: clamp(60px, 18vw, 220px);
+            font-weight: 900;
+            letter-spacing: -0.02em;
+            text-transform: uppercase;
+            color: rgba(255, 8, 0, 0.19);
+            -webkit-text-stroke: 1px rgba(28, 51, 255, 1.2);
+            text-stroke: 1px rgba(151, 23, 23, 01.2);
+            paint-order: stroke fill;
+            mix-blend-mode: color-dodge;
+            will-change: transform;
+            backdrop-filter: blur(20px) saturate(1.4);
+            -webkit-backdrop-filter: blur(20px) saturate(1.4);
+            text-shadow: 
+                0 0 40px rgba(255, 255, 255, 0.1),
+                0 0 80px rgba(255, 255, 255, 0.05);
         }
 
         /* Loading / Status Indicator */
@@ -106,7 +134,11 @@
 </head>
 <body>
     <canvas id="depthCanvas"></canvas>
-    <canvas id="prismCanvas"></canvas>
+    
+    <!-- Title -->
+    <div class="title-container">
+        <div class="title-text" id="titleText">VIRGO</div>
+    </div>
     
     <div class="status-display">
         <div class="loading-text" id="mainStatus">LOADING</div>
@@ -126,29 +158,31 @@
             imagePath: './new-img.png',
             depthPath: './new-depth.png',
             
-            // --- TWEAKED FOR REALISM & SPEED ---
-            parallaxStrength: 25,        // Increased for more "Pop" (was 15)
-            inputSensitivity: 10,        // Balanced for control
-            smoothing: 0.25,             // HIGHER = FASTER/SNAPPIER (Was 0.1)
+            parallaxStrength: 25,
+            inputSensitivity: 10,
+            smoothing: 0.25,
             
-            // Visual Effects
-            chromaticAberration: 0.015,  // Increased slightly for lens realism
-            noiseAmount: 0.03,           // Reduced slightly for cleaner look
+            chromaticAberration: 0.015,
+            noiseAmount: 0.03,
             
-            // Border Fix
-            zoomLevel: 0.85,             // More zoom needed to hide edges with higher parallax
+            zoomLevel: 0.85,
+            
+            // Title parallax (very subtle)
+            titleParallaxStrength: 2,
+            
+            // Input timeout (ms)
+            manualInputTimeout: 2000,
         };
 
         // ============================================================
         // GLOBAL STATE
         // ============================================================
         const state = {
-            sensor: { x: 0, y: 0, active: false },
-            manual: { x: 0, y: 0, active: false },
+            sensor: { x: 0, y: 0, available: false },
+            manual: { x: 0, y: 0, lastActivity: 0 },
             viewX: 0, 
             viewY: 0, 
-            targetX: 0, 
-            targetY: 0, 
+            currentInput: 'none',
         };
 
         // ============================================================
@@ -164,7 +198,6 @@
             }
         `;
 
-        // UPDATED DEPTH SHADER: Dynamic Aberration based on view angle
         const depthParallaxShader = `
             precision highp float;
             varying vec2 v_texCoord;
@@ -187,8 +220,6 @@
                 float depth = texture2D(u_depth, uv).r;
                 vec2 baseOffset = -u_viewOffset * depth * u_strength;
                 
-                // --- Dynamic Chromatic Aberration ---
-                // Calculate how far we are shifting to simulate lens edge distortion
                 float distortion = length(u_viewOffset) * 2.0; 
                 float dynamicCA = u_ca * (1.0 + distortion);
 
@@ -224,64 +255,6 @@
             }
         `;
 
-        // Prism Shaders (Unchanged)
-        const prismBufferShader = `
-            precision highp float;
-            varying vec2 v_texCoord;
-            uniform float u_time;
-            uniform vec2 u_resolution;
-            uniform vec2 u_mouse;
-            uniform sampler2D u_buffer;
-            #define R u_resolution
-
-            vec2 tile(vec2 v) {
-                return ((fract(v) * 2.0 - 1.0) * sign(fract(0.5 * v) * 2.0 - 1.0)) * 0.5 + 0.5;
-            }
-            vec4 A(vec2 U) {
-                return texture2D(u_buffer, tile(U / R));
-            }
-            void main() {
-                vec2 U = v_texCoord * R;
-                vec2 e = u_mouse;
-                vec4 Q = vec4(120.0) * exp(-2e2 * length(U - e) / R.y);
-                e = (0.5 + 0.35 * vec2(sin(0.15 * u_time), cos(0.1 * u_time))) * R;
-                Q += vec4(12.0 + 8.0 * sin(u_time * 0.3), 10.0 - 8.0 * sin(u_time * 0.3), -8.0 * sin(0.2 * u_time), 10.0) 
-                     * exp(-10e1 * length(U - e) / R.y);
-                float a = 0.02 * u_time;
-                float c = cos(a), s = sin(a);
-                mat2 m = mat2(c, -s, s, c);
-                vec3 o = vec3(U - 0.5 * R, 0.0);
-                o.xy *= m;
-                a = 0.08 * sin(0.08 * u_time);
-                c = cos(a); s = sin(a);
-                m = mat2(c, -s, s, c);
-                o.yz *= m;
-                for (float i = -15.0; i < 15.0; i++) {
-                    vec2 u = (1.2 + 0.2 * sin(0.15 * u_time)) * -o.xy + 0.5 * R + 0.004 * R.y * i;
-                    Q += 0.1 * A(u) * exp(-1.2 * abs(2.0 - 0.2 * i - vec4(1.0, 2.0, 3.0, 4.0)));
-                }
-                gl_FragColor = Q;
-            }
-        `;
-
-        const prismImageShader = `
-            precision highp float;
-            varying vec2 v_texCoord;
-            uniform vec2 u_resolution;
-            uniform sampler2D u_buffer;
-            #define R u_resolution
-            void main() {
-                vec2 U = v_texCoord * R;
-                vec4 a = texture2D(u_buffer, U / R);
-                vec4 Q = vec4(0.0);
-                Q += a.x * exp(-abs(0.5 - vec4(1.0, 2.0, 3.0, 4.0)));
-                Q += a.y * exp(-abs(1.5 - vec4(1.0, 2.0, 3.0, 4.0)));
-                Q += a.z * exp(-abs(2.5 - vec4(1.0, 2.0, 3.0, 4.0)));
-                Q += a.w * exp(-abs(3.5 - vec4(1.0, 2.0, 3.0, 4.0)));
-                gl_FragColor = Q;
-            }
-        `;
-
         // ============================================================
         // UTILS
         // ============================================================
@@ -289,7 +262,10 @@
             const shader = gl.createShader(type);
             gl.shaderSource(shader, source);
             gl.compileShader(shader);
-            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) return null;
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error('Shader error:', gl.getShaderInfoLog(shader));
+                return null;
+            }
             return shader;
         }
 
@@ -301,7 +277,10 @@
             gl.attachShader(program, vs);
             gl.attachShader(program, fs);
             gl.linkProgram(program);
-            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return null;
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                console.error('Program error:', gl.getProgramInfoLog(program));
+                return null;
+            }
             return program;
         }
 
@@ -436,175 +415,31 @@
         }
 
         // ============================================================
-        // PRISM RENDERER
-        // ============================================================
-        class PrismRenderer {
-            constructor(canvas) {
-                this.canvas = canvas;
-                this.gl = canvas.getContext('webgl', { antialias: false, alpha: true });
-                this.startTime = Date.now();
-                this.fbos = [];
-                this.currentBuffer = 0;
-                this.ready = false;
-            }
-            
-            init() {
-                const gl = this.gl;
-                if (!gl) return;
-                this.resize();
-                
-                this.bufferProgram = createProgram(gl, vertexShader, prismBufferShader);
-                this.imageProgram = createProgram(gl, vertexShader, prismImageShader);
-                if (!this.bufferProgram || !this.imageProgram) return;
-                
-                this.createGeometry();
-                this.setupUniforms();
-                this.createFramebuffers();
-                
-                window.addEventListener('resize', () => {
-                    this.resize();
-                    this.createFramebuffers();
-                });
-                
-                this.ready = true;
-            }
-            
-            resize() {
-                const dpr = Math.min(window.devicePixelRatio, 1.5); 
-                this.canvas.width = window.innerWidth * dpr;
-                this.canvas.height = window.innerHeight * dpr;
-                this.canvas.style.width = window.innerWidth + 'px';
-                this.canvas.style.height = window.innerHeight + 'px';
-                this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-            }
-            
-            createGeometry() {
-                const gl = this.gl;
-                const positions = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
-                const texCoords = new Float32Array([0, 1, 1, 1, 0, 0, 1, 0]);
-                
-                this.posBuffer = gl.createBuffer();
-                gl.bindBuffer(gl.ARRAY_BUFFER, this.posBuffer);
-                gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
-                
-                this.texBuffer = gl.createBuffer();
-                gl.bindBuffer(gl.ARRAY_BUFFER, this.texBuffer);
-                gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STATIC_DRAW);
-            }
-            
-            setupUniforms() {
-                const gl = this.gl;
-                this.bufferUniforms = {
-                    time: gl.getUniformLocation(this.bufferProgram, 'u_time'),
-                    resolution: gl.getUniformLocation(this.bufferProgram, 'u_resolution'),
-                    mouse: gl.getUniformLocation(this.bufferProgram, 'u_mouse'),
-                    buffer: gl.getUniformLocation(this.bufferProgram, 'u_buffer'),
-                };
-                this.imageUniforms = {
-                    resolution: gl.getUniformLocation(this.imageProgram, 'u_resolution'),
-                    buffer: gl.getUniformLocation(this.imageProgram, 'u_buffer'),
-                };
-            }
-            
-            createFramebuffers() {
-                const gl = this.gl;
-                this.fbos.forEach(fbo => {
-                    if (fbo.texture) gl.deleteTexture(fbo.texture);
-                    if (fbo.framebuffer) gl.deleteFramebuffer(fbo.framebuffer);
-                });
-                this.fbos = [];
-                
-                for (let i = 0; i < 2; i++) {
-                    const texture = gl.createTexture();
-                    gl.bindTexture(gl.TEXTURE_2D, texture);
-                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.canvas.width, this.canvas.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-                    
-                    const framebuffer = gl.createFramebuffer();
-                    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-                    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
-                    
-                    this.fbos.push({ texture, framebuffer });
-                }
-                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-            }
-            
-            setupAttributes(program) {
-                const gl = this.gl;
-                gl.bindBuffer(gl.ARRAY_BUFFER, this.posBuffer);
-                const posLoc = gl.getAttribLocation(program, 'a_position');
-                gl.enableVertexAttribArray(posLoc);
-                gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
-                gl.bindBuffer(gl.ARRAY_BUFFER, this.texBuffer);
-                const texLoc = gl.getAttribLocation(program, 'a_texCoord');
-                gl.enableVertexAttribArray(texLoc);
-                gl.vertexAttribPointer(texLoc, 2, gl.FLOAT, false, 0, 0);
-            }
-            
-            render() {
-                if (!this.ready) return;
-                const gl = this.gl;
-                const time = (Date.now() - this.startTime) / 1000;
-                
-                const mouseX = (state.viewX * 0.5 + 0.5) * this.canvas.width;
-                const mouseY = (-state.viewY * 0.5 + 0.5) * this.canvas.height;
-                
-                const readBuffer = this.fbos[this.currentBuffer];
-                const writeBuffer = this.fbos[1 - this.currentBuffer];
-                
-                // Pass 1
-                gl.bindFramebuffer(gl.FRAMEBUFFER, writeBuffer.framebuffer);
-                gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-                gl.useProgram(this.bufferProgram);
-                this.setupAttributes(this.bufferProgram);
-                
-                gl.uniform1f(this.bufferUniforms.time, time);
-                gl.uniform2f(this.bufferUniforms.resolution, this.canvas.width, this.canvas.height);
-                gl.uniform2f(this.bufferUniforms.mouse, mouseX, mouseY);
-                
-                gl.activeTexture(gl.TEXTURE0);
-                gl.bindTexture(gl.TEXTURE_2D, readBuffer.texture);
-                gl.uniform1i(this.bufferUniforms.buffer, 0);
-                
-                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-                
-                this.currentBuffer = 1 - this.currentBuffer;
-                
-                // Pass 2
-                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-                gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-                gl.useProgram(this.imageProgram);
-                this.setupAttributes(this.imageProgram);
-                gl.uniform2f(this.imageUniforms.resolution, this.canvas.width, this.canvas.height);
-                gl.activeTexture(gl.TEXTURE0);
-                gl.bindTexture(gl.TEXTURE_2D, writeBuffer.texture);
-                gl.uniform1i(this.imageUniforms.buffer, 0);
-                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-            }
-        }
-
-        // ============================================================
         // INPUT HANDLERS
         // ============================================================
         
+        function updateInputIndicators() {
+            const manualInd = document.getElementById('ind-manual');
+            const sensorInd = document.getElementById('ind-sensor');
+            
+            manualInd.classList.toggle('active', state.currentInput === 'manual');
+            sensorInd.classList.toggle('active', state.currentInput === 'sensor');
+        }
+        
+        function isManualActive() {
+            return Date.now() - state.manual.lastActivity < CONFIG.manualInputTimeout;
+        }
+        
         function initFaceTracking() {
-            if (typeof Parallax === 'undefined') return Promise.reject('Parallax library not loaded');
+            if (typeof Parallax === 'undefined') {
+                console.warn('Parallax library not loaded');
+                return Promise.reject('Parallax library not loaded');
+            }
             
             return Parallax.init(view => {
-                // Apply Sensitivity 
                 state.sensor.x = view.x * CONFIG.inputSensitivity;
                 state.sensor.y = -view.y * CONFIG.inputSensitivity;
-                
-                if (!state.sensor.active) {
-                    state.sensor.active = true;
-                    document.getElementById('ind-sensor').classList.add('active');
-                    // Explicitly kill manual override if face is found
-                    document.getElementById('ind-manual').classList.remove('active'); 
-                    state.manual.active = false;
-                }
+                state.sensor.available = true;
             }, {
                 smoothEye: 0.8,
                 smoothDist: 0.2,
@@ -624,16 +459,9 @@
                     
                     state.sensor.x = Math.max(-2, Math.min(2, (e.gamma / 30) * CONFIG.inputSensitivity));
                     state.sensor.y = Math.max(-2, Math.min(2, ((e.beta - 45) / 30) * CONFIG.inputSensitivity));
-                    
-                    if (!state.sensor.active) {
-                        state.sensor.active = true;
-                        document.getElementById('ind-sensor').classList.add('active');
-                        document.getElementById('ind-manual').classList.remove('active'); 
-                        state.manual.active = false;
-                    }
+                    state.sensor.available = true;
                 };
                 
-                // iOS 13+ permission request
                 if (typeof DeviceOrientationEvent.requestPermission === 'function') {
                     DeviceOrientationEvent.requestPermission()
                         .then(response => {
@@ -652,48 +480,35 @@
         }
         
         function initManualInput() {
-            let offsetX = 0, offsetY = 0;
-            const sensitivity = 5.0; 
+            console.log('Initializing manual input handlers');
             
-            function activateManual() {
-                // STRICT BLOCK: If sensor is active, do not allow manual override
-                if (state.sensor.active) return false;
-
-                if (!state.manual.active) {
-                    state.manual.active = true;
-                    document.getElementById('ind-manual').classList.add('active');
-                    // We don't need to disable sensor here, because sensor code handles its own activation priority
-                }
-                return true;
-            }
-
             // Mouse Input
             document.addEventListener('mousemove', (e) => {
-                if (!activateManual()) return; // Stop if sensor active
-
-                // Map mouse position to -1.5 to 1.5 range
+                state.manual.lastActivity = Date.now();
                 state.manual.x = (e.clientX / window.innerWidth - 0.5) * 3;
                 state.manual.y = -(e.clientY / window.innerHeight - 0.5) * 3;
             });
 
             // Touch Input
             let lastX = 0, lastY = 0;
+            let offsetX = 0, offsetY = 0;
+            const sensitivity = 5.0;
+            
             document.addEventListener('touchstart', (e) => {
-                if (!activateManual()) return;
+                state.manual.lastActivity = Date.now();
                 const touch = e.touches[0];
                 lastX = touch.clientX;
                 lastY = touch.clientY;
             }, { passive: true });
             
             document.addEventListener('touchmove', (e) => {
-                if (!activateManual()) return;
-
+                state.manual.lastActivity = Date.now();
                 const touch = e.touches[0];
-                const dx = ((touch.clientX - lastX) / window.innerWidth) * sensitivity; 
+                const dx = ((touch.clientX - lastX) / window.innerWidth) * sensitivity;
                 const dy = ((touch.clientY - lastY) / window.innerHeight) * sensitivity;
                 
                 offsetX = Math.max(-1.5, Math.min(1.5, offsetX + dx));
-                offsetY = Math.max(-1.5, Math.min(1.5, offsetY - dy)); 
+                offsetY = Math.max(-1.5, Math.min(1.5, offsetY - dy));
                 
                 state.manual.x = offsetX;
                 state.manual.y = offsetY;
@@ -703,55 +518,91 @@
             }, { passive: true });
         }
 
+        // ============================================================
+        // TITLE PARALLAX
+        // ============================================================
+        function updateTitleParallax() {
+            const titleEl = document.getElementById('titleText');
+            const offsetX = state.viewX * CONFIG.titleParallaxStrength;
+            const offsetY = -state.viewY * CONFIG.titleParallaxStrength;
+            titleEl.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+        }
 
         // ============================================================
         // MAIN
         // ============================================================
-        let depthRenderer, prismRenderer;
+        let depthRenderer;
         
         async function init() {
+            console.log('Initializing...');
+            
             depthRenderer = new DepthParallaxRenderer(document.getElementById('depthCanvas'));
-            prismRenderer = new PrismRenderer(document.getElementById('prismCanvas'));
             
             try {
                 await depthRenderer.init(CONFIG.imagePath, CONFIG.depthPath);
-                prismRenderer.init();
+                console.log('Depth renderer initialized');
             } catch (e) {
-                console.error('Failed to initialize renderers:', e);
+                console.error('Failed to initialize renderer:', e);
             }
             
+            // Wait for font
+            try {
+                await document.fonts.load('900 100px Hyena');
+                console.log('Font loaded');
+            } catch (e) {
+                console.warn('Font load failed, using fallback');
+            }
+            
+            // Initialize inputs
+            initManualInput();
+            
+            initFaceTracking()
+                .then(() => console.log('Face tracking initialized'))
+                .catch((e) => {
+                    console.log('Face tracking unavailable:', e);
+                    if ('ontouchstart' in window) {
+                        initGyroscope()
+                            .then(() => console.log('Gyroscope initialized'))
+                            .catch((e) => console.log('Gyroscope unavailable:', e));
+                    }
+                });
+            
             function render() {
+                const now = Date.now();
                 let targetX = 0, targetY = 0;
                 
-                // Sensor takes ABSOLUTE priority
-                if (state.sensor.active) {
-                    targetX = state.sensor.x;
-                    targetY = state.sensor.y;
-                } else if (state.manual.active) {
+                // Determine which input to use
+                const manualActive = isManualActive();
+                
+                if (manualActive) {
                     targetX = state.manual.x;
                     targetY = state.manual.y;
+                    state.currentInput = 'manual';
+                } else if (state.sensor.available) {
+                    targetX = state.sensor.x;
+                    targetY = state.sensor.y;
+                    state.currentInput = 'sensor';
+                } else {
+                    state.currentInput = 'none';
                 }
                 
-                state.targetX = targetX;
-                state.targetY = targetY;
-
-                // Increased smoothing factor in CONFIG makes this snappier
-                state.viewX += (state.targetX - state.viewX) * CONFIG.smoothing;
-                state.viewY += (state.targetY - state.viewY) * CONFIG.smoothing;
+                // Smooth interpolation
+                state.viewX += (targetX - state.viewX) * CONFIG.smoothing;
+                state.viewY += (targetY - state.viewY) * CONFIG.smoothing;
                 
+                // Update indicators (throttled)
+                if (now % 10 < 2) {
+                    updateInputIndicators();
+                }
+                
+                // Render
                 depthRenderer.render();
-                prismRenderer.render();
+                updateTitleParallax();
                 
                 requestAnimationFrame(render);
             }
+            
             render();
-            
-            initManualInput();
-            
-            initFaceTracking().catch(() => {
-                if ('ontouchstart' in window) initGyroscope().catch(() => {});
-            });
-
         }
         
         window.addEventListener('DOMContentLoaded', init);
