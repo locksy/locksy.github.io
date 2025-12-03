@@ -13,32 +13,29 @@
             height: 100%;
             background: #000000;
             overflow: hidden;
-            touch-action: none; /* Prevents unwanted scrolling/zooming */
+            touch-action: none;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             display: flex;
             justify-content: center;
             align-items: flex-start;
         }
 
-        /* Image canvas - Middle Layer (The main 3D-effect image) */
+        /* Image canvas - Middle Layer */
         #depthCanvas {
             position: absolute;
             top: 0;
             left: 50%;
             transform: translateX(-50%);
-            
-            /* Crucial Responsive Constraints for Mobile Visibility */
             max-width: 100vw;
             max-height: 100vh;
             width: auto;
             height: auto;
-            object-fit: contain; /* Ensures image fits within bounds */
-            
+            object-fit: contain;
             z-index: 1; 
             pointer-events: none; 
         }
 
-        /* Prism shader - Top Layer (The glowing overlay effect) */
+        /* Prism shader - Top Layer */
         #prismCanvas {
             position: fixed;
             top: 0; left: 0;
@@ -119,7 +116,6 @@
         </div>
     </div>
 
-    <!-- Face tracking library -->
     <script src="https://cdn.jsdelivr.net/npm/parallax-effect/dist/parallax-effect.min.js"></script>
 
     <script>
@@ -130,17 +126,17 @@
             imagePath: './new-img.png',
             depthPath: './new-depth.png',
             
-            // TWEAKED SETTINGS
-            parallaxStrength: 15,         // Reduced to be very subtle
-            inputSensitivity: 11,       // Increased for high responsiveness
-            smoothing: 0.1,              // Slightly smoother movement
+            // --- TWEAKED FOR REALISM & SPEED ---
+            parallaxStrength: 25,        // Increased for more "Pop" (was 15)
+            inputSensitivity: 10,        // Balanced for control
+            smoothing: 0.25,             // HIGHER = FASTER/SNAPPIER (Was 0.1)
             
-            // Visual Effects (from index-gemini1-1.html)
-            chromaticAberration: 0.007,  // Subtle channel splitting
-            noiseAmount: 0.03,           // Light static noise
+            // Visual Effects
+            chromaticAberration: 0.015,  // Increased slightly for lens realism
+            noiseAmount: 0.03,           // Reduced slightly for cleaner look
             
-            // Border Fix (UV Zoom)
-            zoomLevel: 0.92,             // 8% Zoom in to hide edges during parallax
+            // Border Fix
+            zoomLevel: 0.85,             // More zoom needed to hide edges with higher parallax
         };
 
         // ============================================================
@@ -149,14 +145,14 @@
         const state = {
             sensor: { x: 0, y: 0, active: false },
             manual: { x: 0, y: 0, active: false },
-            viewX: 0, // Smoothed X input for rendering
-            viewY: 0, // Smoothed Y input for rendering
-            targetX: 0, // Combined target X
-            targetY: 0, // Combined target Y
+            viewX: 0, 
+            viewY: 0, 
+            targetX: 0, 
+            targetY: 0, 
         };
 
         // ============================================================
-        // VERTEX SHADER (Standard)
+        // SHADERS
         // ============================================================
         const vertexShader = `
             attribute vec2 a_position;
@@ -168,9 +164,7 @@
             }
         `;
 
-        // ============================================================
-        // DEPTH PARALLAX SHADER (With Zoom, CA, and Noise)
-        // ============================================================
+        // UPDATED DEPTH SHADER: Dynamic Aberration based on view angle
         const depthParallaxShader = `
             precision highp float;
             varying vec2 v_texCoord;
@@ -180,27 +174,26 @@
             uniform vec2 u_viewOffset;
             uniform float u_strength;
             uniform float u_zoom;
-            uniform float u_ca;          // Chromatic Aberration strength
-            uniform float u_noise;       // Noise strength
+            uniform float u_ca;          
+            uniform float u_noise;       
             uniform float u_time;
             uniform vec2 u_resolution;
             
-            // Simple hash function for pseudo-random noise
             float hash(vec2 p) {
                 return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
             }
             
             vec4 sampleDisplaced(vec2 uv, vec2 offset) {
-                // Get depth value (0.0 to 1.0)
                 float depth = texture2D(u_depth, uv).r;
-                
-                // Calculate base offset
                 vec2 baseOffset = -u_viewOffset * depth * u_strength;
                 
-                // --- Chromatic Aberration ---
-                // Sample different channels with slight offsets based on depth and view
-                vec2 offsetR = baseOffset + u_viewOffset * u_ca * depth;
-                vec2 offsetB = baseOffset - u_viewOffset * u_ca * depth;
+                // --- Dynamic Chromatic Aberration ---
+                // Calculate how far we are shifting to simulate lens edge distortion
+                float distortion = length(u_viewOffset) * 2.0; 
+                float dynamicCA = u_ca * (1.0 + distortion);
+
+                vec2 offsetR = baseOffset + u_viewOffset * dynamicCA * depth;
+                vec2 offsetB = baseOffset - u_viewOffset * dynamicCA * depth;
 
                 float r = texture2D(u_image, uv + offsetR).r;
                 float g = texture2D(u_image, uv + baseOffset).g;
@@ -208,7 +201,6 @@
 
                 vec4 color = vec4(r, g, b, 1.0);
 
-                // Check edges and fade alpha if pulled outside the zoomed bounds
                 if (uv.x + offsetR.x < 0.0 || uv.x + offsetR.x > 1.0 || 
                     uv.y + offsetR.y < 0.0 || uv.y + offsetR.y > 1.0 ||
                     uv.x + offsetB.x < 0.0 || uv.x + offsetB.x > 1.0 || 
@@ -220,27 +212,19 @@
             }
 
             void main() {
-                // 1. Apply Zoom (Crop into the image)
-                // This creates the "safety buffer" of pixels
                 float margin = (1.0 - u_zoom) * 0.5;
                 vec2 uv = v_texCoord * u_zoom + margin;
                 
                 vec4 finalColor = sampleDisplaced(uv, u_viewOffset);
                 
-                // 2. --- Noise Effect ---
-                // Add pseudo-random noise based on screen coordinate and time
                 float noise = hash(floor(v_texCoord * u_resolution * 0.5) + u_time * 0.1) * 2.0 - 1.0;
-                
-                // Apply noise evenly to RGB channels
                 finalColor.rgb += noise * u_noise * finalColor.a;
 
                 gl_FragColor = finalColor;
             }
         `;
 
-        // ============================================================
-        // PRISM SHADER (Unchanged from previous iteration)
-        // ============================================================
+        // Prism Shaders (Unchanged)
         const prismBufferShader = `
             precision highp float;
             varying vec2 v_texCoord;
@@ -248,38 +232,30 @@
             uniform vec2 u_resolution;
             uniform vec2 u_mouse;
             uniform sampler2D u_buffer;
-
             #define R u_resolution
 
             vec2 tile(vec2 v) {
                 return ((fract(v) * 2.0 - 1.0) * sign(fract(0.5 * v) * 2.0 - 1.0)) * 0.5 + 0.5;
             }
-
             vec4 A(vec2 U) {
                 return texture2D(u_buffer, tile(U / R));
             }
-
             void main() {
                 vec2 U = v_texCoord * R;
                 vec2 e = u_mouse;
                 vec4 Q = vec4(120.0) * exp(-2e2 * length(U - e) / R.y);
-                
                 e = (0.5 + 0.35 * vec2(sin(0.15 * u_time), cos(0.1 * u_time))) * R;
                 Q += vec4(12.0 + 8.0 * sin(u_time * 0.3), 10.0 - 8.0 * sin(u_time * 0.3), -8.0 * sin(0.2 * u_time), 10.0) 
                      * exp(-10e1 * length(U - e) / R.y);
-                
                 float a = 0.02 * u_time;
                 float c = cos(a), s = sin(a);
                 mat2 m = mat2(c, -s, s, c);
-                
                 vec3 o = vec3(U - 0.5 * R, 0.0);
                 o.xy *= m;
-                
                 a = 0.08 * sin(0.08 * u_time);
                 c = cos(a); s = sin(a);
                 m = mat2(c, -s, s, c);
                 o.yz *= m;
-                
                 for (float i = -15.0; i < 15.0; i++) {
                     vec2 u = (1.2 + 0.2 * sin(0.15 * u_time)) * -o.xy + 0.5 * R + 0.004 * R.y * i;
                     Q += 0.1 * A(u) * exp(-1.2 * abs(2.0 - 0.2 * i - vec4(1.0, 2.0, 3.0, 4.0)));
@@ -313,10 +289,7 @@
             const shader = gl.createShader(type);
             gl.shaderSource(shader, source);
             gl.compileShader(shader);
-            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-                 console.error('Shader compilation error:', gl.getShaderInfoLog(shader));
-                 return null;
-            }
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) return null;
             return shader;
         }
 
@@ -325,14 +298,10 @@
             const vs = createShader(gl, gl.VERTEX_SHADER, vsSource);
             const fs = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
             if (!vs || !fs) return null;
-            
             gl.attachShader(program, vs);
             gl.attachShader(program, fs);
             gl.linkProgram(program);
-            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-                console.error('Program linking error:', gl.getProgramInfoLog(program));
-                return null;
-            }
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return null;
             return program;
         }
 
@@ -352,7 +321,6 @@
         class DepthParallaxRenderer {
             constructor(canvas) {
                 this.canvas = canvas;
-                // Attempt to get context, handle potential mobile issues (too large canvas, etc.)
                 this.gl = canvas.getContext('webgl', { 
                     antialias: true, 
                     alpha: true,
@@ -363,10 +331,7 @@
             
             async init(imageSrc, depthSrc) {
                 const gl = this.gl;
-                if (!gl) {
-                    console.error("WebGL context not available. Mobile issue?");
-                    return;
-                }
+                if (!gl) return;
                 
                 try {
                     const [image, depth] = await Promise.all([
@@ -374,14 +339,12 @@
                         loadImage(depthSrc)
                     ]);
                     
-                    // Set internal resolution to match image. CSS handles scaling.
                     this.canvas.width = image.naturalWidth;
                     this.canvas.height = image.naturalHeight;
-                    
                     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
                     
                     this.program = createProgram(gl, vertexShader, depthParallaxShader);
-                    if (!this.program) throw new Error("Shader program failed to initialize.");
+                    if (!this.program) throw new Error("Shader init failed");
                     
                     const positions = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
                     const texCoords = new Float32Array([0, 1, 1, 1, 0, 0, 1, 0]);
@@ -404,10 +367,10 @@
                         viewOffset: gl.getUniformLocation(this.program, 'u_viewOffset'),
                         strength: gl.getUniformLocation(this.program, 'u_strength'),
                         zoom: gl.getUniformLocation(this.program, 'u_zoom'),
-                        ca: gl.getUniformLocation(this.program, 'u_ca'),        // CA uniform
-                        noise: gl.getUniformLocation(this.program, 'u_noise'),  // Noise uniform
-                        time: gl.getUniformLocation(this.program, 'u_time'),    // Time uniform
-                        resolution: gl.getUniformLocation(this.program, 'u_resolution'), // Resolution uniform
+                        ca: gl.getUniformLocation(this.program, 'u_ca'),
+                        noise: gl.getUniformLocation(this.program, 'u_noise'),
+                        time: gl.getUniformLocation(this.program, 'u_time'),
+                        resolution: gl.getUniformLocation(this.program, 'u_resolution'),
                         posLoc: gl.getAttribLocation(this.program, 'a_position'),
                         texLoc: gl.getAttribLocation(this.program, 'a_texCoord')
                     };
@@ -422,7 +385,7 @@
                     
                     this.startTime = Date.now();
                     this.ready = true;
-                    document.getElementById('mainStatus').innerText = 'READY'; // Final ready state
+                    document.getElementById('mainStatus').innerText = 'READY';
                 } catch(e) {
                     console.error("Depth init failed", e);
                     document.getElementById('mainStatus').innerText = 'ERROR';
@@ -458,10 +421,8 @@
                 gl.bindTexture(gl.TEXTURE_2D, this.depthTexture);
                 gl.uniform1i(this.uniforms.depth, 1);
                 
-                // Calculate strength as UV units
                 const uvStrength = CONFIG.parallaxStrength / this.canvas.width;
                 
-                // Pass uniforms
                 gl.uniform2f(this.uniforms.viewOffset, state.viewX, state.viewY);
                 gl.uniform1f(this.uniforms.strength, uvStrength);
                 gl.uniform1f(this.uniforms.zoom, CONFIG.zoomLevel);
@@ -475,7 +436,7 @@
         }
 
         // ============================================================
-        // PRISM RENDERER (Unchanged)
+        // PRISM RENDERER
         // ============================================================
         class PrismRenderer {
             constructor(canvas) {
@@ -494,10 +455,7 @@
                 
                 this.bufferProgram = createProgram(gl, vertexShader, prismBufferShader);
                 this.imageProgram = createProgram(gl, vertexShader, prismImageShader);
-                if (!this.bufferProgram || !this.imageProgram) {
-                     this.ready = false;
-                     return;
-                }
+                if (!this.bufferProgram || !this.imageProgram) return;
                 
                 this.createGeometry();
                 this.setupUniforms();
@@ -512,7 +470,6 @@
             }
             
             resize() {
-                // Limit DPR on mobile to prevent crashes from excessive resolution
                 const dpr = Math.min(window.devicePixelRatio, 1.5); 
                 this.canvas.width = window.innerWidth * dpr;
                 this.canvas.height = window.innerHeight * dpr;
@@ -551,7 +508,6 @@
             
             createFramebuffers() {
                 const gl = this.gl;
-                // Clean up existing buffers
                 this.fbos.forEach(fbo => {
                     if (fbo.texture) gl.deleteTexture(fbo.texture);
                     if (fbo.framebuffer) gl.deleteFramebuffer(fbo.framebuffer);
@@ -593,14 +549,13 @@
                 const gl = this.gl;
                 const time = (Date.now() - this.startTime) / 1000;
                 
-                // Map viewX (-1 to 1) to screen space for prism/mouse uniform
                 const mouseX = (state.viewX * 0.5 + 0.5) * this.canvas.width;
                 const mouseY = (-state.viewY * 0.5 + 0.5) * this.canvas.height;
                 
                 const readBuffer = this.fbos[this.currentBuffer];
                 const writeBuffer = this.fbos[1 - this.currentBuffer];
                 
-                // 1. Render to buffer (ping-pong)
+                // Pass 1
                 gl.bindFramebuffer(gl.FRAMEBUFFER, writeBuffer.framebuffer);
                 gl.viewport(0, 0, this.canvas.width, this.canvas.height);
                 gl.useProgram(this.bufferProgram);
@@ -616,9 +571,9 @@
                 
                 gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
                 
-                this.currentBuffer = 1 - this.currentBuffer; // Flip buffer
+                this.currentBuffer = 1 - this.currentBuffer;
                 
-                // 2. Render to screen
+                // Pass 2
                 gl.bindFramebuffer(gl.FRAMEBUFFER, null);
                 gl.viewport(0, 0, this.canvas.width, this.canvas.height);
                 gl.useProgram(this.imageProgram);
@@ -646,10 +601,9 @@
                 if (!state.sensor.active) {
                     state.sensor.active = true;
                     document.getElementById('ind-sensor').classList.add('active');
-                    if (state.manual.active) { 
-                        document.getElementById('ind-manual').classList.remove('active'); 
-                        state.manual.active = false;
-                    }
+                    // Explicitly kill manual override if face is found
+                    document.getElementById('ind-manual').classList.remove('active'); 
+                    state.manual.active = false;
                 }
             }, {
                 smoothEye: 0.8,
@@ -668,19 +622,14 @@
                 const handler = (e) => {
                     if (e.gamma === null) return;
                     
-                    // Gyro sensitivity 
-                    // e.gamma is rotation around Z-axis (left/right tilt)
-                    // e.beta is rotation around X-axis (front/back tilt) - standard resting position is ~45 for mobile
                     state.sensor.x = Math.max(-2, Math.min(2, (e.gamma / 30) * CONFIG.inputSensitivity));
                     state.sensor.y = Math.max(-2, Math.min(2, ((e.beta - 45) / 30) * CONFIG.inputSensitivity));
                     
                     if (!state.sensor.active) {
                         state.sensor.active = true;
                         document.getElementById('ind-sensor').classList.add('active');
-                        if (state.manual.active) { 
-                            document.getElementById('ind-manual').classList.remove('active'); 
-                            state.manual.active = false;
-                        }
+                        document.getElementById('ind-manual').classList.remove('active'); 
+                        state.manual.active = false;
                     }
                 };
                 
@@ -704,22 +653,24 @@
         
         function initManualInput() {
             let offsetX = 0, offsetY = 0;
-            const sensitivity = 5.0; // Touch drag sensitivity multiplier
+            const sensitivity = 5.0; 
             
             function activateManual() {
+                // STRICT BLOCK: If sensor is active, do not allow manual override
+                if (state.sensor.active) return false;
+
                 if (!state.manual.active) {
                     state.manual.active = true;
                     document.getElementById('ind-manual').classList.add('active');
-                    if (state.sensor.active) { 
-                        document.getElementById('ind-sensor').classList.remove('active'); 
-                        state.sensor.active = false;
-                    }
+                    // We don't need to disable sensor here, because sensor code handles its own activation priority
                 }
+                return true;
             }
 
             // Mouse Input
             document.addEventListener('mousemove', (e) => {
-                activateManual();
+                if (!activateManual()) return; // Stop if sensor active
+
                 // Map mouse position to -1.5 to 1.5 range
                 state.manual.x = (e.clientX / window.innerWidth - 0.5) * 3;
                 state.manual.y = -(e.clientY / window.innerHeight - 0.5) * 3;
@@ -728,20 +679,21 @@
             // Touch Input
             let lastX = 0, lastY = 0;
             document.addEventListener('touchstart', (e) => {
-                activateManual();
+                if (!activateManual()) return;
                 const touch = e.touches[0];
                 lastX = touch.clientX;
                 lastY = touch.clientY;
             }, { passive: true });
             
             document.addEventListener('touchmove', (e) => {
+                if (!activateManual()) return;
+
                 const touch = e.touches[0];
                 const dx = ((touch.clientX - lastX) / window.innerWidth) * sensitivity; 
                 const dy = ((touch.clientY - lastY) / window.innerHeight) * sensitivity;
                 
-                // Accumulate offsets and clamp to prevent excessive drift
                 offsetX = Math.max(-1.5, Math.min(1.5, offsetX + dx));
-                offsetY = Math.max(-1.5, Math.min(1.5, offsetY - dy)); // Invert Y for touch drag
+                offsetY = Math.max(-1.5, Math.min(1.5, offsetY - dy)); 
                 
                 state.manual.x = offsetX;
                 state.manual.y = offsetY;
@@ -769,9 +721,9 @@
             }
             
             function render() {
-                // Combine and clamp inputs (Sensor takes priority if active, but manual can still influence)
                 let targetX = 0, targetY = 0;
                 
+                // Sensor takes ABSOLUTE priority
                 if (state.sensor.active) {
                     targetX = state.sensor.x;
                     targetY = state.sensor.y;
@@ -783,7 +735,7 @@
                 state.targetX = targetX;
                 state.targetY = targetY;
 
-                // Smooth movement
+                // Increased smoothing factor in CONFIG makes this snappier
                 state.viewX += (state.targetX - state.viewX) * CONFIG.smoothing;
                 state.viewY += (state.targetY - state.viewY) * CONFIG.smoothing;
                 
@@ -794,10 +746,8 @@
             }
             render();
             
-            // Init Inputs: Manual input is always available. Sensor takes control if successful.
             initManualInput();
             
-            // Try Face/Gyro Tracking (Sensor)
             initFaceTracking().catch(() => {
                 if ('ontouchstart' in window) initGyroscope().catch(() => {});
             });
