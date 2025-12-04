@@ -61,17 +61,37 @@
             font-weight: 900;
             letter-spacing: -0.02em;
             text-transform: uppercase;
-            color: rgba(255, 8, 0, 0.19);
-            -webkit-text-stroke: 1px rgba(28, 51, 255, 1.2);
-            text-stroke: 1px rgba(151, 23, 23, 01.2);
-            paint-order: stroke fill;
-            mix-blend-mode: color-dodge;
+            color: transparent;
             will-change: transform;
-            backdrop-filter: blur(20px) saturate(1.4);
-            -webkit-backdrop-filter: blur(20px) saturate(1.4);
-            text-shadow: 
-                0 0 40px rgba(255, 255, 255, 0.1),
-                0 0 80px rgba(255, 255, 255, 0.05);
+            position: relative;
+        }
+        
+        .title-text::before {
+            content: 'VIRGO';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.08);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            backdrop-filter: blur(24px) saturate(1.5) brightness(1.2);
+            -webkit-backdrop-filter: blur(24px) saturate(1.5) brightness(1.2);
+            mix-blend-mode: lighten;
+        }
+        
+        .title-text::after {
+            content: 'VIRGO';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            color: transparent;
+            -webkit-text-stroke: 1px rgba(255, 255, 255, 0.7);
+            text-stroke: 1px rgba(255, 255, 255, 0.7);
         }
 
         /* Loading / Status Indicator */
