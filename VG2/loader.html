@@ -7,8 +7,8 @@
     
     <style>
         @font-face {
-            font-family: 'Hyena';
-            src: url('./hyena.otf') format('opentype');
+            font-family: 'BubbleCore';
+            src: url('./BubbleCore-Regular.ttf') format('truetype');
             font-weight: normal;
             font-style: normal;
         }
@@ -22,89 +22,54 @@
             overflow: hidden;
             touch-action: none;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
         }
 
-        /* Image canvas */
-        #depthCanvas {
-            position: absolute;
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            max-width: 100vw;
-            max-height: 100vh;
-            width: auto;
-            height: auto;
-            object-fit: contain;
-            z-index: 1; 
-            pointer-events: none; 
-        }
-
-        /* Title Container */
-        .title-container {
+        #canvas-container {
             position: fixed;
-            bottom: 15%;
-            left: 0;
-            width: 100%;
-            z-index: 10;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            pointer-events: none;
-        }
-        
-        .title-wrapper {
-            position: relative;
-            display: inline-block;
-        }
-
-        .title-text {
-            font-family: 'Hyena', Arial Black, sans-serif;
-            font-size: clamp(60px, 18vw, 220px);
-            font-weight: 900;
-            letter-spacing: -0.02em;
-            text-transform: uppercase;
-            color: transparent;
-            will-change: transform;
-            position: relative;
-        }
-        
-        /* Glassmorphic fill - masked to text shape */
-        .title-glass {
-            position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            backdrop-filter: blur(28px) saturate(1.8) brightness(1.3);
-            -webkit-backdrop-filter: blur(28px) saturate(1.8) brightness(1.3);
-            background: linear-gradient(
-                135deg,
-                rgba(255, 255, 255, 0.25) 0%,
-                rgba(255, 255, 255, 0.05) 50%,
-                rgba(255, 255, 255, 0.15) 100%
-            );
-            mix-blend-mode: plus-lighter;
-            -webkit-mask: url(#textMask);
-            mask: url(#textMask);
+            z-index: 1;
         }
-        
-        /* Outline layer */
-        .title-outline {
-            font-family: 'Hyena', Arial Black, sans-serif;
-            font-size: clamp(60px, 18vw, 220px);
-            font-weight: 900;
-            letter-spacing: -0.02em;
-            text-transform: uppercase;
-            color: transparent;
-            -webkit-text-stroke: 1.5px rgba(0, 0, 0, 0.6);
-            text-stroke: 1.5px rgba(0, 0, 0, 0.6);
-            position: absolute;
+
+        /* Liquid Glass Text Overlay */
+        .glass-text-container {
+            position: fixed;
             top: 0;
             left: 0;
-            mix-blend-mode: overlay;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+            gap: 10px;
+        }
+
+        .glass-text {
+            font-family: 'BubbleCore', 'Arial Black', sans-serif;
+            text-transform: lowercase;
+            position: relative;
+            /* Glass distortion via SVG filter */
+            -webkit-backdrop-filter: url(#liquid-glass-filter) blur(0.5px) brightness(1.05) saturate(1.2);
+            backdrop-filter: url(#liquid-glass-filter) blur(0.5px) brightness(1.05) saturate(1.2);
+            /* Subtle text styling */
+            color: rgba(255, 255, 255, 0.06);
+            text-shadow: 
+                0 1px 2px rgba(0, 0, 0, 0.4),
+                0 0 20px rgba(100, 150, 255, 0.1);
+            -webkit-text-stroke: 0.5px rgba(180, 200, 255, 0.35);
+        }
+
+        .glass-text-top {
+            font-size: clamp(60px, 15vw, 140px);
+        }
+
+        .glass-text-bottom {
+            font-size: clamp(45px, 11vw, 105px);
         }
 
         /* Loading / Status Indicator */
@@ -166,28 +131,39 @@
     </style>
 </head>
 <body>
-    <canvas id="depthCanvas"></canvas>
-    
-    <!-- SVG Mask Definition -->
-    <svg style="position: absolute; width: 0; height: 0;">
+    <!-- SVG Filter for Liquid Glass Effect -->
+    <svg style="position: absolute; width: 0; height: 0;" aria-hidden="true">
         <defs>
-            <mask id="textMask" maskUnits="objectBoundingBox" maskContentUnits="objectBoundingBox">
-                <text x="0.5" y="0.65" text-anchor="middle" 
-                      font-family="Hyena, Arial Black, sans-serif" 
-                      font-weight="900"
-                      font-size="0.9"
-                      fill="white">VIRGO</text>
-            </mask>
+            <filter id="liquid-glass-filter" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
+                <!-- Generate organic noise pattern -->
+                <feTurbulence 
+                    type="fractalNoise" 
+                    baseFrequency="0.012 0.012" 
+                    numOctaves="3" 
+                    seed="15" 
+                    result="noise"
+                />
+                <!-- Smooth the noise -->
+                <feGaussianBlur in="noise" stdDeviation="1.5" result="smoothNoise"/>
+                <!-- Apply displacement -->
+                <feDisplacementMap 
+                    in="SourceGraphic" 
+                    in2="smoothNoise" 
+                    scale="12" 
+                    xChannelSelector="R" 
+                    yChannelSelector="G"
+                    result="displaced"
+                />
+            </filter>
         </defs>
     </svg>
+
+    <div id="canvas-container"></div>
     
-    <!-- Title -->
-    <div class="title-container">
-        <div class="title-wrapper" id="titleWrapper">
-            <span class="title-text">VIRGO</span>
-            <div class="title-glass"></div>
-            <span class="title-outline">VIRGO</span>
-        </div>
+    <!-- Glass Text Overlay -->
+    <div class="glass-text-container" id="glassTextContainer">
+        <div class="glass-text glass-text-top">virgo</div>
+        <div class="glass-text glass-text-bottom">gabrielle</div>
     </div>
     
     <div class="status-display">
@@ -199,6 +175,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/parallax-effect/dist/parallax-effect.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
         // ============================================================
@@ -217,8 +194,8 @@
             
             zoomLevel: 0.85,
             
-            // Title parallax (very subtle)
-            titleParallaxStrength: 2,
+            // Title parallax (subtle movement)
+            titleParallaxStrength: 8,
             
             // Input timeout (ms)
             manualInputTimeout: 2000,
@@ -236,232 +213,166 @@
         };
 
         // ============================================================
-        // SHADERS
+        // THREE.JS SETUP (Background only)
         // ============================================================
-        const vertexShader = `
-            attribute vec2 a_position;
-            attribute vec2 a_texCoord;
-            varying vec2 v_texCoord;
+        let scene, camera, renderer;
+        let backgroundMesh;
+        let backgroundTexture, depthTexture;
+        let time = 0;
+
+        const backgroundVertexShader = `
+            varying vec2 vUv;
             void main() {
-                gl_Position = vec4(a_position, 0.0, 1.0);
-                v_texCoord = a_texCoord;
+                vUv = uv;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
             }
         `;
 
-        const depthParallaxShader = `
+        const backgroundFragmentShader = `
             precision highp float;
-            varying vec2 v_texCoord;
+            varying vec2 vUv;
             
-            uniform sampler2D u_image;
-            uniform sampler2D u_depth;
-            uniform vec2 u_viewOffset;
-            uniform float u_strength;
-            uniform float u_zoom;
-            uniform float u_ca;          
-            uniform float u_noise;       
-            uniform float u_time;
-            uniform vec2 u_resolution;
+            uniform sampler2D uImage;
+            uniform sampler2D uDepth;
+            uniform vec2 uViewOffset;
+            uniform float uStrength;
+            uniform float uZoom;
+            uniform float uCA;
+            uniform float uNoise;
+            uniform float uTime;
+            uniform vec2 uResolution;
+            uniform vec2 uImageResolution;
             
             float hash(vec2 p) {
                 return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
             }
             
-            vec4 sampleDisplaced(vec2 uv, vec2 offset) {
-                float depth = texture2D(u_depth, uv).r;
-                vec2 baseOffset = -u_viewOffset * depth * u_strength;
-                
-                float distortion = length(u_viewOffset) * 2.0; 
-                float dynamicCA = u_ca * (1.0 + distortion);
-
-                vec2 offsetR = baseOffset + u_viewOffset * dynamicCA * depth;
-                vec2 offsetB = baseOffset - u_viewOffset * dynamicCA * depth;
-
-                float r = texture2D(u_image, uv + offsetR).r;
-                float g = texture2D(u_image, uv + baseOffset).g;
-                float b = texture2D(u_image, uv + offsetB).b;
-
-                vec4 color = vec4(r, g, b, 1.0);
-
-                if (uv.x + offsetR.x < 0.0 || uv.x + offsetR.x > 1.0 || 
-                    uv.y + offsetR.y < 0.0 || uv.y + offsetR.y > 1.0 ||
-                    uv.x + offsetB.x < 0.0 || uv.x + offsetB.x > 1.0 || 
-                    uv.y + offsetB.y < 0.0 || uv.y + offsetB.y > 1.0) {
-                    color.a = 0.0;
-                }
-
-                return color;
-            }
-
             void main() {
-                float margin = (1.0 - u_zoom) * 0.5;
-                vec2 uv = v_texCoord * u_zoom + margin;
+                // Aspect-correct UVs (contain mode)
+                float screenAspect = uResolution.x / uResolution.y;
+                float imageAspect = uImageResolution.x / uImageResolution.y;
                 
-                vec4 finalColor = sampleDisplaced(uv, u_viewOffset);
+                vec2 scale;
+                if (screenAspect > imageAspect) {
+                    scale = vec2(imageAspect / screenAspect, 1.0);
+                } else {
+                    scale = vec2(1.0, screenAspect / imageAspect);
+                }
                 
-                float noise = hash(floor(v_texCoord * u_resolution * 0.5) + u_time * 0.1) * 2.0 - 1.0;
-                finalColor.rgb += noise * u_noise * finalColor.a;
-
-                gl_FragColor = finalColor;
+                vec2 uv = (vUv - 0.5) / scale + 0.5;
+                
+                if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
+                    gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+                    return;
+                }
+                
+                float margin = (1.0 - uZoom) * 0.5;
+                uv = uv * uZoom + margin;
+                
+                float depth = texture2D(uDepth, uv).r;
+                vec2 baseOffset = -uViewOffset * depth * uStrength;
+                
+                float distortion = length(uViewOffset) * 2.0;
+                float dynamicCA = uCA * (1.0 + distortion);
+                
+                vec2 offsetR = baseOffset + uViewOffset * dynamicCA * depth;
+                vec2 offsetB = baseOffset - uViewOffset * dynamicCA * depth;
+                
+                float r = texture2D(uImage, uv + offsetR).r;
+                float g = texture2D(uImage, uv + baseOffset).g;
+                float b = texture2D(uImage, uv + offsetB).b;
+                
+                vec3 color = vec3(r, g, b);
+                
+                float noise = hash(floor(vUv * uResolution * 0.5) + uTime * 0.1) * 2.0 - 1.0;
+                color += noise * uNoise;
+                
+                gl_FragColor = vec4(color, 1.0);
             }
         `;
 
-        // ============================================================
-        // UTILS
-        // ============================================================
-        function createShader(gl, type, source) {
-            const shader = gl.createShader(type);
-            gl.shaderSource(shader, source);
-            gl.compileShader(shader);
-            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-                console.error('Shader error:', gl.getShaderInfoLog(shader));
-                return null;
-            }
-            return shader;
-        }
-
-        function createProgram(gl, vsSource, fsSource) {
-            const program = gl.createProgram();
-            const vs = createShader(gl, gl.VERTEX_SHADER, vsSource);
-            const fs = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
-            if (!vs || !fs) return null;
-            gl.attachShader(program, vs);
-            gl.attachShader(program, fs);
-            gl.linkProgram(program);
-            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-                console.error('Program error:', gl.getProgramInfoLog(program));
-                return null;
-            }
-            return program;
-        }
-
-        function loadImage(src) {
+        async function loadTexture(url) {
             return new Promise((resolve, reject) => {
-                const img = new Image();
-                img.crossOrigin = "anonymous"; 
-                img.onload = () => resolve(img);
-                img.onerror = () => reject(new Error(`Failed to load ${src}`));
-                img.src = src;
+                new THREE.TextureLoader().load(url, resolve, undefined, reject);
             });
         }
 
-        // ============================================================
-        // DEPTH RENDERER
-        // ============================================================
-        class DepthParallaxRenderer {
-            constructor(canvas) {
-                this.canvas = canvas;
-                this.gl = canvas.getContext('webgl', { 
-                    antialias: true, 
-                    alpha: true,
-                    premultipliedAlpha: false 
+        async function initThreeJS() {
+            const container = document.getElementById('canvas-container');
+            
+            scene = new THREE.Scene();
+            camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+            camera.position.z = 1;
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+            
+            try {
+                backgroundTexture = await loadTexture(CONFIG.imagePath);
+                depthTexture = await loadTexture(CONFIG.depthPath);
+                
+                const bgGeometry = new THREE.PlaneGeometry(2, 2);
+                const bgMaterial = new THREE.ShaderMaterial({
+                    uniforms: {
+                        uImage: { value: backgroundTexture },
+                        uDepth: { value: depthTexture },
+                        uViewOffset: { value: new THREE.Vector2(0, 0) },
+                        uStrength: { value: CONFIG.parallaxStrength / 1000 },
+                        uZoom: { value: CONFIG.zoomLevel },
+                        uCA: { value: CONFIG.chromaticAberration },
+                        uNoise: { value: CONFIG.noiseAmount },
+                        uTime: { value: 0 },
+                        uResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+                        uImageResolution: { value: new THREE.Vector2(backgroundTexture.image.width, backgroundTexture.image.height) }
+                    },
+                    vertexShader: backgroundVertexShader,
+                    fragmentShader: backgroundFragmentShader
                 });
-                this.ready = false;
+                backgroundMesh = new THREE.Mesh(bgGeometry, bgMaterial);
+                scene.add(backgroundMesh);
+                
+                document.getElementById('mainStatus').innerText = 'READY';
+                
+            } catch (e) {
+                console.error('Failed to initialize:', e);
+                document.getElementById('mainStatus').innerText = 'ERROR';
             }
             
-            async init(imageSrc, depthSrc) {
-                const gl = this.gl;
-                if (!gl) return;
-                
-                try {
-                    const [image, depth] = await Promise.all([
-                        loadImage(imageSrc),
-                        loadImage(depthSrc)
-                    ]);
-                    
-                    this.canvas.width = image.naturalWidth;
-                    this.canvas.height = image.naturalHeight;
-                    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-                    
-                    this.program = createProgram(gl, vertexShader, depthParallaxShader);
-                    if (!this.program) throw new Error("Shader init failed");
-                    
-                    const positions = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
-                    const texCoords = new Float32Array([0, 1, 1, 1, 0, 0, 1, 0]);
-                    
-                    const posBuffer = gl.createBuffer();
-                    gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
-                    gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
-                    
-                    const texBuffer = gl.createBuffer();
-                    gl.bindBuffer(gl.ARRAY_BUFFER, texBuffer);
-                    gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STATIC_DRAW);
-                    
-                    this.imageTexture = this.createTexture(image);
-                    this.depthTexture = this.createTexture(depth);
-                    
-                    gl.useProgram(this.program);
-                    this.uniforms = {
-                        image: gl.getUniformLocation(this.program, 'u_image'),
-                        depth: gl.getUniformLocation(this.program, 'u_depth'),
-                        viewOffset: gl.getUniformLocation(this.program, 'u_viewOffset'),
-                        strength: gl.getUniformLocation(this.program, 'u_strength'),
-                        zoom: gl.getUniformLocation(this.program, 'u_zoom'),
-                        ca: gl.getUniformLocation(this.program, 'u_ca'),
-                        noise: gl.getUniformLocation(this.program, 'u_noise'),
-                        time: gl.getUniformLocation(this.program, 'u_time'),
-                        resolution: gl.getUniformLocation(this.program, 'u_resolution'),
-                        posLoc: gl.getAttribLocation(this.program, 'a_position'),
-                        texLoc: gl.getAttribLocation(this.program, 'a_texCoord')
-                    };
+            window.addEventListener('resize', onResize);
+        }
 
-                    gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
-                    gl.enableVertexAttribArray(this.uniforms.posLoc);
-                    gl.vertexAttribPointer(this.uniforms.posLoc, 2, gl.FLOAT, false, 0, 0);
-                    
-                    gl.bindBuffer(gl.ARRAY_BUFFER, texBuffer);
-                    gl.enableVertexAttribArray(this.uniforms.texLoc);
-                    gl.vertexAttribPointer(this.uniforms.texLoc, 2, gl.FLOAT, false, 0, 0);
-                    
-                    this.startTime = Date.now();
-                    this.ready = true;
-                    document.getElementById('mainStatus').innerText = 'READY';
-                } catch(e) {
-                    console.error("Depth init failed", e);
-                    document.getElementById('mainStatus').innerText = 'ERROR';
-                }
+        function onResize() {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            
+            renderer.setSize(width, height);
+            
+            if (backgroundMesh) {
+                backgroundMesh.material.uniforms.uResolution.value.set(width, height);
+            }
+        }
+
+        function renderThreeJS() {
+            time += 0.016;
+            
+            if (backgroundMesh) {
+                backgroundMesh.material.uniforms.uViewOffset.value.set(state.viewX, state.viewY);
+                backgroundMesh.material.uniforms.uTime.value = time;
             }
             
-            createTexture(image) {
-                const gl = this.gl;
-                const texture = gl.createTexture();
-                gl.bindTexture(gl.TEXTURE_2D, texture);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-                return texture;
-            }
-            
-            render() {
-                if (!this.ready) return;
-                const gl = this.gl;
-                const time = (Date.now() - this.startTime) / 1000;
-                
-                gl.clearColor(0, 0, 0, 0);
-                gl.clear(gl.COLOR_BUFFER_BIT);
-                gl.useProgram(this.program);
-                
-                gl.activeTexture(gl.TEXTURE0);
-                gl.bindTexture(gl.TEXTURE_2D, this.imageTexture);
-                gl.uniform1i(this.uniforms.image, 0);
-                
-                gl.activeTexture(gl.TEXTURE1);
-                gl.bindTexture(gl.TEXTURE_2D, this.depthTexture);
-                gl.uniform1i(this.uniforms.depth, 1);
-                
-                const uvStrength = CONFIG.parallaxStrength / this.canvas.width;
-                
-                gl.uniform2f(this.uniforms.viewOffset, state.viewX, state.viewY);
-                gl.uniform1f(this.uniforms.strength, uvStrength);
-                gl.uniform1f(this.uniforms.zoom, CONFIG.zoomLevel);
-                gl.uniform1f(this.uniforms.ca, CONFIG.chromaticAberration);
-                gl.uniform1f(this.uniforms.noise, CONFIG.noiseAmount);
-                gl.uniform1f(this.uniforms.time, time);
-                gl.uniform2f(this.uniforms.resolution, this.canvas.width, this.canvas.height);
-                
-                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-            }
+            renderer.render(scene, camera);
+        }
+
+        // ============================================================
+        // TEXT PARALLAX
+        // ============================================================
+        function updateTextParallax() {
+            const container = document.getElementById('glassTextContainer');
+            const offsetX = state.viewX * CONFIG.titleParallaxStrength;
+            const offsetY = -state.viewY * CONFIG.titleParallaxStrength;
+            container.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
         }
 
         // ============================================================
@@ -530,16 +441,12 @@
         }
         
         function initManualInput() {
-            console.log('Initializing manual input handlers');
-            
-            // Mouse Input
             document.addEventListener('mousemove', (e) => {
                 state.manual.lastActivity = Date.now();
                 state.manual.x = (e.clientX / window.innerWidth - 0.5) * 3;
                 state.manual.y = -(e.clientY / window.innerHeight - 0.5) * 3;
             });
 
-            // Touch Input
             let lastX = 0, lastY = 0;
             let offsetX = 0, offsetY = 0;
             const sensitivity = 5.0;
@@ -569,41 +476,14 @@
         }
 
         // ============================================================
-        // TITLE PARALLAX
-        // ============================================================
-        function updateTitleParallax() {
-            const titleEl = document.getElementById('titleWrapper');
-            const offsetX = state.viewX * CONFIG.titleParallaxStrength;
-            const offsetY = -state.viewY * CONFIG.titleParallaxStrength;
-            titleEl.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
-        }
-
-        // ============================================================
         // MAIN
         // ============================================================
-        let depthRenderer;
         
         async function init() {
             console.log('Initializing...');
             
-            depthRenderer = new DepthParallaxRenderer(document.getElementById('depthCanvas'));
+            await initThreeJS();
             
-            try {
-                await depthRenderer.init(CONFIG.imagePath, CONFIG.depthPath);
-                console.log('Depth renderer initialized');
-            } catch (e) {
-                console.error('Failed to initialize renderer:', e);
-            }
-            
-            // Wait for font
-            try {
-                await document.fonts.load('900 100px Hyena');
-                console.log('Font loaded');
-            } catch (e) {
-                console.warn('Font load failed, using fallback');
-            }
-            
-            // Initialize inputs
             initManualInput();
             
             initFaceTracking()
@@ -617,11 +497,10 @@
                     }
                 });
             
-            function render() {
+            function animate() {
                 const now = Date.now();
                 let targetX = 0, targetY = 0;
                 
-                // Determine which input to use
                 const manualActive = isManualActive();
                 
                 if (manualActive) {
@@ -636,23 +515,20 @@
                     state.currentInput = 'none';
                 }
                 
-                // Smooth interpolation
                 state.viewX += (targetX - state.viewX) * CONFIG.smoothing;
                 state.viewY += (targetY - state.viewY) * CONFIG.smoothing;
                 
-                // Update indicators (throttled)
                 if (now % 10 < 2) {
                     updateInputIndicators();
                 }
                 
-                // Render
-                depthRenderer.render();
-                updateTitleParallax();
+                renderThreeJS();
+                updateTextParallax();
                 
-                requestAnimationFrame(render);
+                requestAnimationFrame(animate);
             }
             
-            render();
+            animate();
         }
         
         window.addEventListener('DOMContentLoaded', init);
