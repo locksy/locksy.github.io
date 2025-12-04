@@ -54,6 +54,11 @@
             align-items: center;
             pointer-events: none;
         }
+        
+        .title-wrapper {
+            position: relative;
+            display: inline-block;
+        }
 
         .title-text {
             font-family: 'Hyena', Arial Black, sans-serif;
@@ -66,32 +71,40 @@
             position: relative;
         }
         
-        .title-text::before {
-            content: 'VIRGO';
+        /* Glassmorphic fill - masked to text shape */
+        .title-glass {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(255, 255, 255, 0.08);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            backdrop-filter: blur(24px) saturate(1.5) brightness(1.2);
-            -webkit-backdrop-filter: blur(24px) saturate(1.5) brightness(1.2);
-            mix-blend-mode: lighten;
+            backdrop-filter: blur(28px) saturate(1.8) brightness(1.3);
+            -webkit-backdrop-filter: blur(28px) saturate(1.8) brightness(1.3);
+            background: linear-gradient(
+                135deg,
+                rgba(255, 255, 255, 0.25) 0%,
+                rgba(255, 255, 255, 0.05) 50%,
+                rgba(255, 255, 255, 0.15) 100%
+            );
+            mix-blend-mode: plus-lighter;
+            -webkit-mask: url(#textMask);
+            mask: url(#textMask);
         }
         
-        .title-text::after {
-            content: 'VIRGO';
+        /* Outline layer */
+        .title-outline {
+            font-family: 'Hyena', Arial Black, sans-serif;
+            font-size: clamp(60px, 18vw, 220px);
+            font-weight: 900;
+            letter-spacing: -0.02em;
+            text-transform: uppercase;
+            color: transparent;
+            -webkit-text-stroke: 1.5px rgba(0, 0, 0, 0.6);
+            text-stroke: 1.5px rgba(0, 0, 0, 0.6);
             position: absolute;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-            color: transparent;
-            -webkit-text-stroke: 1px rgba(255, 255, 255, 0.7);
-            text-stroke: 1px rgba(255, 255, 255, 0.7);
+            mix-blend-mode: overlay;
         }
 
         /* Loading / Status Indicator */
@@ -155,9 +168,26 @@
 <body>
     <canvas id="depthCanvas"></canvas>
     
+    <!-- SVG Mask Definition -->
+    <svg style="position: absolute; width: 0; height: 0;">
+        <defs>
+            <mask id="textMask" maskUnits="objectBoundingBox" maskContentUnits="objectBoundingBox">
+                <text x="0.5" y="0.65" text-anchor="middle" 
+                      font-family="Hyena, Arial Black, sans-serif" 
+                      font-weight="900"
+                      font-size="0.9"
+                      fill="white">VIRGO</text>
+            </mask>
+        </defs>
+    </svg>
+    
     <!-- Title -->
     <div class="title-container">
-        <div class="title-text" id="titleText">VIRGO</div>
+        <div class="title-wrapper" id="titleWrapper">
+            <span class="title-text">VIRGO</span>
+            <div class="title-glass"></div>
+            <span class="title-outline">VIRGO</span>
+        </div>
     </div>
     
     <div class="status-display">
@@ -542,7 +572,7 @@
         // TITLE PARALLAX
         // ============================================================
         function updateTitleParallax() {
-            const titleEl = document.getElementById('titleText');
+            const titleEl = document.getElementById('titleWrapper');
             const offsetX = state.viewX * CONFIG.titleParallaxStrength;
             const offsetY = -state.viewY * CONFIG.titleParallaxStrength;
             titleEl.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
