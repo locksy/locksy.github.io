@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Virgo Gabrielle - Loader</title>
+    <title>Virgo Gabrielle - 2D Shader Glass</title>
     
     <style>
+        /* Font is still required for the 2D canvas text */
         @font-face {
-            font-family: 'BubbleCore';
-            src: url('./BubbleCore-Regular.ttf') format('truetype');
+            font-family: 'madloud';
+            src: url('./madloud.otf') format('opentype');
             font-weight: normal;
             font-style: normal;
         }
@@ -21,7 +22,6 @@
             background: #000000;
             overflow: hidden;
             touch-action: none;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
         #canvas-container {
@@ -33,46 +33,11 @@
             z-index: 1;
         }
 
-        /* Liquid Glass Text Overlay */
-        .glass-text-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 10;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            pointer-events: none;
-            gap: 10px;
+        /* We still use a hidden canvas to draw the text mask */
+        #text-canvas {
+            display: none;
         }
 
-        .glass-text {
-            font-family: 'BubbleCore', 'Arial Black', sans-serif;
-            text-transform: lowercase;
-            position: relative;
-            /* Glass distortion via SVG filter */
-            -webkit-backdrop-filter: url(#liquid-glass-filter) blur(0.5px) brightness(1.05) saturate(1.2);
-            backdrop-filter: url(#liquid-glass-filter) blur(0.5px) brightness(1.05) saturate(1.2);
-            /* Subtle text styling */
-            color: rgba(255, 255, 255, 0.06);
-            text-shadow: 
-                0 1px 2px rgba(0, 0, 0, 0.4),
-                0 0 20px rgba(100, 150, 255, 0.1);
-            -webkit-text-stroke: 0.5px rgba(180, 200, 255, 0.35);
-        }
-
-        .glass-text-top {
-            font-size: clamp(60px, 15vw, 140px);
-        }
-
-        .glass-text-bottom {
-            font-size: clamp(45px, 11vw, 105px);
-        }
-
-        /* Loading / Status Indicator */
         .status-display {
             position: fixed;
             bottom: 30px;
@@ -80,11 +45,11 @@
             transform: translateX(-50%);
             z-index: 100;
             text-align: center;
-            width: 100%;
             pointer-events: none;
         }
 
         .loading-text {
+            /* Font family removed here so browser uses system font first */
             font-size: 12px;
             letter-spacing: 0.4em;
             text-transform: uppercase;
@@ -106,7 +71,6 @@
             color: rgba(255, 255, 255, 0.3);
             display: flex;
             align-items: center;
-            transition: color 0.3s, opacity 0.3s;
             opacity: 0.5;
         }
 
@@ -131,40 +95,9 @@
     </style>
 </head>
 <body>
-    <!-- SVG Filter for Liquid Glass Effect -->
-    <svg style="position: absolute; width: 0; height: 0;" aria-hidden="true">
-        <defs>
-            <filter id="liquid-glass-filter" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
-                <!-- Generate organic noise pattern -->
-                <feTurbulence 
-                    type="fractalNoise" 
-                    baseFrequency="0.012 0.012" 
-                    numOctaves="3" 
-                    seed="15" 
-                    result="noise"
-                />
-                <!-- Smooth the noise -->
-                <feGaussianBlur in="noise" stdDeviation="1.5" result="smoothNoise"/>
-                <!-- Apply displacement -->
-                <feDisplacementMap 
-                    in="SourceGraphic" 
-                    in2="smoothNoise" 
-                    scale="12" 
-                    xChannelSelector="R" 
-                    yChannelSelector="G"
-                    result="displaced"
-                />
-            </filter>
-        </defs>
-    </svg>
-
+    <div style="font-family: 'madloud'; position: absolute; visibility: hidden;">.</div>
     <div id="canvas-container"></div>
-    
-    <!-- Glass Text Overlay -->
-    <div class="glass-text-container" id="glassTextContainer">
-        <div class="glass-text glass-text-top">virgo</div>
-        <div class="glass-text glass-text-bottom">gabrielle</div>
-    </div>
+    <canvas id="text-canvas"></canvas>
     
     <div class="status-display">
         <div class="loading-text" id="mainStatus">LOADING</div>
@@ -178,49 +111,103 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
-        // ============================================================
-        // CONFIGURATION
-        // ============================================================
         const CONFIG = {
             imagePath: './new-img.png',
             depthPath: './new-depth.png',
             
+            // --- RESTORED MAIN EFFECT SETTINGS ---
             parallaxStrength: 25,
             inputSensitivity: 10,
             smoothing: 0.25,
-            
             chromaticAberration: 0.015,
             noiseAmount: 0.03,
-            
             zoomLevel: 0.85,
             
-            // Title parallax (subtle movement)
-            titleParallaxStrength: 8,
+            // --- NEW: Glass Shader Configuration (Tuned to look like 3D Glass) ---
+            glass: {
+                refraction: 0.05,
+                dispersion: 0.018,
+                // BevelSize controls how far the shader looks for an edge (higher = more bevel)
+                bevelSize: 12.0, 
+                fresnel: 0.55,
+                specular: 0.7,
+                specularSize: 44.0,
+                brightness: 1.15,
+                saturation: 1.15,
+                // Parallax strength on the glass layer itself (slightly less than BG)
+                glassParallaxStrength: 0.012,
+                // NEW: Subtle boost for the word "gabrielle" to move it forward
+                gabrielleParallaxBoost: 0.003
+            },
             
-            // Input timeout (ms)
             manualInputTimeout: 2000,
         };
 
-        // ============================================================
-        // GLOBAL STATE
-        // ============================================================
         const state = {
             sensor: { x: 0, y: 0, available: false },
             manual: { x: 0, y: 0, lastActivity: 0 },
-            viewX: 0, 
-            viewY: 0, 
+            viewX: 0, viewY: 0,
             currentInput: 'none',
         };
 
-        // ============================================================
-        // THREE.JS SETUP (Background only)
-        // ============================================================
+        let textTexture;
+        
+        // Function to render the text to a hidden canvas, creating a mask texture
+        function createTextTexture() {
+            const canvas = document.getElementById('text-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const w = canvas.width;
+            const h = canvas.height;
+            
+            // **FIX: Ensure transform is reset for accurate drawing and positioning**
+            ctx.setTransform(1, 0, 0, 1, 0, 0); 
+            
+            // --- Positioning Text to the bottom-center as requested ---
+            const commonSize = Math.min(Math.max(60, w * 0.1), 180);
+            
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#FFFFFF'; // White mask for the shader
+            
+            ctx.font = `${commonSize}px madloud, Arial Black, sans-serif`;
+            
+            // Position 'gabrielle' (Moved up by 80px)
+            const gabrielleY = h - 200; 
+            ctx.fillText('gabrielle', w / 2, gabrielleY);
+            
+            // **FIX: Spacing is significantly increased (from 0.9 to 1.5) to prevent clipping**
+            const virgoY = gabrielleY - (commonSize * 1.5);
+            ctx.fillText('virgo', w / 2, virgoY);
+            // -------------------------------------------------------------
+            
+            if (textTexture) textTexture.dispose();
+            
+            textTexture = new THREE.CanvasTexture(canvas);
+            textTexture.minFilter = THREE.LinearFilter;
+            textTexture.magFilter = THREE.LinearFilter;
+            
+            if (glassMesh) {
+                // Update the glass shader with the new texture
+                glassMesh.material.uniforms.uMask.value = textTexture;
+            }
+            
+            return textTexture;
+        }
+
         let scene, camera, renderer;
-        let backgroundMesh;
+        let backgroundMesh, glassMesh;
         let backgroundTexture, depthTexture;
+        let bgRenderTarget; // To capture the animated background
         let time = 0;
 
-        const backgroundVertexShader = `
+        // --- BG SHADER (Restored from your original file) ---
+        const vertShader = `
             varying vec2 vUv;
             void main() {
                 vUv = uv;
@@ -228,7 +215,7 @@
             }
         `;
 
-        const backgroundFragmentShader = `
+        const bgFragShader = `
             precision highp float;
             varying vec2 vUv;
             
@@ -240,24 +227,20 @@
             uniform float uCA;
             uniform float uNoise;
             uniform float uTime;
-            uniform vec2 uResolution;
-            uniform vec2 uImageResolution;
+            uniform vec2 uRes;
+            uniform vec2 uImgRes;
             
             float hash(vec2 p) {
                 return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
             }
             
             void main() {
-                // Aspect-correct UVs (contain mode)
-                float screenAspect = uResolution.x / uResolution.y;
-                float imageAspect = uImageResolution.x / uImageResolution.y;
+                float scrAspect = uRes.x / uRes.y;
+                float imgAspect = uImgRes.x / uImgRes.y;
                 
-                vec2 scale;
-                if (screenAspect > imageAspect) {
-                    scale = vec2(imageAspect / screenAspect, 1.0);
-                } else {
-                    scale = vec2(1.0, screenAspect / imageAspect);
-                }
+                vec2 scale = scrAspect > imgAspect 
+                    ? vec2(imgAspect / scrAspect, 1.0)
+                    : vec2(1.0, scrAspect / imgAspect);
                 
                 vec2 uv = (vUv - 0.5) / scale + 0.5;
                 
@@ -266,269 +249,393 @@
                     return;
                 }
                 
-                float margin = (1.0 - uZoom) * 0.5;
-                uv = uv * uZoom + margin;
+                uv = uv * uZoom + (1.0 - uZoom) * 0.5;
                 
                 float depth = texture2D(uDepth, uv).r;
-                vec2 baseOffset = -uViewOffset * depth * uStrength;
+                vec2 off = -uViewOffset * depth * uStrength;
                 
-                float distortion = length(uViewOffset) * 2.0;
-                float dynamicCA = uCA * (1.0 + distortion);
+                float dist = length(uViewOffset) * 2.0;
+                float ca = uCA * (1.0 + dist);
                 
-                vec2 offsetR = baseOffset + uViewOffset * dynamicCA * depth;
-                vec2 offsetB = baseOffset - uViewOffset * dynamicCA * depth;
+                float r = texture2D(uImage, uv + off + uViewOffset * ca * depth).r;
+                float g = texture2D(uImage, uv + off).g;
+                float b = texture2D(uImage, uv + off - uViewOffset * ca * depth).b;
                 
-                float r = texture2D(uImage, uv + offsetR).r;
-                float g = texture2D(uImage, uv + baseOffset).g;
-                float b = texture2D(uImage, uv + offsetB).b;
+                vec3 col = vec3(r, g, b);
+                col += (hash(floor(vUv * uRes * 0.5) + uTime * 0.1) * 2.0 - 1.0) * uNoise;
                 
-                vec3 color = vec3(r, g, b);
+                gl_FragColor = vec4(col, 1.0);
+            }
+        `;
+
+        // --- NEW: Bevelled Glass Shader (Simulating 3D Text) ---
+        const glassFragShader = `
+            precision highp float;
+            varying vec2 vUv;
+            
+            uniform sampler2D uBg; // Animated background texture
+            uniform sampler2D uMask; // Text mask (from canvas)
+            uniform vec2 uViewOffset;
+            uniform vec2 uRes;
+            uniform float uTime;
+            uniform float uGlassParallaxStrength;
+            uniform float uGabrielleParallaxBoost;
+            
+            uniform float uRefraction;
+            uniform float uDispersion;
+            uniform float uBevelSize;
+            uniform float uFresnel;
+            uniform float uSpecular;
+            uniform float uSpecularSize;
+            uniform float uBrightness;
+            uniform float uSaturation;
+            
+            float getMask(vec2 uv) {
+                return texture2D(uMask, uv).r;
+            }
+            
+            // Compute edge gradient (points toward inside of text)
+            vec2 getGradient(vec2 uv) {
+                vec2 px = vec2(1.0) / uRes;
+                float l = getMask(uv - vec2(px.x, 0.0));
+                float r = getMask(uv + vec2(px.x, 0.0));
+                float d = getMask(uv - vec2(0.0, px.y));
+                float u = getMask(uv + vec2(0.0, px.y));
+                return vec2(r - l, u - d);
+            }
+            
+            // Fresnel approximation
+            float fresnelSchlick(float cosTheta, float f0) {
+                return f0 + (1.0 - f0) * pow(1.0 - cosTheta, 5.0);
+            }
+            
+            // Saturation adjustment
+            vec3 adjustSat(vec3 c, float s) {
+                float g = dot(c, vec3(0.299, 0.587, 0.114));
+                return mix(vec3(g), c, s);
+            }
+            
+            void main() {
+                // Step 1: Determine the base glass parallax offset
+                vec2 glassParallaxOffset = uViewOffset * uGlassParallaxStrength;
+
+                // Step 2: Apply an additional small boost to the bottom word ('gabrielle' is generally in the lower UVs)
+                // This creates the parallax depth effect: 'gabrielle' moves slightly more than 'virgo'
+                // **FIX: Adjusted split point from 0.45 to 0.3 for lower text position**
+                float parallaxBoost = (vUv.y < 0.3) ? uGabrielleParallaxBoost : 0.0;
+                glassParallaxOffset += uViewOffset * parallaxBoost; 
+
+                vec2 maskUv = vUv - glassParallaxOffset;
+                float mask = getMask(maskUv);
                 
-                float noise = hash(floor(vUv * uResolution * 0.5) + uTime * 0.1) * 2.0 - 1.0;
-                color += noise * uNoise;
+                // If far outside text, just render the background
+                if (mask < 0.05) {
+                    gl_FragColor = texture2D(uBg, vUv);
+                    return;
+                }
+                
+                // --- Bevel & Normal Calculation ---
+                vec2 px = vec2(1.0) / uRes;
+                vec2 gradient = getGradient(maskUv);
+                float gradLen = length(gradient);
+                
+                // Calculate distance to the edge for beveling
+                float dist = 1.0 - mask;
+                float bevelFactor = smoothstep(0.0, uBevelSize * px.x, dist);
+                
+                // Normalize gradient
+                vec2 gradDir = gradLen > 0.001 ? gradient / gradLen : vec2(0.0);
+                
+                // Normal approximation (points along gradient on the surface of the text)
+                float angle = (1.0 - bevelFactor) * 1.5708; // 0 to 90 deg based on distance from center
+                float nz = cos(angle) * 0.9; // Z component (depth)
+                float nxy = sin(angle);     // XY component (side slope)
+                
+                vec3 normal = normalize(vec3(gradDir * nxy, nz));
+                
+                // View and light directions (approximations for reflection/specular)
+                vec3 viewDir = normalize(vec3(-uViewOffset * 0.5, 1.0));
+                vec3 lightDir = normalize(vec3(0.3 - uViewOffset.x * 0.3, 0.5 + uViewOffset.y * 0.3, 1.0));
+                
+                // === REFRACTION (The heart of the glass look) ===
+                // Use the normal to offset the sampling of the background texture
+                vec2 refractBase = normal.xy * uRefraction;
+                refractBase += uViewOffset * uRefraction * 0.3; // Slight parallax influence
+                
+                // Chromatic dispersion (offset RGB channels)
+                vec2 refractR = refractBase * (1.0 - uDispersion);
+                vec2 refractG = refractBase;
+                vec2 refractB = refractBase * (1.0 + uDispersion);
+                
+                float r = texture2D(uBg, vUv + refractR).r;
+                float g = texture2D(uBg, vUv + refractG).g;
+                float b = texture2D(uBg, vUv + refractB).b;
+                
+                vec3 refracted = vec3(r, g, b);
+                
+                // Color adjustments
+                refracted = adjustSat(refracted, uSaturation);
+                refracted *= uBrightness;
+                
+                // === FRESNEL & SPECULAR (The shine) ===
+                float NdotV = max(dot(normal, viewDir), 0.0);
+                float fresnel = fresnelSchlick(NdotV, 0.04) * uFresnel;
+                
+                // Reflection color (soft yellow/gold)
+                vec3 reflectColor = vec3(1.0, 0.85, 0.0) * 0.5;
+                
+                // Specular calculation
+                vec3 halfVec = normalize(lightDir + viewDir);
+                float NdotH = max(dot(normal, halfVec), 0.0);
+                float spec = pow(NdotH, uSpecularSize) * uSpecular;
+                
+                vec3 specColor = vec3(1.0, 0.95, 0.7) * spec;
+                
+                // === COMPOSITE ===
+                vec3 color = refracted;
+                
+                // Add reflections
+                color = mix(color, reflectColor, fresnel * 0.3);
+                
+                // Add specular
+                color += specColor;
+                
+                // Edge darkening for depth illusion
+                float edgeDarkness = smoothstep(0.0, 0.4, dist) * 0.4;
+                color *= 1.0 - edgeDarkness;
+                
+                // Blend with background at mask edges
+                float alpha = smoothstep(0.0, 0.15, mask);
+                vec3 bg = texture2D(uBg, vUv).rgb;
+                color = mix(bg, color, alpha);
                 
                 gl_FragColor = vec4(color, 1.0);
             }
         `;
 
-        async function loadTexture(url) {
-            return new Promise((resolve, reject) => {
-                new THREE.TextureLoader().load(url, resolve, undefined, reject);
+        async function loadTex(url) {
+            return new Promise((res, rej) => {
+                new THREE.TextureLoader().load(url, res, undefined, rej);
             });
         }
 
-        async function initThreeJS() {
+        async function initThree() {
             const container = document.getElementById('canvas-container');
             
+            // --- RESTORED CAMERA: Orthographic Camera and standard setup ---
             scene = new THREE.Scene();
             camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
             camera.position.z = 1;
             
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             container.appendChild(renderer.domElement);
             
+            const dpr = Math.min(window.devicePixelRatio, 2);
+            // Render Target to capture the animated BG
+            bgRenderTarget = new THREE.WebGLRenderTarget(
+                window.innerWidth * dpr,
+                window.innerHeight * dpr,
+                { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter }
+            );
+            
             try {
-                backgroundTexture = await loadTexture(CONFIG.imagePath);
-                depthTexture = await loadTexture(CONFIG.depthPath);
+                // Load textures
+                backgroundTexture = await loadTex(CONFIG.imagePath);
+                depthTexture = await loadTex(CONFIG.depthPath);
                 
-                const bgGeometry = new THREE.PlaneGeometry(2, 2);
-                const bgMaterial = new THREE.ShaderMaterial({
+                // Create the text mask
+                createTextTexture();
+                
+                // 1. Background Mesh (The restored "Main Effect")
+                const bgMat = new THREE.ShaderMaterial({
                     uniforms: {
                         uImage: { value: backgroundTexture },
                         uDepth: { value: depthTexture },
-                        uViewOffset: { value: new THREE.Vector2(0, 0) },
+                        uViewOffset: { value: new THREE.Vector2() },
                         uStrength: { value: CONFIG.parallaxStrength / 1000 },
                         uZoom: { value: CONFIG.zoomLevel },
                         uCA: { value: CONFIG.chromaticAberration },
                         uNoise: { value: CONFIG.noiseAmount },
                         uTime: { value: 0 },
-                        uResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
-                        uImageResolution: { value: new THREE.Vector2(backgroundTexture.image.width, backgroundTexture.image.height) }
+                        uRes: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+                        uImgRes: { value: new THREE.Vector2(backgroundTexture.image.width, backgroundTexture.image.height) }
                     },
-                    vertexShader: backgroundVertexShader,
-                    fragmentShader: backgroundFragmentShader
+                    vertexShader: vertShader,
+                    fragmentShader: bgFragShader
                 });
-                backgroundMesh = new THREE.Mesh(bgGeometry, bgMaterial);
+                backgroundMesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), bgMat);
                 scene.add(backgroundMesh);
                 
-                document.getElementById('mainStatus').innerText = 'READY';
+                // 2. Glass Mesh (The new Bevelled Glass Shader)
+                const glassMat = new THREE.ShaderMaterial({
+                    uniforms: {
+                        uBg: { value: bgRenderTarget.texture },
+                        uMask: { value: textTexture },
+                        uViewOffset: { value: new THREE.Vector2() },
+                        uRes: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+                        uTime: { value: 0 },
+                        uGlassParallaxStrength: { value: CONFIG.glass.glassParallaxStrength },
+                        uGabrielleParallaxBoost: { value: CONFIG.glass.gabrielleParallaxBoost },
+                        
+                        uRefraction: { value: CONFIG.glass.refraction },
+                        uDispersion: { value: CONFIG.glass.dispersion },
+                        uBevelSize: { value: CONFIG.glass.bevelSize },
+                        uFresnel: { value: CONFIG.glass.fresnel },
+                        uSpecular: { value: CONFIG.glass.specular },
+                        uSpecularSize: { value: CONFIG.glass.specularSize },
+                        uBrightness: { value: CONFIG.glass.brightness },
+                        uSaturation: { value: CONFIG.glass.saturation },
+                    },
+                    vertexShader: vertShader,
+                    fragmentShader: glassFragShader,
+                    transparent: true
+                });
+                // Renders over the background
+                glassMesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), glassMat); 
+                glassMesh.renderOrder = 1;
+                scene.add(glassMesh);
+                
+                document.getElementById('mainStatus').textContent = 'READY';
                 
             } catch (e) {
-                console.error('Failed to initialize:', e);
-                document.getElementById('mainStatus').innerText = 'ERROR';
+                console.error('Init failed:', e);
+                document.getElementById('mainStatus').textContent = 'ERROR (Check Console)';
             }
             
             window.addEventListener('resize', onResize);
         }
 
         function onResize() {
-            const width = window.innerWidth;
-            const height = window.innerHeight;
+            const w = window.innerWidth, h = window.innerHeight;
+            const dpr = Math.min(window.devicePixelRatio, 2);
             
-            renderer.setSize(width, height);
+            renderer.setSize(w, h);
+            bgRenderTarget.setSize(w * dpr, h * dpr);
             
-            if (backgroundMesh) {
-                backgroundMesh.material.uniforms.uResolution.value.set(width, height);
-            }
+            if (backgroundMesh) backgroundMesh.material.uniforms.uRes.value.set(w, h);
+            if (glassMesh) glassMesh.material.uniforms.uRes.value.set(w, h);
+            
+            createTextTexture();
         }
 
-        function renderThreeJS() {
-            time += 0.016;
+        function render() {
+            time += 0.016; // Consistent time delta
             
             if (backgroundMesh) {
                 backgroundMesh.material.uniforms.uViewOffset.value.set(state.viewX, state.viewY);
                 backgroundMesh.material.uniforms.uTime.value = time;
             }
             
+            // Pass 1: Render BG to the texture (RenderTarget)
+            glassMesh.visible = false; // Hide glass layer while capturing background
+            renderer.setRenderTarget(bgRenderTarget);
+            renderer.render(scene, camera);
+            
+            // Pass 2: Render the final scene
+            glassMesh.visible = true;
+            renderer.setRenderTarget(null);
+            
+            if (glassMesh) {
+                // Pass the current input values to the glass shader
+                glassMesh.material.uniforms.uViewOffset.value.set(state.viewX, state.viewY);
+                glassMesh.material.uniforms.uTime.value = time;
+            }
+            
             renderer.render(scene, camera);
         }
 
-        // ============================================================
-        // TEXT PARALLAX
-        // ============================================================
-        function updateTextParallax() {
-            const container = document.getElementById('glassTextContainer');
-            const offsetX = state.viewX * CONFIG.titleParallaxStrength;
-            const offsetY = -state.viewY * CONFIG.titleParallaxStrength;
-            container.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
-        }
-
-        // ============================================================
-        // INPUT HANDLERS
-        // ============================================================
-        
-        function updateInputIndicators() {
-            const manualInd = document.getElementById('ind-manual');
-            const sensorInd = document.getElementById('ind-sensor');
-            
-            manualInd.classList.toggle('active', state.currentInput === 'manual');
-            sensorInd.classList.toggle('active', state.currentInput === 'sensor');
-        }
-        
-        function isManualActive() {
-            return Date.now() - state.manual.lastActivity < CONFIG.manualInputTimeout;
-        }
-        
-        function initFaceTracking() {
-            if (typeof Parallax === 'undefined') {
-                console.warn('Parallax library not loaded');
-                return Promise.reject('Parallax library not loaded');
-            }
-            
-            return Parallax.init(view => {
-                state.sensor.x = view.x * CONFIG.inputSensitivity;
-                state.sensor.y = -view.y * CONFIG.inputSensitivity;
-                state.sensor.available = true;
-            }, {
-                smoothEye: 0.8,
-                smoothDist: 0.2,
-                threshold: 0.5 
-            });
-        }
-        
-        function initGyroscope() {
-            return new Promise((resolve, reject) => {
-                if (!window.DeviceOrientationEvent) {
-                    reject('No gyroscope');
-                    return;
-                }
-                
-                const handler = (e) => {
-                    if (e.gamma === null) return;
-                    
-                    state.sensor.x = Math.max(-2, Math.min(2, (e.gamma / 30) * CONFIG.inputSensitivity));
-                    state.sensor.y = Math.max(-2, Math.min(2, ((e.beta - 45) / 30) * CONFIG.inputSensitivity));
-                    state.sensor.available = true;
-                };
-                
-                if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                    DeviceOrientationEvent.requestPermission()
-                        .then(response => {
-                            if (response === 'granted') {
-                                window.addEventListener('deviceorientation', handler);
-                                resolve();
-                            } else {
-                                reject('Permission denied');
-                            }
-                        }).catch(reject);
-                } else {
-                    window.addEventListener('deviceorientation', handler);
-                    resolve();
-                }
-            });
-        }
-        
-        function initManualInput() {
-            document.addEventListener('mousemove', (e) => {
+        // --- INPUT LOGIC (Kept from original file) ---
+        function initInput() {
+            document.addEventListener('mousemove', e => {
                 state.manual.lastActivity = Date.now();
                 state.manual.x = (e.clientX / window.innerWidth - 0.5) * 3;
                 state.manual.y = -(e.clientY / window.innerHeight - 0.5) * 3;
             });
 
-            let lastX = 0, lastY = 0;
-            let offsetX = 0, offsetY = 0;
-            const sensitivity = 5.0;
+            let lx = 0, ly = 0, ox = 0, oy = 0;
             
-            document.addEventListener('touchstart', (e) => {
+            document.addEventListener('touchstart', e => {
                 state.manual.lastActivity = Date.now();
-                const touch = e.touches[0];
-                lastX = touch.clientX;
-                lastY = touch.clientY;
+                lx = e.touches[0].clientX;
+                ly = e.touches[0].clientY;
             }, { passive: true });
             
-            document.addEventListener('touchmove', (e) => {
+            document.addEventListener('touchmove', e => {
                 state.manual.lastActivity = Date.now();
-                const touch = e.touches[0];
-                const dx = ((touch.clientX - lastX) / window.innerWidth) * sensitivity;
-                const dy = ((touch.clientY - lastY) / window.innerHeight) * sensitivity;
-                
-                offsetX = Math.max(-1.5, Math.min(1.5, offsetX + dx));
-                offsetY = Math.max(-1.5, Math.min(1.5, offsetY - dy));
-                
-                state.manual.x = offsetX;
-                state.manual.y = offsetY;
-                
-                lastX = touch.clientX;
-                lastY = touch.clientY;
+                ox = Math.max(-1.5, Math.min(1.5, ox + (e.touches[0].clientX - lx) / window.innerWidth * 5));
+                oy = Math.max(-1.5, Math.min(1.5, oy - (e.touches[0].clientY - ly) / window.innerHeight * 5));
+                state.manual.x = ox;
+                state.manual.y = oy;
+                lx = e.touches[0].clientX;
+                ly = e.touches[0].clientY;
             }, { passive: true });
         }
 
-        // ============================================================
-        // MAIN
-        // ============================================================
-        
-        async function init() {
-            console.log('Initializing...');
-            
-            await initThreeJS();
-            
-            initManualInput();
-            
-            initFaceTracking()
-                .then(() => console.log('Face tracking initialized'))
-                .catch((e) => {
-                    console.log('Face tracking unavailable:', e);
-                    if ('ontouchstart' in window) {
-                        initGyroscope()
-                            .then(() => console.log('Gyroscope initialized'))
-                            .catch((e) => console.log('Gyroscope unavailable:', e));
+        function initSensors() {
+            if (typeof Parallax !== 'undefined') {
+                Parallax.init(v => {
+                    state.sensor.x = v.x * CONFIG.inputSensitivity;
+                    state.sensor.y = -v.y * CONFIG.inputSensitivity;
+                    state.sensor.available = true;
+                }, { smoothEye: 0.8, smoothDist: 0.2, threshold: 0.5 })
+                .then(() => console.log('Face tracking ready'))
+                .catch(() => {
+                    if (window.DeviceOrientationEvent) {
+                        const h = e => {
+                            if (e.gamma === null) return;
+                            state.sensor.x = Math.max(-2, Math.min(2, e.gamma / 30 * CONFIG.inputSensitivity));
+                            state.sensor.y = Math.max(-2, Math.min(2, (e.beta - 45) / 30 * CONFIG.inputSensitivity));
+                            state.sensor.available = true;
+                        };
+                        if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                            DeviceOrientationEvent.requestPermission().then(r => {
+                                if (r === 'granted') window.addEventListener('deviceorientation', h);
+                            });
+                        } else {
+                            window.addEventListener('deviceorientation', h);
+                        }
                     }
                 });
+            }
+        }
+
+        async function init() {
+            console.log('Starting...');
+            // Wait for the custom font to be ready before drawing the canvas mask
+            await document.fonts.ready; 
+            await initThree();
+            initInput();
+            initSensors();
             
-            function animate() {
-                const now = Date.now();
-                let targetX = 0, targetY = 0;
+            function loop() {
+                const manual = Date.now() - state.manual.lastActivity < CONFIG.manualInputTimeout;
                 
-                const manualActive = isManualActive();
-                
-                if (manualActive) {
-                    targetX = state.manual.x;
-                    targetY = state.manual.y;
+                let tx = 0, ty = 0;
+                if (manual) {
+                    tx = state.manual.x;
+                    ty = state.manual.y;
                     state.currentInput = 'manual';
                 } else if (state.sensor.available) {
-                    targetX = state.sensor.x;
-                    targetY = state.sensor.y;
+                    tx = state.sensor.x;
+                    ty = state.sensor.y;
                     state.currentInput = 'sensor';
                 } else {
                     state.currentInput = 'none';
                 }
                 
-                state.viewX += (targetX - state.viewX) * CONFIG.smoothing;
-                state.viewY += (targetY - state.viewY) * CONFIG.smoothing;
+                state.viewX += (tx - state.viewX) * CONFIG.smoothing;
+                state.viewY += (ty - state.viewY) * CONFIG.smoothing;
                 
-                if (now % 10 < 2) {
-                    updateInputIndicators();
-                }
+                document.getElementById('ind-manual').classList.toggle('active', state.currentInput === 'manual');
+                document.getElementById('ind-sensor').classList.toggle('active', state.currentInput === 'sensor');
                 
-                renderThreeJS();
-                updateTextParallax();
-                
-                requestAnimationFrame(animate);
+                render();
+                requestAnimationFrame(loop);
             }
             
-            animate();
+            loop();
         }
         
         window.addEventListener('DOMContentLoaded', init);
