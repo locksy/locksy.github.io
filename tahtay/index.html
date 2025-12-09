@@ -5,13 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tahtay タテ - Logo Concept Art</title>
     <style>
-        /* --- RESET & VARIABLES --- */
+        /* --- RESET & VARIABLES (Updated Text Color) --- */
         :root {
-            /* Changed text color to light charcoal */
-            --text-color: #313131; 
+            /* Changed all text color to white */
+            --text-color: #ffffff; 
             --accent-color: #000;
             --transition-speed: 0.5s;
             --anim-ease: cubic-bezier(0.25, 1, 0.5, 1); 
+            --charcoal: #444; /* Retained charcoal for buttons/header contrast */
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -21,16 +22,14 @@
             color: var(--text-color);
             overflow: hidden; 
             height: 100vh;
-
-            /* New: More Pronounced Gradient Fallback */
-            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); 
             
-            /* New: Background Image (If bg.jpg exists) */
+            /* Background remains the same */
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); 
             background-image: url('bg.jpg');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
-            background-attachment: fixed; /* Optional: Makes the background static */
+            background-attachment: fixed;
         }
 
         /* --- HEADER --- */
@@ -39,13 +38,14 @@
             top: 0;
             left: 0;
             width: 100%;
-            padding: 2rem 3rem;
+            padding: 2rem 3rem; /* Desktop default */
             display: flex;
             justify-content: space-between;
             align-items: center;
             z-index: 100;
-            /* Frosted Glass Effect (adjusted for darker background) */
-            background: rgba(255, 255, 255, 0.75); /* Slightly less transparent */
+            
+            /* Glassmorphism using white for contrast against background */
+            background: rgba(255, 255, 255, 0.75); 
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
             border-bottom: 1px solid rgba(0,0,0,0.1);
@@ -60,7 +60,7 @@
             left: 50%;
             transform: translateX(-50%);
             text-align: center;
-            color: #333; /* Slightly darker charcoal for better title contrast */
+            color: var(--charcoal); /* Title remains dark for contrast against light header */
             text-shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
 
@@ -75,7 +75,7 @@
 
         button {
             background: none;
-            border: 1px solid var(--text-color);
+            border: 1px solid var(--charcoal);
             padding: 0.6rem 1.2rem;
             cursor: pointer;
             font-size: 0.8rem;
@@ -83,17 +83,12 @@
             letter-spacing: 1px;
             transition: all 0.3s ease;
             font-weight: 600;
-            color: var(--text-color); /* Ensure button text is the new charcoal color */
+            color: var(--charcoal); /* Button text remains dark for header contrast */
         }
 
         button.active {
-            background: var(--text-color);
-            color: #fff; /* White text on charcoal background */
-        }
-
-        button:hover {
-            opacity: 0.7;
-            transform: translateY(-1px);
+            background: var(--charcoal);
+            color: #fff;
         }
 
         /* --- MAIN CONTAINER --- */
@@ -104,25 +99,20 @@
             transition: opacity 0.4s ease, filter 0.4s ease;
         }
 
-        .mode-switching {
-            opacity: 0;
-            filter: blur(10px);
-        }
-
-        /* --- SINGLE IMAGE MODE --- */
+        /* --- SINGLE IMAGE MODE (Desktop Default) --- */
         #single-view {
             width: 100%;
             height: 100%;
             display: flex;
-            align-items: center; 
-            justify-content: center; 
+            align-items: center; /* Vertical Center */
+            justify-content: center; /* Horizontal Center */
             padding: 0 5%;
         }
 
         .slide {
             display: none; 
             display: flex;
-            flex-direction: row;
+            flex-direction: row; /* Desktop: Image/Text side-by-side */
             align-items: center; 
             justify-content: center;
             width: 100%;
@@ -133,17 +123,12 @@
             left: 0;
         }
 
-        .slide.active {
-            display: flex;
-            z-index: 10;
-        }
-
-        /* Image Styling */
+        /* Image Styling (Desktop) */
         .image-wrapper {
             height: 70vh; 
             flex: 1;
             display: flex;
-            justify-content: flex-end; 
+            justify-content: flex-end; /* Push image left toward the center gap */
             align-items: center; 
             overflow: hidden;
         }
@@ -154,12 +139,12 @@
             max-width: 100%;
             object-fit: contain;
             display: block;
-            
+            mix-blend-mode: lighten; 
             clip-path: inset(0 0 100% 0); 
             opacity: 0;
         }
 
-        /* Text Styling */
+        /* Text Styling (Desktop) */
         .text-wrapper {
             flex: 1;
             display: flex;
@@ -176,278 +161,82 @@
             margin-bottom: 1.2rem;
             font-weight: 800;
             line-height: 1.1;
-            color: var(--text-color); /* Applied new text color */
+            color: var(--text-color); /* White text */
         }
 
         .text-wrapper p {
             font-size: 1.1rem;
             line-height: 1.7;
-            color: var(--text-color); /* Applied new text color */
+            color: var(--text-color); /* White text */
             font-weight: 400;
         }
-
-        /* --- ANIMATIONS (Single View) --- */
-
-        .slide.animate-in .image-wrapper img {
-            animation: revealWipe 1s var(--anim-ease) forwards;
-        }
-
-        .slide.animate-in .text-wrapper {
-            animation: revealWipe 1s var(--anim-ease) forwards;
-            animation-delay: 0.5s; 
-        }
-
-        .slide.animate-out .image-wrapper img,
-        .slide.animate-out .text-wrapper {
-            opacity: 1;
-            clip-path: inset(0 0 0 0); 
-            animation: quickFadeOut 0.3s ease forwards;
-        }
-
-        @keyframes revealWipe {
-            0% {
-                clip-path: inset(0 0 100% 0); 
-                opacity: 0;
-            }
-            1% { opacity: 1; }
-            100% {
-                clip-path: inset(0 0 0 0);
-                opacity: 1;
-            }
-        }
-
-        @keyframes quickFadeOut {
-            0% { opacity: 1; }
-            100% { opacity: 0; }
-        }
-
-        /* --- GRID MODE --- */
-        #grid-view {
-            display: none; 
-            padding: 140px 60px 60px 60px; 
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 2.5rem;
-            overflow-y: auto;
-            height: 100vh;
-        }
-
-        .grid-item {
-            cursor: pointer;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            background: rgba(255, 255, 255, 0.85); /* Slightly transparent white card */
-            padding: 10px;
-            border-radius: 8px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.05); 
-        }
-
-        .grid-item:hover {
-            transform: translateY(-5px) scale(1.02);
-            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
-        }
-
-        .grid-item img {
-            width: 100%;
-            height: auto;
-            aspect-ratio: 1/1;
-            object-fit: cover;
-            border-radius: 4px;
-            display: block;
-        }
-
-        .grid-item h3 {
-            margin-top: 1rem;
-            margin-bottom: 0.5rem;
-            font-size: 0.95rem;
-            font-weight: 700;
-            text-align: center;
-            color: var(--text-color); /* Applied new text color */
-        }
-
-        .hidden {
-            display: none !important;
-        }
-
-    </style>
-</head>
-<body>
-
-    <header>
-        <div style="width: 120px;"></div> 
-        <h1>Tahtay タテ - <strong>Logo Concept Art</strong></h1>
-        <div class="controls">
-            <button id="btn-single" class="active">Single</button>
-            <button id="btn-grid">Grid</button>
-        </div>
-    </header>
-
-    <div id="app-container">
         
-        <div id="single-view">
-            </div>
-
-        <div id="grid-view" class="hidden">
-            </div>
-
-    </div>
-
-<script>
-    // --- CONFIGURATION ---
-    const totalImages = 20;
-    const placeholderTexts = [
-        "Exploring geometric balance with negative space.",
-        "A minimalist interpretation of the brand ethos.",
-        "Bold strokes utilizing the primary color palette.",
-        "Abstract representation of forward momentum.",
-        "Typographic experiment with custom ligatures.",
-        "Organic shapes meeting industrial precision.",
-        "High contrast study for maximum visibility.",
-        "Soft curvature inspired by nature.",
-        "Monoline aesthetic for a modern touch.",
-        "Dynamic angular composition.",
-        "Retro-futuristic emblem design.",
-        "Symbology rooted in heritage.",
-        "Clean architectural lines.",
-        "Fluid motion captured in static form.",
-        "Badge style layout for versatility.",
-        "Deconstructed letterforms.",
-        "Transparency effects and layering.",
-        "Solid block styling for impact.",
-        "Line art with intricate detailing.",
-        "The final synthesis of concept and form."
-    ];
-
-    // --- STATE & DOM ---
-    let currentIndex = 0;
-    let isAnimating = false;
-    let viewMode = 'single'; 
-
-    const singleViewContainer = document.getElementById('single-view');
-    const gridViewContainer = document.getElementById('grid-view');
-    const appContainer = document.getElementById('app-container');
-    const btnSingle = document.getElementById('btn-single');
-    const btnGrid = document.getElementById('btn-grid');
-
-    // --- INITIALIZATION ---
-    function init() {
-        for (let i = 1; i <= totalImages; i++) {
-            const slide = document.createElement('div');
-            slide.classList.add('slide');
-            slide.id = `slide-${i-1}`;
+        /* --- MOBILE OPTIMIZATION (MAX-WIDTH: 768px) --- */
+        @media (max-width: 768px) {
             
-            const title = `Concept Variation ${i}`;
-            const desc = placeholderTexts[i-1] || "A unique exploration of form and function.";
-
-            slide.innerHTML = `
-                <div class="image-wrapper">
-                    <img src="${i}.png" alt="Logo Concept ${i}" onerror="this.src='https://placehold.co/1024x1024/png?text=Image+${i}'">
-                </div>
-                <div class="text-wrapper">
-                    <h2>${title}</h2>
-                    <p>${desc}</p>
-                </div>
-            `;
-            singleViewContainer.appendChild(slide);
-
-            const gridItem = document.createElement('div');
-            gridItem.classList.add('grid-item');
-            gridItem.innerHTML = `
-                <img src="${i}.png" alt="Logo Concept ${i}" onerror="this.src='https://placehold.co/300x300/png?text=Image+${i}'">
-                <h3>${title}</h3>
-            `;
-            gridItem.addEventListener('click', () => {
-                jumpToImage(i - 1);
-            });
-            gridViewContainer.appendChild(gridItem);
-        }
-
-        activateSlide(0);
-    }
-
-    // --- SINGLE VIEW LOGIC ---
-    function activateSlide(index) {
-        const slides = document.querySelectorAll('.slide');
-        slides.forEach(s => {
-            s.classList.remove('active', 'animate-in', 'animate-out');
-            s.style.display = 'none';
-        });
-
-        const target = slides[index];
-        target.style.display = 'flex';
-        void target.offsetWidth; 
-        target.classList.add('active', 'animate-in');
-    }
-
-    function changeSlide(direction) {
-        if (isAnimating) return;
-        const nextIndex = currentIndex + direction;
-        if (nextIndex < 0 || nextIndex >= totalImages) return;
-
-        isAnimating = true;
-        const currentSlide = document.getElementById(`slide-${currentIndex}`);
-        
-        currentSlide.classList.remove('animate-in');
-        currentSlide.classList.add('animate-out');
-
-        setTimeout(() => {
-            currentIndex = nextIndex;
-            activateSlide(currentIndex);
-            setTimeout(() => { isAnimating = false; }, 1500); 
-        }, 300);
-    }
-
-    let wheelTimeout;
-    window.addEventListener('wheel', (e) => {
-        if (viewMode !== 'single') return;
-        clearTimeout(wheelTimeout);
-        wheelTimeout = setTimeout(() => {
-            if (e.deltaY > 0) changeSlide(1);
-            else changeSlide(-1);
-        }, 50); 
-    }, { passive: true });
-
-    // --- MODE SWITCHING ---
-    function switchMode(mode) {
-        if (viewMode === mode) return;
-        appContainer.classList.add('mode-switching');
-
-        if (mode === 'single') {
-            btnSingle.classList.add('active');
-            btnGrid.classList.remove('active');
-            document.body.style.overflow = 'hidden';
-        } else {
-            btnGrid.classList.add('active');
-            btnSingle.classList.remove('active');
-            document.body.style.overflow = 'auto';
-        }
-
-        setTimeout(() => {
-            viewMode = mode;
-            if (mode === 'single') {
-                gridViewContainer.classList.add('hidden');
-                singleViewContainer.classList.remove('hidden');
-                singleViewContainer.style.display = 'flex';
-                gridViewContainer.style.display = 'none';
-                activateSlide(currentIndex);
-            } else {
-                singleViewContainer.classList.add('hidden');
-                gridViewContainer.classList.remove('hidden');
-                singleViewContainer.style.display = 'none';
-                gridViewContainer.style.display = 'grid';
+            /* Header adjustments for space */
+            header {
+                padding: 1rem 1rem;
             }
-            appContainer.classList.remove('mode-switching');
-        }, 400);
-    }
 
-    function jumpToImage(index) {
-        currentIndex = index;
-        switchMode('single');
-    }
+            h1 {
+                font-size: clamp(1rem, 5vw, 1.5rem);
+                letter-spacing: 1px;
+            }
 
-    btnSingle.addEventListener('click', () => switchMode('single'));
-    btnGrid.addEventListener('click', () => switchMode('grid'));
+            .controls {
+                gap: 0.5rem;
+                padding-left: 1rem;
+            }
 
-    init();
-</script>
-</body>
-</html>
+            button {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.7rem;
+            }
+            
+            /* Single View (Vertical Layout) */
+            .slide {
+                flex-direction: column; /* Stack vertically */
+                justify-content: flex-start; /* Start content near the top */
+                padding: 100px 1.5rem 2rem 1.5rem; /* Padding for header and footer space */
+            }
+
+            /* Image wrapper (Mobile) */
+            .image-wrapper {
+                height: 50vh; /* Image takes up significant vertical space */
+                flex: none; /* Ignore flex sizing */
+                width: 100%;
+                justify-content: center; /* Center image horizontally */
+                margin-bottom: 1.5rem;
+            }
+
+            .image-wrapper img {
+                height: 100%;
+                width: auto;
+                max-width: 90%; /* Ensure image fits */
+            }
+
+            /* Text Wrapper (Mobile) */
+            .text-wrapper {
+                flex: none;
+                max-width: 100%;
+                text-align: center; /* Center text content */
+            }
+
+            .text-wrapper h2 {
+                font-size: 1.6rem;
+                margin-bottom: 0.8rem;
+            }
+
+            .text-wrapper p {
+                font-size: 0.9rem;
+            }
+
+            /* Grid View (Mobile) */
+            #grid-view {
+                padding: 100px 20px 20px 20px;
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); /* Smaller grid items */
+                gap: 1rem;
+            }
+
+            .grid-item {
