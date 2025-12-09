@@ -93,6 +93,66 @@
             margin-right: 6px;
         }
 
+        .tap-prompt {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+
+        .tap-prompt.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .tap-prompt-text {
+            font-size: 14px;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 20px;
+        }
+
+        .tap-prompt-icon {
+            width: 60px;
+            height: 60px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: tapPulse 1.5s infinite;
+        }
+
+        .tap-prompt-icon::after {
+            content: '';
+            width: 20px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+        }
+
+        @keyframes tapPulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.1);
+                opacity: 0.7;
+            }
+        }
+
         @keyframes pulse {
             0%,
             100% {
@@ -111,6 +171,12 @@
     <div id="canvas-container"></div>
     <canvas id="text-canvas"></canvas>
 
+    <!-- Tap prompt for permissions -->
+    <div class="tap-prompt" id="tapPrompt">
+        <div class="tap-prompt-text">Tap to enable camera</div>
+        <div class="tap-prompt-icon"></div>
+    </div>
+
     <div class="status-display">
         <div class="loading-text" id="mainStatus">LOADING</div>
         <div class="input-indicators">
@@ -119,7 +185,7 @@
         </div>
     </div>
 
-    <!-- Load Three.js first (essential), defer parallax (heavy) -->
+    <!-- Load Three.js first -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
@@ -184,13 +250,13 @@
         }
 
         function createTextTextures() {
+            return; // ADD THIS LINE TO HIDE TEXT
             const w = window.innerWidth;
             const h = window.innerHeight;
             const commonSize = Math.min(Math.max(60, w * 0.1), 180);
 
-            // Position texts closer together and moved up
-            const gabrielleY = h - 333; // Moved up from h - 150
-            const virgoY = gabrielleY - (commonSize * 0.45); // Tighter gap than original 1.1
+            const gabrielleY = h - 220;
+            const virgoY = gabrielleY - (commonSize * 0.85);
 
             if (virgoTexture) virgoTexture.dispose();
             if (gabrielleTexture) gabrielleTexture.dispose();
@@ -558,46 +624,125 @@
             }, { passive: true });
         }
 
-        // OPTIMIZED: Load parallax library asynchronously and init sensors in background
-        function initSensorsAsync() {
-            // Load the parallax-effect library dynamically after main content is ready
+        // Check if we're on mobile
+        function isMobileDevice() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+                || ('ontouchstart' in window && window.innerWidth < 1024);
+        }
+
+        // Check if on secure context (HTTPS or localhost)
+        function isSecureContext() {
+            return window.isSecureContext || location.protocol === 'https:' || location.hostname === 'localhost';
+        }
+
+        // Show/hide tap prompt
+        function showTapPrompt() {
+            const prompt = document.getElementById('tapPrompt');
+            if (prompt) prompt.classList.remove('hidden');
+        }
+
+        function hideTapPrompt() {
+            const prompt = document.getElementById('tapPrompt');
+            if (prompt) prompt.classList.add('hidden');
+        }
+
+        // Initialize face tracking with parallax-effect library
+        async function initFaceTracking() {
+            console.log('Starting face tracking init...');
+            document.getElementById('mainStatus').textContent = 'REQUESTING CAMERA';
+            
+            // First, manually request camera permission
+            // This ensures the browser shows the permission prompt
+            try {
+                console.log('Requesting camera permission...');
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                console.log('Camera permission granted!');
+                
+                // Stop the stream - the parallax library will request its own
+                stream.getTracks().forEach(track => track.stop());
+                
+            } catch (e) {
+                console.error('Camera permission denied or error:', e.name, e.message);
+                document.getElementById('mainStatus').textContent = 'CAMERA DENIED';
+                return; // Don't bother loading the library
+            }
+            
+            // Now load the parallax library
+            document.getElementById('mainStatus').textContent = 'LOADING LIBRARY';
+            console.log('Loading parallax library...');
+            
             const script = document.createElement('script');
             script.src = 'https://cdn.jsdelivr.net/npm/parallax-effect/dist/parallax-effect.min.js';
             script.onload = () => {
+                console.log('Parallax library loaded, Parallax object:', typeof Parallax);
+                
                 if (typeof Parallax !== 'undefined') {
+                    document.getElementById('mainStatus').textContent = 'INIT FACE TRACKING';
+                    console.log('Calling Parallax.init()...');
+                    
                     Parallax.init(v => {
                         state.sensor.x = v.x * CONFIG.inputSensitivity;
                         state.sensor.y = -v.y * CONFIG.inputSensitivity;
                         state.sensor.available = true;
                     }, { smoothEye: 0.8, smoothDist: 0.2, threshold: 0.5 })
-                        .then(() => console.log('Face tracking ready'))
-                        .catch(() => initFallbackSensors());
+                        .then(() => {
+                            console.log('Face tracking ready!');
+                            document.getElementById('mainStatus').textContent = 'READY';
+                        })
+                        .catch(e => {
+                            console.error('Face tracking failed:', e);
+                            console.error('Error name:', e.name);
+                            console.error('Error message:', e.message);
+                            document.getElementById('mainStatus').textContent = 'ERROR: ' + (e.message || 'TRACKING FAILED');
+                        });
+                } else {
+                    console.error('Parallax object not found after script load');
+                    document.getElementById('mainStatus').textContent = 'ERROR: LIB NOT FOUND';
                 }
             };
-            script.onerror = () => initFallbackSensors();
+            script.onerror = (e) => {
+                console.error('Parallax library failed to load:', e);
+                document.getElementById('mainStatus').textContent = 'ERROR: LIB FAILED';
+            };
             document.body.appendChild(script);
         }
 
-        function initFallbackSensors() {
-            if (window.DeviceOrientationEvent) {
-                const h = e => {
-                    if (e.gamma === null) return;
-                    state.sensor.x = Math.max(-2, Math.min(2, e.gamma / 30 * CONFIG.inputSensitivity));
-                    state.sensor.y = Math.max(-2, Math.min(2, (e.beta - 45) / 30 * CONFIG.inputSensitivity));
-                    state.sensor.available = true;
+        // Setup based on device type
+        function setupSensors() {
+            const prompt = document.getElementById('tapPrompt');
+            
+            if (isMobileDevice() && isSecureContext()) {
+                // MOBILE + HTTPS: Show tap prompt, then init face tracking
+                // Camera requires user gesture on mobile
+                showTapPrompt();
+                
+                const handleTap = (e) => {
+                    e.preventDefault();
+                    prompt.removeEventListener('click', handleTap);
+                    prompt.removeEventListener('touchend', handleTap);
+                    hideTapPrompt();
+                    
+                    // Init face tracking after user gesture
+                    initFaceTracking();
                 };
-                if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                    DeviceOrientationEvent.requestPermission().then(r => {
-                        if (r === 'granted') window.addEventListener('deviceorientation', h);
-                    });
-                } else {
-                    window.addEventListener('deviceorientation', h);
-                }
+
+                prompt.addEventListener('click', handleTap);
+                prompt.addEventListener('touchend', handleTap);
+            } else if (!isMobileDevice()) {
+                // DESKTOP: Init face tracking directly (browser will prompt for camera)
+                hideTapPrompt();
+                initFaceTracking();
+            } else {
+                // MOBILE + HTTP: Can't use camera, just hide prompt
+                hideTapPrompt();
+                console.log('Camera not available (requires HTTPS)');
+                document.getElementById('mainStatus').textContent = 'READY (NO CAMERA)';
             }
         }
 
         async function init() {
             console.log('Starting...');
+            console.log('Mobile:', isMobileDevice(), 'Secure:', isSecureContext());
             
             // Ensure container exists
             const container = document.getElementById('canvas-container');
@@ -610,7 +755,7 @@
             // Wait for font to be ready
             await document.fonts.ready;
             
-            // Init Three.js scene (this is the critical path)
+            // Init Three.js scene
             await initThree();
             
             // Start render loop immediately - mouse/touch works right away
@@ -644,12 +789,11 @@
 
             loop();
             
-            // Load face tracking asynchronously AFTER render loop starts
-            // This way the visual effect is interactive immediately
-            setTimeout(initSensorsAsync, 100);
+            // Setup sensors after a brief delay to let the page render
+            setTimeout(setupSensors, 100);
         }
 
-        // Use both DOMContentLoaded and a fallback check
+        // Start when ready
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', init);
         } else {
