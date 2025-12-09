@@ -7,12 +7,13 @@
     <style>
         /* --- RESET & VARIABLES --- */
         :root {
+            /* Content text color */
             --text-color: #cccccc; 
             --accent-color: #000;
             --transition-speed: 0.5s;
             --anim-ease: cubic-bezier(0.25, 1, 0.5, 1); 
             --slide-height: 100vh;
-            /* NEW: Darker color for buttons and titles in the header */
+            /* Header button/title color (dark) */
             --header-button-color: #333; 
         }
 
@@ -37,8 +38,8 @@
             left: 0;
             width: 100%;
             padding: 1.5rem 3rem;
-            display: flex;
-            justify-content: space-between;
+            display: flex; /* Use Flexbox for layout */
+            justify-content: space-between; /* Space out title and controls */
             align-items: center;
             z-index: 100;
             background: rgba(255, 255, 255, 0.75); 
@@ -48,17 +49,17 @@
         }
 
         h1 {
+            /* DELETED: absolute positioning and transform: translateX(-50%) */
+            position: static; 
             font-size: clamp(1.5rem, 3vw, 3rem); 
             font-weight: 300;
             text-transform: uppercase;
             letter-spacing: 2px;
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
-            text-align: center;
-            /* Using the new darker color for better contrast */
+            text-align: left; /* Aligned left now */
             color: var(--header-button-color); 
             text-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            /* Ensure title doesn't take up too much space on desktop */
+            margin-right: 1.5rem; 
         }
 
         h1 strong {
@@ -68,28 +69,24 @@
         .controls {
             display: flex;
             gap: 0.5rem;
+            /* Ensure controls stay on the right */
+            margin-left: auto;
         }
 
         button {
             background: none;
-            /* CHANGED: Border color set to the new darker color */
             border: 1px solid var(--header-button-color); 
-            
-            /* CHANGED: Smaller padding for symmetry */
-            padding: 0.5rem 0.9rem; 
-            
+            padding: 0.5rem 0.9rem; /* Smaller padding for symmetry */
             cursor: pointer;
             font-size: 0.75rem; 
             text-transform: uppercase;
             letter-spacing: 1px;
             transition: all 0.3s ease;
             font-weight: 600;
-            /* CHANGED: Button text color set to the new darker color */
             color: var(--header-button-color);
         }
 
         button.active {
-            /* Active button background is the darker color, text is white */
             background: var(--header-button-color); 
             color: #fff; 
         }
@@ -233,13 +230,29 @@
         /* --- MEDIA QUERY: MOBILE OPTIMIZATION --- */
         @media (max-width: 900px) {
             header {
+                /* Reduced horizontal padding for mobile */
                 padding: 1rem 1rem;
             }
-
+            
+            /* H1 is now the first element in the flex header */
             h1 {
                 display: block; 
-                font-size: clamp(1rem, 2.5vw, 1.5rem); 
-                color: var(--header-button-color); /* Uses the darker color */
+                font-size: 1rem; /* Smaller font on mobile */
+                font-weight: 600;
+                /* Reset margin to allow controls to take space */
+                margin-right: 0.5rem; 
+                flex-shrink: 1; /* Allow title to shrink if needed */
+            }
+            
+            /* Controls are pushed to the right */
+            .controls {
+                margin-left: auto;
+            }
+            
+            /* Button size adjustments */
+            button {
+                padding: 0.4rem 0.6rem; /* Even smaller on mobile */
+                font-size: 0.7rem;
             }
 
             .slide {
@@ -349,8 +362,7 @@
 <body>
 
     <header>
-        <div style="width: 120px;"></div> 
-        <h1>Tahtay タテ - <strong>Logo Concept Art</strong></h1>
+        <h1>TAHTAY タテ - <strong>CONCEPT ART</strong></h1>
         <div class="controls">
             <button id="btn-single" class="active">Single</button>
             <button id="btn-grid">Grid</button>
@@ -554,5 +566,6 @@
 </script>
 </body>
 </html>
+
 
 
