@@ -5,14 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tahtay タテ - Logo Concept Art</title>
     <style>
-        /* --- RESET & VARIABLES (Updated Text Color) --- */
+        /* --- RESET & VARIABLES --- */
         :root {
-            /* Changed all text color to white */
-            --text-color: #ffffff; 
+            --text-color: #444; 
             --accent-color: #000;
             --transition-speed: 0.5s;
             --anim-ease: cubic-bezier(0.25, 1, 0.5, 1); 
-            --charcoal: #444; /* Retained charcoal for buttons/header contrast */
+            --slide-height: 100vh;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -21,9 +20,7 @@
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             color: var(--text-color);
             overflow: hidden; 
-            height: 100vh;
-            
-            /* Background remains the same */
+            height: var(--slide-height);
             background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); 
             background-image: url('bg.jpg');
             background-size: cover;
@@ -38,13 +35,11 @@
             top: 0;
             left: 0;
             width: 100%;
-            padding: 2rem 3rem; /* Desktop default */
+            padding: 1.5rem 3rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
             z-index: 100;
-            
-            /* Glassmorphism using white for contrast against background */
             background: rgba(255, 255, 255, 0.75); 
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
@@ -60,7 +55,7 @@
             left: 50%;
             transform: translateX(-50%);
             text-align: center;
-            color: var(--charcoal); /* Title remains dark for contrast against light header */
+            color: #333; 
             text-shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
 
@@ -70,49 +65,61 @@
 
         .controls {
             display: flex;
-            gap: 1rem;
+            gap: 0.5rem;
         }
 
         button {
             background: none;
-            border: 1px solid var(--charcoal);
-            padding: 0.6rem 1.2rem;
+            border: 1px solid var(--text-color);
+            padding: 0.6rem 1rem; 
             cursor: pointer;
-            font-size: 0.8rem;
+            font-size: 0.75rem; 
             text-transform: uppercase;
             letter-spacing: 1px;
             transition: all 0.3s ease;
             font-weight: 600;
-            color: var(--charcoal); /* Button text remains dark for header contrast */
+            color: var(--text-color);
         }
 
         button.active {
-            background: var(--charcoal);
-            color: #fff;
+            background: var(--text-color);
+            color: #fff; 
+        }
+
+        button:hover {
+            opacity: 0.7;
+            transform: translateY(-1px);
         }
 
         /* --- MAIN CONTAINER --- */
         #app-container {
             width: 100%;
-            height: 100vh;
+            height: var(--slide-height);
             position: relative;
             transition: opacity 0.4s ease, filter 0.4s ease;
+        }
+
+        .mode-switching {
+            opacity: 0;
+            filter: blur(10px);
         }
 
         /* --- SINGLE IMAGE MODE (Desktop Default) --- */
         #single-view {
             width: 100%;
-            height: 100%;
+            height: var(--slide-height);
             display: flex;
-            align-items: center; /* Vertical Center */
-            justify-content: center; /* Horizontal Center */
+            align-items: center; 
+            justify-content: center; 
             padding: 0 5%;
+            touch-action: none; 
+            overflow: hidden; /* Crucial for transform animation to work cleanly */
         }
 
         .slide {
             display: none; 
             display: flex;
-            flex-direction: row; /* Desktop: Image/Text side-by-side */
+            flex-direction: row; 
             align-items: center; 
             justify-content: center;
             width: 100%;
@@ -123,12 +130,17 @@
             left: 0;
         }
 
+        .slide.active {
+            display: flex;
+            z-index: 10;
+        }
+
         /* Image Styling (Desktop) */
         .image-wrapper {
             height: 70vh; 
             flex: 1;
             display: flex;
-            justify-content: flex-end; /* Push image left toward the center gap */
+            justify-content: flex-end; 
             align-items: center; 
             overflow: hidden;
         }
@@ -139,8 +151,13 @@
             max-width: 100%;
             object-fit: contain;
             display: block;
+            
+            /* Add webkit prefix for compatibility */
+            -webkit-mix-blend-mode: lighten;
             mix-blend-mode: lighten; 
-            clip-path: inset(0 0 100% 0); 
+
+            /* New Initial State: Hidden 100% below its final position */
+            transform: translateY(100%); 
             opacity: 0;
         }
 
@@ -152,8 +169,10 @@
             justify-content: center; 
             max-width: 550px;
             
-            clip-path: inset(0 0 100% 0);
+            /* New Initial State: Hidden 100% below its final position */
+            transform: translateY(100%); 
             opacity: 0;
+            overflow: hidden;
         }
 
         .text-wrapper h2 {
@@ -161,82 +180,372 @@
             margin-bottom: 1.2rem;
             font-weight: 800;
             line-height: 1.1;
-            color: var(--text-color); /* White text */
+            color: var(--text-color);
         }
 
         .text-wrapper p {
             font-size: 1.1rem;
             line-height: 1.7;
-            color: var(--text-color); /* White text */
+            color: var(--text-color);
             font-weight: 400;
         }
-        
-        /* --- MOBILE OPTIMIZATION (MAX-WIDTH: 768px) --- */
-        @media (max-width: 768px) {
-            
-            /* Header adjustments for space */
+
+        /* --- ANIMATIONS (UPDATED to use transform) --- */
+
+        .slide.animate-in .image-wrapper img,
+        .slide.animate-in .text-wrapper {
+            animation: revealTransform 1s var(--anim-ease) forwards;
+        }
+
+        .slide.animate-in .text-wrapper {
+            animation-delay: 0.5s; 
+        }
+
+        .slide.animate-out .image-wrapper img,
+        .slide.animate-out .text-wrapper {
+            opacity: 1;
+            transform: translateY(0); /* Ensure position is correct before fading */
+            animation: quickFadeOut 0.3s ease forwards;
+        }
+
+        /* NEW KEYFRAME: Wipes in from bottom (using negative Y translate) */
+        @keyframes revealTransform {
+            0% {
+                transform: translateY(100%); /* Start off screen bottom (virtually) */
+                opacity: 0;
+            }
+            1% { opacity: 1; } 
+            100% {
+                transform: translateY(0); /* Move to final position */
+                opacity: 1;
+            }
+        }
+
+        @keyframes quickFadeOut {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        /* --- MEDIA QUERY: MOBILE OPTIMIZATION (Unchanged) --- */
+        @media (max-width: 900px) {
             header {
                 padding: 1rem 1rem;
             }
 
             h1 {
-                font-size: clamp(1rem, 5vw, 1.5rem);
-                letter-spacing: 1px;
+                display: none; 
             }
 
-            .controls {
-                gap: 0.5rem;
-                padding-left: 1rem;
-            }
-
-            button {
-                padding: 0.4rem 0.8rem;
-                font-size: 0.7rem;
-            }
-            
-            /* Single View (Vertical Layout) */
             .slide {
-                flex-direction: column; /* Stack vertically */
-                justify-content: flex-start; /* Start content near the top */
-                padding: 100px 1.5rem 2rem 1.5rem; /* Padding for header and footer space */
+                flex-direction: column; 
+                justify-content: flex-start; 
+                padding: 100px 1rem 1rem 1rem; 
+                gap: 1.5rem; 
             }
 
-            /* Image wrapper (Mobile) */
             .image-wrapper {
-                height: 50vh; /* Image takes up significant vertical space */
-                flex: none; /* Ignore flex sizing */
-                width: 100%;
-                justify-content: center; /* Center image horizontally */
-                margin-bottom: 1.5rem;
+                height: 50vh; 
+                width: 90%;
+                justify-content: center; 
+                order: 1; 
+                flex: none;
             }
 
             .image-wrapper img {
-                height: 100%;
-                width: auto;
-                max-width: 90%; /* Ensure image fits */
+                width: 100%;
+                height: auto;
             }
 
-            /* Text Wrapper (Mobile) */
             .text-wrapper {
+                max-width: 90%;
+                order: 2; 
+                text-align: center;
                 flex: none;
-                max-width: 100%;
-                text-align: center; /* Center text content */
             }
-
+            
             .text-wrapper h2 {
-                font-size: 1.6rem;
-                margin-bottom: 0.8rem;
+                font-size: 1.5rem; 
+                margin-bottom: 0.5rem;
             }
 
             .text-wrapper p {
-                font-size: 0.9rem;
+                font-size: 0.95rem; 
             }
 
-            /* Grid View (Mobile) */
+            /* GRID VIEW adjustments for mobile */
             #grid-view {
-                padding: 100px 20px 20px 20px;
-                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); /* Smaller grid items */
+                padding: 80px 1rem 1rem 1rem;
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); 
                 gap: 1rem;
             }
-
+            
             .grid-item {
+                padding: 5px;
+            }
+            
+            .grid-item h3 {
+                font-size: 0.8rem;
+                margin-top: 0.5rem;
+            }
+        }
+
+        /* --- GRID MODE (Desktop Default) --- */
+        #grid-view {
+            display: none; 
+            padding: 140px 60px 60px 60px; 
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 2.5rem;
+            overflow-y: auto;
+            height: var(--slide-height);
+        }
+
+        .grid-item {
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            background: rgba(255, 255, 255, 0.85); 
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05); 
+        }
+
+        .grid-item:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+        }
+
+        .grid-item img {
+            width: 100%;
+            height: auto;
+            aspect-ratio: 1/1;
+            object-fit: cover;
+            border-radius: 4px;
+            display: block;
+            /* Add webkit prefix for compatibility */
+            -webkit-mix-blend-mode: lighten;
+            mix-blend-mode: lighten;
+        }
+
+        .grid-item h3 {
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+            font-weight: 700;
+            text-align: center;
+            color: var(--text-color);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <div style="width: 120px;"></div> 
+        <h1>Tahtay タテ - <strong>Logo Concept Art</strong></h1>
+        <div class="controls">
+            <button id="btn-single" class="active">Single</button>
+            <button id="btn-grid">Grid</button>
+        </div>
+    </header>
+
+    <div id="app-container">
+        
+        <div id="single-view">
+            </div>
+
+        <div id="grid-view" class="hidden">
+            </div>
+
+    </div>
+
+<script>
+    // --- CONFIGURATION ---
+    const totalImages = 20;
+    const swipeThreshold = 50; 
+    const placeholderTexts = [
+        "Exploring geometric balance with negative space.",
+        "A minimalist interpretation of the brand ethos.",
+        "Bold strokes utilizing the primary color palette.",
+        "Abstract representation of forward momentum.",
+        "Typographic experiment with custom ligatures.",
+        "Organic shapes meeting industrial precision.",
+        "High contrast study for maximum visibility.",
+        "Soft curvature inspired by nature.",
+        "Monoline aesthetic for a modern touch.",
+        "Dynamic angular composition.",
+        "Retro-futuristic emblem design.",
+        "Symbology rooted in heritage.",
+        "Clean architectural lines.",
+        "Fluid motion captured in static form.",
+        "Badge style layout for versatility.",
+        "Deconstructed letterforms.",
+        "Transparency effects and layering.",
+        "Solid block styling for impact.",
+        "Line art with intricate detailing.",
+        "The final synthesis of concept and form."
+    ];
+
+    // --- STATE & DOM ---
+    let currentIndex = 0;
+    let isAnimating = false;
+    let viewMode = 'single'; 
+    let touchStartY = 0; 
+
+    const singleViewContainer = document.getElementById('single-view');
+    const gridViewContainer = document.getElementById('grid-view');
+    const appContainer = document.getElementById('app-container');
+    const btnSingle = document.getElementById('btn-single');
+    const btnGrid = document.getElementById('btn-grid');
+
+    // --- INITIALIZATION ---
+    function init() {
+        for (let i = 1; i <= totalImages; i++) {
+            const slide = document.createElement('div');
+            slide.classList.add('slide');
+            slide.id = `slide-${i-1}`;
+            
+            const title = `Concept Variation ${i}`;
+            const desc = placeholderTexts[i-1] || "A unique exploration of form and function.";
+
+            slide.innerHTML = `
+                <div class="image-wrapper">
+                    <img src="${i}.png" alt="Logo Concept ${i}" onerror="this.src='https://placehold.co/1024x1024/png?text=Image+${i}'">
+                </div>
+                <div class="text-wrapper">
+                    <h2>${title}</h2>
+                    <p>${desc}</p>
+                </div>
+            `;
+            singleViewContainer.appendChild(slide);
+
+            const gridItem = document.createElement('div');
+            gridItem.classList.add('grid-item');
+            gridItem.innerHTML = `
+                <img src="${i}.png" alt="Logo Concept ${i}" onerror="this.src='https://placehold.co/300x300/png?text=Image+${i}'">
+                <h3>${title}</h3>
+            `;
+            gridItem.addEventListener('click', () => {
+                jumpToImage(i - 1);
+            });
+            gridViewContainer.appendChild(gridItem);
+        }
+
+        activateSlide(0);
+        addTouchListeners(); 
+    }
+
+    // --- SINGLE VIEW LOGIC ---
+    function activateSlide(index) {
+        const slides = document.querySelectorAll('.slide');
+        slides.forEach(s => {
+            s.classList.remove('active', 'animate-in', 'animate-out');
+            s.style.display = 'none';
+        });
+
+        const target = slides[index];
+        target.style.display = 'flex';
+        void target.offsetWidth; 
+        target.classList.add('active', 'animate-in');
+    }
+
+    function changeSlide(direction) {
+        if (isAnimating) return;
+        const nextIndex = currentIndex + direction;
+        if (nextIndex < 0 || nextIndex >= totalImages) return;
+
+        isAnimating = true;
+        const currentSlide = document.getElementById(`slide-${currentIndex}`);
+        
+        currentSlide.classList.remove('animate-in');
+        currentSlide.classList.add('animate-out');
+
+        setTimeout(() => {
+            currentIndex = nextIndex;
+            activateSlide(currentIndex);
+            setTimeout(() => { isAnimating = false; }, 1500); 
+        }, 300);
+    }
+
+    // --- DESKTOP SCROLL LISTENER ---
+    let wheelTimeout;
+    window.addEventListener('wheel', (e) => {
+        if (viewMode !== 'single') return;
+        clearTimeout(wheelTimeout);
+        wheelTimeout = setTimeout(() => {
+            if (e.deltaY > 0) changeSlide(1);
+            else changeSlide(-1);
+        }, 50); 
+    }, { passive: true });
+
+    // --- MOBILE TOUCH LISTENERS ---
+    function addTouchListeners() {
+        singleViewContainer.addEventListener('touchstart', (e) => {
+            if (viewMode !== 'single' || e.touches.length !== 1) return;
+            touchStartY = e.touches[0].clientY;
+        }, { passive: true });
+
+        singleViewContainer.addEventListener('touchend', (e) => {
+            if (viewMode !== 'single' || e.changedTouches.length !== 1) return;
+            
+            const touchEndY = e.changedTouches[0].clientY;
+            const deltaY = touchEndY - touchStartY; 
+
+            if (Math.abs(deltaY) > swipeThreshold) {
+                if (deltaY < 0) {
+                    changeSlide(1); // Swipe Up -> Next Slide
+                } else {
+                    changeSlide(-1); // Swipe Down -> Previous Slide
+                }
+            }
+        });
+    }
+
+    // --- MODE SWITCHING ---
+    function switchMode(mode) {
+        if (viewMode === mode) return;
+        appContainer.classList.add('mode-switching');
+
+        if (mode === 'single') {
+            btnSingle.classList.add('active');
+            btnGrid.classList.remove('active');
+            document.body.style.overflow = 'hidden';
+        } else {
+            btnGrid.classList.add('active');
+            btnSingle.classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        setTimeout(() => {
+            viewMode = mode;
+            if (mode === 'single') {
+                gridViewContainer.classList.add('hidden');
+                singleViewContainer.classList.remove('hidden');
+                singleViewContainer.style.display = 'flex';
+                gridViewContainer.style.display = 'none';
+                activateSlide(currentIndex);
+            } else {
+                singleViewContainer.classList.add('hidden');
+                gridViewContainer.classList.remove('hidden');
+                singleViewContainer.style.display = 'none';
+                gridViewContainer.style.display = 'grid';
+            }
+            appContainer.classList.remove('mode-switching');
+        }, 400);
+    }
+
+    function jumpToImage(index) {
+        currentIndex = index;
+        switchMode('single');
+    }
+
+    btnSingle.addEventListener('click', () => switchMode('single'));
+    btnGrid.addEventListener('click', () => switchMode('grid'));
+
+    init();
+</script>
+</body>
+</html>
