@@ -31,7 +31,7 @@
             overflow-y: auto;
             height: auto;
             width: 100vw;
-            background-color: transparent; /* Ensure background layer is visible */
+            background-color: transparent; 
             -webkit-font-smoothing: antialiased;
         }
 
@@ -48,7 +48,6 @@
             left: 0;
             width: 100%;
             height: 100%;
-            /* Using the original upscaled path for the image */
             background-image: linear-gradient(rgba(16, 16, 16, 0.5), rgba(16, 16, 16, 0.5)), url('/logo-upscaled/tate-logo1-upscaled.png'); 
             background-size: cover; 
             background-position: center center;
@@ -200,18 +199,11 @@
             padding-left: 0;
         }
 
-        /* CRITICAL FIX 3: Wrapper for horizontal scrolling on mobile tables */
-        .table-scroll-wrapper {
-            overflow-x: auto; 
-            width: 100%; /* Ensures it takes full width of parent */
-            -webkit-overflow-scrolling: touch;
-        }
+        /* --- CRITICAL FIX: RESPONSIVE TABLE STYLING --- */
 
-        /* Table Styling for Specs and Labels */
+        /* Base table styles for both mobile and desktop */
         table {
-            /* Keep width high so content doesn't wrap awkwardly */
-            width: 750px; 
-            min-width: 100%; /* Use at least 100% of the wrapper if possible */
+            width: 100%;
             border-collapse: collapse;
             margin-top: 1rem;
             text-align: left;
@@ -222,24 +214,69 @@
         th, td {
             padding: 0.75rem 1rem;
             border-bottom: 1px solid rgba(0, 0, 0, 0.15);
+            color: var(--text-color); /* Ensure text color inheritance */
         }
         th {
             background-color: #f0f0f0; 
-            color: var(--text-color);
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             border-bottom: 2px solid var(--text-color);
-            white-space: nowrap; /* Prevent headers from wrapping */
         }
-        td { color: var(--text-color); }
-        td:first-child {
-            font-weight: 600;
-            color: var(--text-color); 
-            white-space: nowrap; /* Prevent key details from wrapping */
-        }
+        td:first-child { font-weight: 600; }
         tr:nth-child(even) { background-color: rgba(0, 0, 0, 0.01); } 
-        
+
+        /* Mobile-Specific Table Overrides (Break Table Layout) */
+        @media screen and (max-width: 767px) {
+            table, thead, tbody, th, td, tr { 
+                display: block; /* Force elements to stack */
+            }
+            
+            thead tr {
+                position: absolute; /* Hide table headers visually but keep for screen readers */
+                top: -9999px;
+                left: -9999px;
+            }
+            
+            tr { 
+                border: 1px solid var(--text-color);
+                margin-bottom: 1.5rem; 
+                background: rgba(255, 255, 255, 0.9); /* Opaque background for contrast */
+                border-radius: 8px;
+            }
+            
+            td {
+                border: none; /* Remove horizontal borders */
+                border-bottom: 1px dashed rgba(0, 0, 0, 0.1);
+                position: relative;
+                padding-left: 50%; /* Make space for the new label */
+                text-align: right;
+                word-wrap: break-word; /* Allow content to wrap */
+                padding-right: 1rem;
+                padding-top: 0.5rem;
+                padding-bottom: 0.5rem;
+            }
+            
+            /* Add the "header" as a label using the data attribute in HTML */
+            td:before {
+                /* Display the attribute value as the label */
+                content: attr(data-label);
+                position: absolute;
+                left: 10px;
+                width: 45%; 
+                padding-right: 10px;
+                white-space: nowrap; /* Keep label text on one line */
+                text-align: left;
+                font-weight: 700;
+                color: var(--highlight-color); /* Use a highlight color for the label */
+                text-transform: uppercase;
+                font-size: 0.85rem;
+            }
+            /* The last row of a mobile card gets a solid bottom border */
+            tr:last-child { border-bottom: none; }
+            td:last-child { border-bottom: none; }
+        }
+
         /* Link styling for centering */
         .print-link-container {
             margin-top: 2rem; 
@@ -285,39 +322,37 @@
                     <h2>The Tate Beanie: Functional EMF Shielding Headwear</h2>
                     
                     <h3>I. Product Overview & Core Specifications</h3>
-                    <div class="table-scroll-wrapper">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Detail</th>
-                                    <th>Specification</th>
-                                    <th>Strategic Rationale</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>**Product Name**</td>
-                                    <td>**The Tate Beanie**</td>
-                                    <td>Brand Identity, derived from "Shield" (盾)</td>
-                                </tr>
-                                <tr>
-                                    <td>**Product Type**</td>
-                                    <td>Functional Slouchy Beanie</td>
-                                    <td>Combines style with utility</td>
-                                </tr>
-                                <tr>
-                                    <td>**Core Function**</td>
-                                    <td>**Advanced EMF Shielding**</td>
-                                    <td>Primary Unique Selling Proposition (USP)</td>
-                                </tr>
-                                <tr>
-                                    <td>**Target Threat**</td>
-                                    <td>Electromagnetic Radiation (e.g., **5G Frequencies**)</td>
-                                    <td>Addresses a major modern health concern</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Detail</th>
+                                <th>Specification</th>
+                                <th>Strategic Rationale</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td data-label="Detail">**Product Name**</td>
+                                <td data-label="Specification">**The Tate Beanie**</td>
+                                <td data-label="Strategic Rationale">Brand Identity, derived from "Shield" (盾)</td>
+                            </tr>
+                            <tr>
+                                <td data-label="Detail">**Product Type**</td>
+                                <td data-label="Specification">Functional Slouchy Beanie</td>
+                                <td data-label="Strategic Rationale">Combines style with utility</td>
+                            </tr>
+                            <tr>
+                                <td data-label="Detail">**Core Function**</td>
+                                <td data-label="Specification">**Advanced EMF Shielding**</td>
+                                <td data-label="Strategic Rationale">Primary Unique Selling Proposition (USP)</td>
+                            </tr>
+                            <tr>
+                                <td data-label="Detail">**Target Threat**</td>
+                                <td data-label="Specification">Electromagnetic Radiation (e.g., **5G Frequencies**)</td>
+                                <td data-label="Strategic Rationale">Addresses a major modern health concern</td>
+                            </tr>
+                        </tbody>
+                    </table>
 
                     <h3>II. Material & Design</h3>
                     <ul>
@@ -328,34 +363,32 @@
                     <h3>III. Branding: Logo Label Analysis (Durability & Quality)</h3>
                     <p>The label selection prioritizes **highest graphic quality, vibrant colors, and non-fading wash durability** (hundreds of washes).</p>
 
-                    <div class="table-scroll-wrapper">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Label Style</th>
-                                    <th>Pros (High Quality & Color)</th>
-                                    <th>Cons (Durability & Fading)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>**Woven Label**</td>
-                                    <td>Excellent durability and high wash resilience. Premium, classic feel.</td>
-                                    <td>Colors are thread-limited; fine graphic details and gradients are difficult to reproduce. Graphic quality is good, not photographic.</td>
-                                </tr>
-                                <tr>
-                                    <td>**Laser-Cut Patch (Leather/Faux)**</td>
-                                    <td>Highly durable; absolutely no fading. Provides a high-end, tactile, and rugged aesthetic.</td>
-                                    <td>No vibrant colors—design is typically monochromatic (etched/burnt). Graphic detail is limited to the etching process.</td>
-                                </tr>
-                                <tr>
-                                    <td>**Printed Label (High-Density)**</td>
-                                    <td>**Highest graphic detail** (photographic quality possible) and **most vibrant color reproduction** (full spectrum).</td>
-                                    <td>**Least wash-durable**; colors may crack, peel, or fade significantly over repeated, heavy washing, failing the 'hundreds of washes' criteria.</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Label Style</th>
+                                <th>Pros (High Quality & Color)</th>
+                                <th>Cons (Durability & Fading)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td data-label="Label Style">**Woven Label**</td>
+                                <td data-label="Pros">Excellent durability and high wash resilience. Premium, classic feel.</td>
+                                <td data-label="Cons">Colors are thread-limited; fine graphic details and gradients are difficult to reproduce. Graphic quality is good, not photographic.</td>
+                            </tr>
+                            <tr>
+                                <td data-label="Label Style">**Laser-Cut Patch (Leather/Faux)**</td>
+                                <td data-label="Pros">Highly durable; absolutely no fading. Provides a high-end, tactile, and rugged aesthetic.</td>
+                                <td data-label="Cons">No vibrant colors—design is typically monochromatic (etched/burnt). Graphic detail is limited to the etching process.</td>
+                            </tr>
+                            <tr>
+                                <td data-label="Label Style">**Printed Label (High-Density)**</td>
+                                <td data-label="Pros">**Highest graphic detail** (photographic quality possible) and **most vibrant color reproduction** (full spectrum).</td>
+                                <td data-label="Cons">**Least wash-durable**; colors may crack, peel, or fade significantly over repeated, heavy washing, failing the 'hundreds of washes' criteria.</td>
+                            </tr>
+                        </tbody>
+                    </table>
                     
                     <p style="margin-top: 1.5rem; font-weight: 600;">**Conclusion for Branding:** The **High-Definition Woven Label** offers the best balance, providing high wash resilience essential for a functional product while delivering good visual quality.</p>
                     
@@ -371,8 +404,11 @@
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         const slide = document.getElementById('slide-0');
-        slide.style.display = 'flex';
-        slide.classList.add('active', 'animate-in');
+        // Simple script to ensure the single slide is displayed and animated
+        if (slide) {
+            slide.style.display = 'flex';
+            slide.classList.add('active', 'animate-in');
+        }
     });
 </script>
 </body>
