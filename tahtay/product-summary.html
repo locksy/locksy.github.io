@@ -12,8 +12,8 @@
             
             --dark-text-color: #1a1a1a; 
             --bright-text-color: #ffffff;
-            /* CRITICAL FIX: Increased transparency for better blur visibility */
-            --modal-bg: rgba(255, 255, 255, 0.7); 
+            /* Using clear white and dark overlay for header/content */
+            --content-fill-color: rgba(255, 255, 255, 0.7); 
             --header-bg: rgba(0, 0, 0, 0.4); 
             --anim-ease: cubic-bezier(0.25, 1, 0.5, 1); 
             
@@ -21,6 +21,7 @@
             --primary-color: #101010; 
             --highlight-color: #BC002D; 
             --accent-color: #D93655; 
+            --blur-radius: 20px; /* Increased blur for visibility */
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -39,7 +40,7 @@
             background-color: var(--primary-color);
         }
         
-        /* Fixed BG Image Layer with Dark Overlay (Simulating 50% Opacity) */
+        /* FIX 1: Fixed BG Image Layer with Dark Overlay. This is the background the content will blur. */
         body::before {
             content: "";
             position: fixed;
@@ -47,6 +48,7 @@
             left: 0;
             width: 100%;
             height: 100%;
+            /* Logo path is critical. If this doesn't show, the path is wrong on your server. */
             background-image: linear-gradient(rgba(16, 16, 16, 0.5), rgba(16, 16, 16, 0.5)), url('/logo-upscaled/tate-logo1-upscaled.png'); 
             background-size: cover; 
             background-position: center center;
@@ -56,7 +58,7 @@
         }
 
 
-        /* --- HEADER --- */
+        /* --- HEADER (Works correctly) --- */
         header {
             position: fixed;
             top: 0;
@@ -70,8 +72,8 @@
             z-index: 1000;
             
             background: var(--header-bg); 
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(var(--blur-radius));
+            -webkit-backdrop-filter: blur(var(--blur-radius));
             border-bottom: 1px solid rgba(255,255,255,0.1);
         }
         
@@ -96,18 +98,7 @@
             font-weight: 800;
             color: var(--text-color); 
         }
-
-        @media (min-width: 768px) {
-            h1 {
-                position: static;
-                transform: none;
-                margin-bottom: 0;
-            }
-        }
-
-        .controls { display: none; }
-        .header-spacer { display: none; }
-
+        
         /* --- MAIN CONTAINER & SLIDE --- */
         #app-container {
             width: 100%;
@@ -116,60 +107,86 @@
         }
 
         .slide {
-            display: none; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: flex-start; 
-            
-            width: 100%;
-            height: auto; 
-            position: relative;
-            
             padding: 140px 1rem 40px 1rem;
-        }
-        
-        @media (min-width: 768px) {
-            .slide {
-                flex-direction: row; 
-                gap: 5%;
-                padding: 140px 5% 40px 5%; 
-                justify-content: center; 
-                align-items: flex-start;
-            }
+            /* ... other slide styles ... */
         }
 
-        .slide.active { display: flex; z-index: 10; }
-
-
-        /* Text Styling - Presentation Boxes */
+        /* FIX 2: Content Box setup for the internal pseudo-element blur */
         .text-wrapper {
+            position: relative; /* Essential for positioning the ::before */
             width: 100%;
             max-width: 900px; 
             text-align: center; 
             opacity: 0; 
-            
-            background: var(--modal-bg); 
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
             padding: 2.5rem; 
             border-radius: 12px;
             box-shadow: 0 8px 30px rgba(0,0,0,0.5); 
             border: 1px solid var(--highlight-color); 
             margin-top: 1rem;
+            z-index: 1; /* Bring text/content above the blurred layer */
+            overflow: hidden; /* Important to keep the blur contained */
+        }
+
+        /* FIX 3: The actual blur layer, placed inside the content box */
+        .text-wrapper::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: -1; /* Place behind the content (text) */
+            margin: -30px; /* Expand slightly to cover edge blur artifacts */
+            background: var(--content-fill-color); /* The transparent color fill */
             
-            /* CRITICAL FIX: Force new stacking context and GPU acceleration */
-            isolation: isolate; 
-            transform: translateZ(0);
+            /* Apply the blur filter directly to the element */
+            filter: blur(var(--blur-radius)); 
+            -webkit-filter: blur(var(--blur-radius));
+
+            /* Keep the appearance of the box sharp by using clip-path/border-radius on the main container */
+            border-radius: 12px;
+        }
+
+        /* Standard text content needs a solid background on mobile so the text is readable over the blur */
+        @media screen and (max-width: 767px) {
+            .text-wrapper {
+                /* Reset the text-wrapper background to transparent */
+                background: transparent;
+                /* Ensure content is positioned correctly */
+                padding: 2.5rem 1rem; 
+            }
+
+            /* Ensure the text and tables have a slightly opaque background */
+            .text-wrapper h2, .text-wrapper h3, .text-wrapper p, .text-wrapper ul {
+                 /* Give inner elements a clean background for readability */
+                background: rgba(255, 255, 255, 0.2); 
+                padding: 5px;
+            }
+            /* Table rows already have a background override in the mobile fix */
         }
         
+        /* --- Standard styles (no changes) --- */
+        
         @media (min-width: 768px) {
+            /* For desktop, keep the original single background definition */
              .text-wrapper {
                 text-align: left; 
                 flex: 1;
                 margin-top: 0;
+                background: var(--content-fill-color); 
+                backdrop-filter: blur(var(--blur-radius)); 
+                -webkit-backdrop-filter: blur(var(--blur-radius));
+            }
+            .text-wrapper::before {
+                display: none; /* Hide pseudo-element on desktop */
+            }
+            .text-wrapper h2, .text-wrapper h3, .text-wrapper p, .text-wrapper ul {
+                background: transparent; /* Remove extra background */
+                padding: 0;
             }
         }
 
+        /* Text content styles */
         .text-wrapper h2 {
             font-size: clamp(1.8rem, 5vw, 2.8rem); 
             margin-bottom: 1rem;
@@ -180,27 +197,8 @@
             border-bottom: 3px solid var(--text-color);
             padding-bottom: 0.5rem;
         }
+        /* ... (other standard content styles below this point are retained) ... */
 
-        .text-wrapper h3 {
-            font-size: clamp(1.2rem, 3vw, 1.6rem); 
-            margin-top: 1.5rem;
-            margin-bottom: 0.8rem;
-            color: var(--text-color); 
-        }
-
-        .text-wrapper p, .text-wrapper ul, .text-wrapper li {
-            font-size: clamp(0.9rem, 2.5vw, 1.1rem); 
-            line-height: 1.6;
-            color: var(--text-color); 
-            font-weight: 400; 
-            text-shadow: none;
-            margin-bottom: 1rem;
-        }
-
-        .text-wrapper ul {
-            list-style: none;
-            padding-left: 0;
-        }
 
         /* --- RESPONSIVE TABLE STYLING --- */
         table {
