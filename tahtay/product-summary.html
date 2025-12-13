@@ -18,7 +18,7 @@
             --anim-ease: cubic-bezier(0.25, 1, 0.5, 1); 
             
             /* COLORS based on the Logo and User Request */
-            --primary-color: #101010; /* Near Black */
+            --primary-color: #101010; /* Near Black - Used for overlay/dark base */
             --highlight-color: #BC002D; /* Deep Red/Maroon */
             --accent-color: #D93655; /* Slightly brighter deep red */
         }
@@ -31,16 +31,17 @@
             overflow-y: auto;
             height: auto;
             width: 100vw;
-            background-color: var(--primary-color);
-            background-size: auto; 
-            background-position: center center;
-            background-repeat: no-repeat;
-            background-attachment: fixed; 
-            opacity: 1; 
+            /* CRITICAL FIX 1: Remove background-color from body so fixed pseudo-element is visible */
+            background-color: transparent; 
             -webkit-font-smoothing: antialiased;
         }
+
+        html {
+            /* Fallback dark color if the fixed image layer fails to load */
+            background-color: var(--primary-color);
+        }
         
-        /* Simulating 50% Opacity for Fixed BG Image */
+        /* Fixed BG Image Layer with Dark Overlay (Simulating 50% Opacity) */
         body::before {
             content: "";
             position: fixed;
@@ -48,11 +49,13 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-image: url('/logo-upscaled/tate-logo1-upscaled.png'); 
+            /* CRITICAL FIX 2: Combine the 50% opacity dark overlay (linear-gradient) with the image */
+            background-image: linear-gradient(rgba(16, 16, 16, 0.5), rgba(16, 16, 16, 0.5)), url('/logo-upscaled/tate-logo1-upscaled.png'); 
             background-size: cover; 
             background-position: center center;
             background-repeat: no-repeat;
-            opacity: 0.5; 
+            /* Opacity is set to 1 now that the dark overlay is handled by the gradient */
+            opacity: 1; 
             z-index: -1; 
         }
 
@@ -150,6 +153,7 @@
             opacity: 0; 
             
             background: var(--modal-bg); 
+            /* Glassmorphism effect should now work as content behind is visible */
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
             padding: 2.5rem; 
@@ -326,8 +330,6 @@
                             <tr>
                                 <td>**Woven Label**</td>
                                 <td>Excellent durability and high wash resilience. Premium, classic feel.</td>
-                                <td>Colors are thread-limited; fine graphic details and gradients are difficult to reproduce. Graphic quality is good, not photographic.</td>
-                            </tr>
                             <tr>
                                 <td>**Laser-Cut Patch (Leather/Faux)**</td>
                                 <td>Highly durable; absolutely no fading. Provides a high-end, tactile, and rugged aesthetic.</td>
