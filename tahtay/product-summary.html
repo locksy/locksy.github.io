@@ -12,14 +12,11 @@
             
             --dark-text-color: #1a1a1a; 
             --bright-text-color: #ffffff;
-            /* FIX 1: Set content background to 50% opacity */
-            --modal-bg: rgba(255, 255, 255, 0.5); 
-            /* FIX 2: Set header background slightly more transparent */
-            --header-bg: rgba(0, 0, 0, 0.3); 
+            --modal-bg: rgba(255, 255, 255, 0.5); /* 50% opacity for content boxes */
+            --header-bg: rgba(0, 0, 0, 0.3); /* Slightly transparent header */
             --anim-ease: cubic-bezier(0.25, 1, 0.5, 1); 
             --primary-color: #101010; 
             --highlight-color: #BC002D; 
-            /* Blur variable retained but no longer used for core effect */
             --blur-radius: 20px; 
         }
 
@@ -47,6 +44,7 @@
             left: 0;
             width: 100%;
             height: 100%;
+            /* VERIFIED URL */
             background-image: linear-gradient(rgba(16, 16, 16, 0.5), rgba(16, 16, 16, 0.5)), url('http://Locksy.GitHub.io/tahtay/logo-upscaled/tate-logo1-upscaled.png'); 
             background-size: cover; 
             background-position: center center;
@@ -56,7 +54,7 @@
         }
 
 
-        /* --- HEADER (Removed blur, kept new opacity) --- */
+        /* --- HEADER --- */
         header {
             position: fixed;
             top: 0;
@@ -69,11 +67,8 @@
             align-items: center;
             z-index: 1000;
             
-            /* Uses the new, slightly more transparent --header-bg */
             background: var(--header-bg); 
             border-bottom: 1px solid rgba(255,255,255,0.1);
-            
-            /* REMOVED: backdrop-filter and -webkit-backdrop-filter */
         }
         
         @media (min-width: 768px) {
@@ -141,14 +136,13 @@
         .slide.active { display: flex; }
 
 
-        /* Content Box: Uses new 50% opacity background */
+        /* Content Box: Uses 50% opacity background */
         .text-wrapper {
             width: 100%;
             max-width: 900px; 
             text-align: center; 
             opacity: 0; 
             
-            /* Uses new 50% opaque background color */
             background: var(--modal-bg); 
             
             padding: 2.5rem; 
@@ -156,8 +150,6 @@
             box-shadow: 0 8px 30px rgba(0,0,0,0.5); 
             border: 1px solid var(--highlight-color); 
             margin-top: 1rem;
-            
-            /* REMOVED: All GPU/Rendering/backdrop-filter hacks */
         }
         
         @media (min-width: 768px) {
@@ -224,7 +216,6 @@
             border-bottom: 2px solid var(--text-color);
         }
         td:first-child { font-weight: 600; }
-        /* NOTE: Table rows use a slightly different opacity in mobile mode for readability */
         tr:nth-child(even) { background-color: rgba(0, 0, 0, 0.01); } 
 
         /* Mobile-Specific Table Overrides (Break Table Layout) */
@@ -373,13 +364,13 @@
                             </tr>
                             <tr>
                                 <td data-label="Label Style">**Printed Label (High-Density)**</td>
-                                <td data-label="Pros">**Highest graphic detail** (photographic quality possible) and **most vibrant color reproduction** (full spectrum).</td>
-                                <td data-label="Cons">**Least wash-durable**; colors may crack, peel, or fade significantly over repeated, heavy washing, failing the 'hundreds of washes' criteria.</td>
+                                <td data-label="Pros">Highest graphic detail (photographic quality possible) and most vibrant color reproduction (full spectrum).</td>
+                                <td data-label="Cons">Least wash-durable; colors may crack, peel, or fade significantly over repeated, heavy washing, failing the 'hundreds of washes' criteria.</td>
                             </tr>
                         </tbody>
                     </table>
                     
-                    <p style="margin-top: 1.5rem; font-weight: 600;">**Conclusion for Branding:** The **High-Definition Woven Label** offers the best balance, providing high wash resilience essential for a functional product while delivering good visual quality.</p>
+                    <p style="margin-top: 1.5rem; font-weight: 600;">**Conclusion for Branding:** The High-Definition Woven Label offers the best balance, providing high wash resilience essential for a functional product while delivering good visual quality.</p>
                     
                     <div class="print-link-container">
                         <a href="printable-summary.html">Printable Invoice (Labels)</a>
