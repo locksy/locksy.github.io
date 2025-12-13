@@ -36,7 +36,7 @@
             background-color: var(--primary-color);
         }
         
-        /* FIX: Using the verified GitHub Pages URL for the fixed background image */
+        /* FIX 1: Using the verified GitHub Pages URL for the fixed background image */
         body::before {
             content: "";
             position: fixed;
@@ -44,7 +44,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            /* **VERIFIED URL USED**: http://Locksy.GitHub.io/tahtay/logo-upscaled/tate-logo1-upscaled.png */
+            /* **VERIFIED URL**: http://Locksy.GitHub.io/tahtay/logo-upscaled/tate-logo1-upscaled.png */
             background-image: linear-gradient(rgba(16, 16, 16, 0.5), rgba(16, 16, 16, 0.5)), url('http://Locksy.GitHub.io/tahtay/logo-upscaled/tate-logo1-upscaled.png'); 
             background-size: cover; 
             background-position: center center;
@@ -139,7 +139,7 @@
         .slide.active { display: flex; }
 
 
-        /* Content Box: Now has the same backdrop-filter logic as the header */
+        /* FIX 2: Content Box with aggressive rendering fixes for scrolling blur */
         .text-wrapper {
             width: 100%;
             max-width: 900px; 
@@ -156,8 +156,10 @@
             border: 1px solid var(--highlight-color); 
             margin-top: 1rem;
             
-            /* Helps trigger GPU acceleration for smoother scrolling/blur */
+            /* Aggressive GPU/Rendering FIXES for Safari/Mobile Blur Glitches */
             transform: translateZ(0);
+            -webkit-backface-visibility: hidden; 
+            will-change: backdrop-filter, transform; 
         }
         
         @media (min-width: 768px) {
