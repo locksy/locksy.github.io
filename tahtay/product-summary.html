@@ -12,15 +12,15 @@
             
             --dark-text-color: #1a1a1a; 
             --bright-text-color: #ffffff;
-            /* Light Modal Background for Contrast */
-            --modal-bg: rgba(255, 255, 255, 0.8); 
+            /* CRITICAL FIX: Increased transparency for better blur visibility */
+            --modal-bg: rgba(255, 255, 255, 0.7); 
             --header-bg: rgba(0, 0, 0, 0.4); 
             --anim-ease: cubic-bezier(0.25, 1, 0.5, 1); 
             
             /* COLORS based on the Logo and User Request */
-            --primary-color: #101010; /* Near Black - Used for overlay/dark base */
-            --highlight-color: #BC002D; /* Deep Red/Maroon */
-            --accent-color: #D93655; /* Slightly brighter deep red */
+            --primary-color: #101010; 
+            --highlight-color: #BC002D; 
+            --accent-color: #D93655; 
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -36,7 +36,6 @@
         }
 
         html {
-            /* Fallback dark color if the fixed image layer fails to load */
             background-color: var(--primary-color);
         }
         
@@ -71,8 +70,8 @@
             z-index: 1000;
             
             background: var(--header-bg); 
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border-bottom: 1px solid rgba(255,255,255,0.1);
         }
         
@@ -150,13 +149,17 @@
             opacity: 0; 
             
             background: var(--modal-bg); 
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             padding: 2.5rem; 
             border-radius: 12px;
             box-shadow: 0 8px 30px rgba(0,0,0,0.5); 
             border: 1px solid var(--highlight-color); 
             margin-top: 1rem;
+            
+            /* CRITICAL FIX: Force new stacking context and GPU acceleration */
+            isolation: isolate; 
+            transform: translateZ(0);
         }
         
         @media (min-width: 768px) {
@@ -199,9 +202,7 @@
             padding-left: 0;
         }
 
-        /* --- CRITICAL FIX: RESPONSIVE TABLE STYLING --- */
-
-        /* Base table styles for both mobile and desktop */
+        /* --- RESPONSIVE TABLE STYLING --- */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -214,7 +215,7 @@
         th, td {
             padding: 0.75rem 1rem;
             border-bottom: 1px solid rgba(0, 0, 0, 0.15);
-            color: var(--text-color); /* Ensure text color inheritance */
+            color: var(--text-color); 
         }
         th {
             background-color: #f0f0f0; 
@@ -229,11 +230,11 @@
         /* Mobile-Specific Table Overrides (Break Table Layout) */
         @media screen and (max-width: 767px) {
             table, thead, tbody, th, td, tr { 
-                display: block; /* Force elements to stack */
+                display: block; 
             }
             
             thead tr {
-                position: absolute; /* Hide table headers visually but keep for screen readers */
+                position: absolute; 
                 top: -9999px;
                 left: -9999px;
             }
@@ -241,38 +242,35 @@
             tr { 
                 border: 1px solid var(--text-color);
                 margin-bottom: 1.5rem; 
-                background: rgba(255, 255, 255, 0.9); /* Opaque background for contrast */
+                background: rgba(255, 255, 255, 0.9); 
                 border-radius: 8px;
             }
             
             td {
-                border: none; /* Remove horizontal borders */
+                border: none; 
                 border-bottom: 1px dashed rgba(0, 0, 0, 0.1);
                 position: relative;
-                padding-left: 50%; /* Make space for the new label */
+                padding-left: 50%; 
                 text-align: right;
-                word-wrap: break-word; /* Allow content to wrap */
+                word-wrap: break-word; 
                 padding-right: 1rem;
                 padding-top: 0.5rem;
                 padding-bottom: 0.5rem;
             }
             
-            /* Add the "header" as a label using the data attribute in HTML */
             td:before {
-                /* Display the attribute value as the label */
                 content: attr(data-label);
                 position: absolute;
                 left: 10px;
                 width: 45%; 
                 padding-right: 10px;
-                white-space: nowrap; /* Keep label text on one line */
+                white-space: nowrap; 
                 text-align: left;
                 font-weight: 700;
-                color: var(--highlight-color); /* Use a highlight color for the label */
+                color: var(--highlight-color); 
                 text-transform: uppercase;
                 font-size: 0.85rem;
             }
-            /* The last row of a mobile card gets a solid bottom border */
             tr:last-child { border-bottom: none; }
             td:last-child { border-bottom: none; }
         }
@@ -404,7 +402,6 @@
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         const slide = document.getElementById('slide-0');
-        // Simple script to ensure the single slide is displayed and animated
         if (slide) {
             slide.style.display = 'flex';
             slide.classList.add('active', 'animate-in');
@@ -413,3 +410,4 @@
 </script>
 </body>
 </html>
+
