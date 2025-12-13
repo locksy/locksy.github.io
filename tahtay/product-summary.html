@@ -12,7 +12,6 @@
             
             --dark-text-color: #1a1a1a; 
             --bright-text-color: #ffffff;
-            /* CRITICAL: Increased transparency for better blur visibility */
             --modal-bg: rgba(255, 255, 255, 0.75); 
             --header-bg: rgba(0, 0, 0, 0.4); 
             --anim-ease: cubic-bezier(0.25, 1, 0.5, 1); 
@@ -37,7 +36,7 @@
             background-color: var(--primary-color);
         }
         
-        /* FIX 1: Fixed BG Image Layer with Dark Overlay (Guaranteed lowest layer) */
+        /* FIX: Using the verified GitHub Pages URL for the fixed background image */
         body::before {
             content: "";
             position: fixed;
@@ -45,7 +44,8 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-image: linear-gradient(rgba(16, 16, 16, 0.5), rgba(16, 16, 16, 0.5)), url('/logo-upscaled/tate-logo1-upscaled.png'); 
+            /* **VERIFIED URL USED**: http://Locksy.GitHub.io/tahtay/logo-upscaled/tate-logo1-upscaled.png */
+            background-image: linear-gradient(rgba(16, 16, 16, 0.5), rgba(16, 16, 16, 0.5)), url('http://Locksy.GitHub.io/tahtay/logo-upscaled/tate-logo1-upscaled.png'); 
             background-size: cover; 
             background-position: center center;
             background-repeat: no-repeat;
@@ -54,7 +54,7 @@
         }
 
 
-        /* --- HEADER (Reference: Logic works here) --- */
+        /* --- HEADER (Glassmorphism works correctly here) --- */
         header {
             position: fixed;
             top: 0;
@@ -62,6 +62,9 @@
             width: 100%;
             padding: 1.5rem 1rem; 
             display: flex;
+            flex-direction: column; 
+            justify-content: center;
+            align-items: center;
             z-index: 1000;
             
             background: var(--header-bg); 
@@ -70,6 +73,39 @@
             border-bottom: 1px solid rgba(255,255,255,0.1);
         }
         
+        @media (min-width: 768px) {
+            header {
+                flex-direction: row;
+                padding: 2rem 3rem;
+                justify-content: center;
+            }
+        }
+        
+        h1 {
+            font-size: clamp(1.2rem, 3vw, 3rem); 
+            font-weight: 300;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--bright-text-color); 
+            margin-bottom: 0.8rem;
+        }
+
+        h1 strong {
+            font-weight: 800;
+            color: var(--text-color); 
+        }
+
+        @media (min-width: 768px) {
+            h1 {
+                position: static;
+                transform: none;
+                margin-bottom: 0;
+            }
+        }
+
+        .controls { display: none; }
+        .header-spacer { display: none; }
+
         /* --- MAIN CONTAINER & SLIDE --- */
         #app-container {
             width: 100%;
@@ -78,7 +114,7 @@
         }
 
         .slide {
-            /* CRITICAL FIX 2: Set position and z-index on the container holding the scrolling element */
+            /* Ensures proper stacking context for scrolling blur effect */
             position: relative;
             z-index: 1; 
             display: none; 
@@ -90,10 +126,20 @@
             padding: 140px 1rem 40px 1rem;
         }
         
+        @media (min-width: 768px) {
+            .slide {
+                flex-direction: row; 
+                gap: 5%;
+                padding: 140px 5% 40px 5%; 
+                justify-content: center; 
+                align-items: flex-start;
+            }
+        }
+
         .slide.active { display: flex; }
 
 
-        /* FIX 3: Re-apply simple backdrop-filter logic to the content box */
+        /* Content Box: Now has the same backdrop-filter logic as the header */
         .text-wrapper {
             width: 100%;
             max-width: 900px; 
@@ -101,7 +147,6 @@
             opacity: 0; 
             
             background: var(--modal-bg); 
-            /* Same working logic as the header */
             backdrop-filter: blur(var(--blur-radius));
             -webkit-backdrop-filter: blur(var(--blur-radius));
             
@@ -111,44 +156,19 @@
             border: 1px solid var(--highlight-color); 
             margin-top: 1rem;
             
-            /* Optional: Maintain GPU acceleration */
+            /* Helps trigger GPU acceleration for smoother scrolling/blur */
             transform: translateZ(0);
         }
         
-        /* Mobile-Specific Table Overrides (Stacking Layout) */
-        @media screen and (max-width: 767px) {
-            /* ... (Responsive table styles are retained for readability) ... */
-            table, thead, tbody, th, td, tr { display: block; }
-            thead tr { position: absolute; top: -9999px; left: -9999px; }
-            
-            tr { 
-                border: 1px solid var(--text-color);
-                margin-bottom: 1.5rem; 
-                background: rgba(255, 255, 255, 0.9); /* Opaque background for table rows for text readability */
-                border-radius: 8px;
-            }
-            td {
-                border: none; 
-                border-bottom: 1px dashed rgba(0, 0, 0, 0.1);
-                position: relative;
-                padding-left: 50%; 
-                text-align: right;
-            }
-            td:before {
-                content: attr(data-label);
-                position: absolute;
-                left: 10px;
-                width: 45%; 
-                text-align: left;
-                font-weight: 700;
-                color: var(--highlight-color); 
-                text-transform: uppercase;
-                font-size: 0.85rem;
+        @media (min-width: 768px) {
+             .text-wrapper {
+                text-align: left; 
+                flex: 1;
+                margin-top: 0;
             }
         }
-        
-        /* --- Standard Content Styles (Retained) --- */
-        /* ... */
+
+        /* --- Text Content Styles --- */
         .text-wrapper h2 {
             font-size: clamp(1.8rem, 5vw, 2.8rem); 
             margin-bottom: 1rem;
@@ -160,7 +180,112 @@
             padding-bottom: 0.5rem;
         }
 
-        /* ... (The rest of the CSS for text, lists, and animations is unchanged) ... */
+        .text-wrapper h3 {
+            font-size: clamp(1.2rem, 3vw, 1.6rem); 
+            margin-top: 1.5rem;
+            margin-bottom: 0.8rem;
+            color: var(--text-color); 
+        }
+
+        .text-wrapper p, .text-wrapper ul, .text-wrapper li {
+            font-size: clamp(0.9rem, 2.5vw, 1.1rem); 
+            line-height: 1.6;
+            color: var(--text-color); 
+            font-weight: 400; 
+            text-shadow: none;
+            margin-bottom: 1rem;
+        }
+
+        .text-wrapper ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        /* --- RESPONSIVE TABLE STYLING --- */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            text-align: left;
+            font-size: 0.95rem;
+            background-color: rgba(0, 0, 0, 0.03); 
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        th, td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.15);
+            color: var(--text-color); 
+        }
+        th {
+            background-color: #f0f0f0; 
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--text-color);
+        }
+        td:first-child { font-weight: 600; }
+        tr:nth-child(even) { background-color: rgba(0, 0, 0, 0.01); } 
+
+        /* Mobile-Specific Table Overrides (Break Table Layout) */
+        @media screen and (max-width: 767px) {
+            table, thead, tbody, th, td, tr { display: block; }
+            thead tr { position: absolute; top: -9999px; left: -9999px; }
+            
+            tr { 
+                border: 1px solid var(--text-color);
+                margin-bottom: 1.5rem; 
+                background: rgba(255, 255, 255, 0.9); 
+                border-radius: 8px;
+            }
+            td {
+                border: none; 
+                border-bottom: 1px dashed rgba(0, 0, 0, 0.1);
+                position: relative;
+                padding-left: 50%; 
+                text-align: right;
+                word-wrap: break-word; 
+                padding-right: 1rem;
+                padding-top: 0.5rem;
+                padding-bottom: 0.5rem;
+            }
+            td:before {
+                content: attr(data-label);
+                position: absolute;
+                left: 10px;
+                width: 45%; 
+                padding-right: 10px;
+                white-space: nowrap; 
+                text-align: left;
+                font-weight: 700;
+                color: var(--highlight-color); 
+                text-transform: uppercase;
+                font-size: 0.85rem;
+            }
+            tr:last-child { border-bottom: none; }
+            td:last-child { border-bottom: none; }
+        }
+
+        /* Link styling for centering */
+        .print-link-container {
+            margin-top: 2rem; 
+            text-align: center;
+        }
+        .print-link-container a {
+            color: var(--highlight-color);
+            font-weight: 700;
+            text-decoration: underline; 
+            font-size: 1.1em;
+        }
+
+
+        /* Hide grid elements */
+        #grid-view, .image-wrapper { display: none !important; }
+
+        /* ANIMATIONS */
+        .slide.animate-in .text-wrapper { 
+            animation: revealUp 0.8s var(--anim-ease) forwards; 
+            animation-delay: 1.5s;
+        }
         
         @keyframes revealUp {
             from { opacity: 0; transform: translateY(20px); }
@@ -275,4 +400,3 @@
 </script>
 </body>
 </html>
-
