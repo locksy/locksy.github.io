@@ -12,11 +12,14 @@
             
             --dark-text-color: #1a1a1a; 
             --bright-text-color: #ffffff;
-            --modal-bg: rgba(255, 255, 255, 0.75); 
-            --header-bg: rgba(0, 0, 0, 0.4); 
+            /* FIX 1: Set content background to 50% opacity */
+            --modal-bg: rgba(255, 255, 255, 0.5); 
+            /* FIX 2: Set header background slightly more transparent */
+            --header-bg: rgba(0, 0, 0, 0.3); 
             --anim-ease: cubic-bezier(0.25, 1, 0.5, 1); 
             --primary-color: #101010; 
             --highlight-color: #BC002D; 
+            /* Blur variable retained but no longer used for core effect */
             --blur-radius: 20px; 
         }
 
@@ -36,7 +39,7 @@
             background-color: var(--primary-color);
         }
         
-        /* FIX 1: Using the verified GitHub Pages URL for the fixed background image */
+        /* Background image layer using verified GitHub Pages URL */
         body::before {
             content: "";
             position: fixed;
@@ -44,7 +47,6 @@
             left: 0;
             width: 100%;
             height: 100%;
-            /* **VERIFIED URL**: http://Locksy.GitHub.io/tahtay/logo-upscaled/tate-logo1-upscaled.png */
             background-image: linear-gradient(rgba(16, 16, 16, 0.5), rgba(16, 16, 16, 0.5)), url('http://Locksy.GitHub.io/tahtay/logo-upscaled/tate-logo1-upscaled.png'); 
             background-size: cover; 
             background-position: center center;
@@ -54,7 +56,7 @@
         }
 
 
-        /* --- HEADER (Glassmorphism works correctly here) --- */
+        /* --- HEADER (Removed blur, kept new opacity) --- */
         header {
             position: fixed;
             top: 0;
@@ -67,10 +69,11 @@
             align-items: center;
             z-index: 1000;
             
+            /* Uses the new, slightly more transparent --header-bg */
             background: var(--header-bg); 
-            backdrop-filter: blur(var(--blur-radius));
-            -webkit-backdrop-filter: blur(var(--blur-radius));
             border-bottom: 1px solid rgba(255,255,255,0.1);
+            
+            /* REMOVED: backdrop-filter and -webkit-backdrop-filter */
         }
         
         @media (min-width: 768px) {
@@ -114,7 +117,6 @@
         }
 
         .slide {
-            /* Ensures proper stacking context for scrolling blur effect */
             position: relative;
             z-index: 1; 
             display: none; 
@@ -139,16 +141,15 @@
         .slide.active { display: flex; }
 
 
-        /* FIX 2: Content Box with aggressive rendering fixes for scrolling blur */
+        /* Content Box: Uses new 50% opacity background */
         .text-wrapper {
             width: 100%;
             max-width: 900px; 
             text-align: center; 
             opacity: 0; 
             
+            /* Uses new 50% opaque background color */
             background: var(--modal-bg); 
-            backdrop-filter: blur(var(--blur-radius));
-            -webkit-backdrop-filter: blur(var(--blur-radius));
             
             padding: 2.5rem; 
             border-radius: 12px;
@@ -156,10 +157,7 @@
             border: 1px solid var(--highlight-color); 
             margin-top: 1rem;
             
-            /* Aggressive GPU/Rendering FIXES for Safari/Mobile Blur Glitches */
-            transform: translateZ(0);
-            -webkit-backface-visibility: hidden; 
-            will-change: backdrop-filter, transform; 
+            /* REMOVED: All GPU/Rendering/backdrop-filter hacks */
         }
         
         @media (min-width: 768px) {
@@ -226,6 +224,7 @@
             border-bottom: 2px solid var(--text-color);
         }
         td:first-child { font-weight: 600; }
+        /* NOTE: Table rows use a slightly different opacity in mobile mode for readability */
         tr:nth-child(even) { background-color: rgba(0, 0, 0, 0.01); } 
 
         /* Mobile-Specific Table Overrides (Break Table Layout) */
@@ -236,7 +235,7 @@
             tr { 
                 border: 1px solid var(--text-color);
                 margin-bottom: 1.5rem; 
-                background: rgba(255, 255, 255, 0.9); 
+                background: rgba(255, 255, 255, 0.9); /* Remains highly opaque for table readability */
                 border-radius: 8px;
             }
             td {
