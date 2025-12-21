@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>EMF Lab v12 - Perfect Boundary</title>
+    <style>
+        :root { --accent: #00ccff; --danger: #ff3300; }
+        body { margin: 0; background: #000; color: #eee; font-family: 'Segoe UI', sans-serif; height: 100vh; width: 100vw; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        #container { position: relative; line-height: 0; background: #111; border: 1px solid #333; overflow: hidden; }
+        canvas { width: 100%; height: 100%; display: block; }
+        #ui { position: fixed; top: 20px; left: 20px; background: rgba(15, 15, 15, 0.9); padding: 20px; border-radius: 12px; width: 240px; z-index: 1000; border: 1px solid #444; backdrop-filter: blur(10px); }
+        .control { margin-bottom: 15px; }
+        label { display: flex; justify-content: space-between; font-size: 11px; text-transform: uppercase; color: #aaa; margin-bottom: 6px; font-weight: 600; }
+        input[type="range"] { width: 100%; cursor: pointer; accent-color: var(--accent); }
+        .marker { position: absolute; width: 60px; height: 60px; border-radius: 50%; transform: translate(-50%, -50%); cursor: grab; z-index: 500; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 10px; border: 2px solid rgba(255,255,255,0.5); user-select: none; color: white; text-shadow: 0 1px 3px #000; touch-action: none; }
+        #phone-marker { background: radial-gradient(circle, rgba(0,204,255,0.4) 0%, rgba(0,204,255,0.05) 70%); border-color: var(--accent); }
+        #beanie-marker { background: radial-gradient(circle, rgba(255,51,0,0.4) 0%, rgba(255,51,0,0.05) 70%); border-color: var(--danger); }
+        #image-label { display: block; background: var(--accent); color: #000; text-align: center; padding: 12px; border-radius: 6px; font-size: 12px; cursor: pointer; margin-bottom: 20px; font-weight: 800; }
+        #lock-btn { width: 100%; padding: 12px; border: 1px solid var(--accent); border-radius: 6px; cursor: pointer; background: #333; color: var(--accent); font-weight: bold; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div id="ui">
+    <label id="image-label" for="image-input">CHOOSE IMAGE</label>
+    <input type="file" id="image-input" accept="image/*" class="hidden">
+    <div class="control"><label>Frequency</label><input type="range" id="p-freq" min="0.5" max="5.0" step="0.1" value="2.5"></div>
+    <div class="control"><label>Power</label><input type="range" id="p-intensity" min="0.1" max="5.0" step="0.1" value="2.5"></div>
+    <div class="control"><label>Shield Size</label><input type="range" id="p-shield-size" min="20" max="250" step="5" value="80"></div>
+    <div class="control"><label>Damping</label><input type="range" id="p-damping" min="0.95" max="0.999" step="0.001" value="0.99"></div>
+    <div class="control"><label>Distortion</label><input type="range" id="p-distortion" min="0" max="200" step="1" value="100"></div>
+    <button id="lock-btn">LOCK ENGINE</button>
+</div>
+
+<div id="container">
+    <div id="phone-marker" class="marker">PHONE</div>
+    <div id="beanie-marker" class="marker">SHIELD</div>
+    <canvas id="glCanvas"></canvas>
+</div>
+
+<script>
+const vSrc = `#version 300 es
+in vec2 p; void main() { gl_Position = vec4(p, 0, 1); }`;
+
+const fPhys = `#version 300 es
+precision highp float;
+uniform vec2 u_res; uniform sampler2D u_buf; uniform vec2 u_p; uniform vec2 u_b;
+uniform float u_i; uniform float u_d; uniform float u_s; uniform bool u_trig;
+out vec4 c;
+void main() {
+    vec2 uv = gl_FragCoord.xy / u_res;
+    vec2 d = 1.0 / u_res;
+    
+    // Transparent boundary: if near edges, kill the wave energy (prevents reflection)
+    float edge = smoothstep(0.0, 0.05, uv.x) * smoothstep(1.0, 0.95, uv.x) * smoothstep(0.0, 0.05, uv.y) * smoothstep(1.0, 0.95, uv.y);
+
+    vec4 data = texture(u_buf, uv);
+    float n = (texture(u_buf, uv + vec2(d.x, 0.0)).r + texture(u_buf, uv - vec2(d.x, 0.0)).r +
+               texture(u_buf, uv + vec2(0.0, d.y)).r + texture(u_buf, uv - vec2(0.0, d.y)).r);
+    
+    float next = (n * 0.5) - data.g;
+    next *= u_d * edge; 
+
+    // Fixed Shield Logic: Blocks propagation without creating internal "wild" noise
+    float distB = distance(gl_FragCoord.xy, u_b);
+    if (distB < u_s) {
+        next *= 0.1; // Absorb energy inside the shield instead of negative reflection
+    }
+
+    if (u_trig && distance(gl_FragCoord.xy, u_p) < 15.0) next = u_i;
+    c = vec4(clamp(next, -4.0, 4.0), data.r, 0.0, 1.0);
+}`;
+
+const fRend = `#version 300 es
+precision highp float;
+uniform vec2 u_res; uniform sampler2D u_buf; uniform sampler2D u_img; uniform float u_dist;
+out vec4 c;
+void main() {
+    vec2 uv = gl_FragCoord.xy / u_res;
+    float h = texture(u_buf, uv).r;
+    float hx = texture(u_buf, uv + vec2(0.01, 0.0)).r;
+    float hy = texture(u_buf, uv + vec2(0.0, 0.01)).r;
+    vec2 off = vec2(h - hx, h - hy) * (u_dist / 100.0);
+    vec3 base = texture(u_img, uv + off).rgb;
+    c = vec4(base + vec3(0.1, 0.5, 1.0) * max(h, 0.0) * 0.4, 1.0);
+}`;
+
+const canvas = document.getElementById('glCanvas');
+const gl = canvas.getContext('webgl2');
+gl.getExtension('EXT_color_buffer_float');
+
+function createP(fs) {
+    const p = gl.createProgram();
+    const s = (t, src) => { const sh = gl.createShader(t); gl.shaderSource(sh, src); gl.compileShader(sh); return sh; };
+    gl.attachShader(p, s(gl.VERTEX_SHADER, vSrc)); gl.attachShader(p, s(gl.FRAGMENT_SHADER, fs));
+    gl.linkProgram(p); return p;
+}
+const pP = createP(fPhys), rP = createP(fRend);
+
+let fb1, fb2, t1, t2, imgT, ready = false, pC = [0,0], bC = [0,0];
+const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+
+function setup(img) {
+    const w = img.width, h = img.height;
+    const ratio = w / h;
+    const winW = window.innerWidth * 0.9, winH = window.innerHeight * 0.9;
+    let fW, fH;
+    if (winW / winH > ratio) { fH = winH; fW = winH * ratio; }
+    else { fW = winW; fH = winW / ratio; }
+
+    const cont = document.getElementById('container');
+    cont.style.width = fW + 'px'; cont.style.height = fH + 'px';
+    cont.style.display = 'block';
+    canvas.width = w; canvas.height = h;
+    gl.viewport(0, 0, w, h);
+
+    const gen = () => {
+        const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, w, h, 0, gl.RGBA, gl.FLOAT, null);
+        gl.texParameteri(gl.TEXTURE_2D, 10241, 9728); gl.texParameteri(gl.TEXTURE_2D, 10240, 9728);
+        gl.texParameteri(gl.TEXTURE_2D, 10242, 33071); gl.texParameteri(gl.TEXTURE_2D, 10243, 33071);
+        return t;
+    };
+    fb1 = gl.createFramebuffer(); t1 = gen(); gl.bindFramebuffer(gl.FRAMEBUFFER, fb1); gl.framebufferTexture2D(gl.FRAMEBUFFER, 36064, gl.TEXTURE_2D, t1, 0);
+    fb2 = gl.createFramebuffer(); t2 = gen(); gl.bindFramebuffer(gl.FRAMEBUFFER, fb2); gl.framebufferTexture2D(gl.FRAMEBUFFER, 36064, gl.TEXTURE_2D, t2, 0);
+
+    imgT = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, imgT);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+    gl.texParameteri(gl.TEXTURE_2D, 10241, 9729); gl.texParameteri(gl.TEXTURE_2D, 10240, 9729);
+    
+    update();
+    ready = true;
+}
+
+function update() {
+    const cr = document.getElementById('container').getBoundingClientRect();
+    const pm = document.getElementById('phone-marker');
+    const bm = document.getElementById('beanie-marker');
+    pC = [(parseFloat(pm.offsetLeft)/cr.width * canvas.width), (canvas.height - (parseFloat(pm.offsetTop)/cr.height * canvas.height))];
+    bC = [(parseFloat(bm.offsetLeft)/cr.width * canvas.width), (canvas.height - (parseFloat(bm.offsetTop)/cr.height * canvas.height))];
+}
+
+document.getElementById('image-input').onchange = (e) => {
+    const r = new FileReader();
+    r.onload = (ev) => { const i = new Image(); i.onload = () => setup(i); i.src = ev.target.result; };
+    r.readAsDataURL(e.target.files[0]);
+};
+
+function drag(id) {
+    const el = document.getElementById(id);
+    el.onpointerdown = (e) => {
+        el.setPointerCapture(e.pointerId);
+        el.onpointermove = (ev) => {
+            const cr = document.getElementById('container').getBoundingClientRect();
+            el.style.left = (ev.clientX - cr.left) + 'px';
+            el.style.top = (ev.clientY - cr.top) + 'px';
+            update();
+        };
+        el.onpointerup = () => el.onpointermove = null;
+    };
+}
+drag('phone-marker'); drag('beanie-marker');
+
+let f = 0, lp = 0;
+function loop(t) {
+    if (ready) {
+        f++; let trig = false; if (t - lp > parseFloat(document.getElementById('p-freq').value)*1000) { trig = true; lp = t; }
+        const ev = f % 2 === 0;
+        gl.useProgram(pP); gl.bindFramebuffer(gl.FRAMEBUFFER, ev ? fb1 : fb2); gl.bindTexture(gl.TEXTURE_2D, ev ? t2 : t1);
+        gl.uniform2f(gl.getUniformLocation(pP, "u_res"), canvas.width, canvas.height);
+        gl.uniform2f(gl.getUniformLocation(pP, "u_p"), pC[0], pC[1]);
+        gl.uniform2f(gl.getUniformLocation(pP, "u_b"), bC[0], bC[1]);
+        gl.uniform1f(gl.getUniformLocation(pP, "u_i"), parseFloat(document.getElementById('p-intensity').value));
+        gl.uniform1f(gl.getUniformLocation(pP, "u_d"), parseFloat(document.getElementById('p-damping').value));
+        gl.uniform1f(gl.getUniformLocation(pP, "u_s"), parseFloat(document.getElementById('p-shield-size').value) * (canvas.width/800));
+        gl.uniform1i(gl.getUniformLocation(pP, "u_trig"), trig);
+        gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0); gl.enableVertexAttribArray(0);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+        gl.useProgram(rP); gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, ev ? t1 : t2);
+        gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, imgT);
+        gl.uniform1i(gl.getUniformLocation(rP, "u_buf"), 0); gl.uniform1i(gl.getUniformLocation(rP, "u_img"), 1);
+        gl.uniform2f(gl.getUniformLocation(rP, "u_res"), canvas.width, canvas.height);
+        gl.uniform1f(gl.getUniformLocation(rP, "u_dist"), parseFloat(document.getElementById('p-distortion').value));
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    }
+    requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+document.getElementById('lock-btn').onclick = () => { document.getElementById('ui').classList.add('hidden'); document.querySelectorAll('.marker').forEach(m => m.classList.add('hidden')); };
+// Add this block to the bottom of your existing <script> tag.
+// It creates the function to generate and display the current state's code.
+
+document.getElementById('lock-btn').onclick = () => {
+    // 1. Hide the UI elements so they aren't visible in the final export
+    document.getElementById('ui').style.display = 'none';
+    document.querySelectorAll('.marker').forEach(m => m.style.display = 'none');
+
+    // 2. Create the Export Modal and Textarea on the fly
+    const modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed; inset:40px; background:#111; border:2px solid #00ccff; z-index:9999; padding:20px; display:flex; flex-direction:column; border-radius:12px; color:#fff;';
+    
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = 'CLOSE';
+    closeBtn.style.cssText = 'align-self:flex-end; padding:8px 20px; background:#ff3300; color:#fff; border:none; border-radius:4px; cursor:pointer; margin-bottom:10px; font-weight:bold;';
+    closeBtn.onclick = () => {
+        modal.remove();
+        document.getElementById('ui').style.display = 'block';
+        document.querySelectorAll('.marker').forEach(m => m.style.display = 'flex');
+    };
+
+    const codeBox = document.createElement('textarea');
+    codeBox.style.cssText = 'flex:1; background:#000; color:#0f0; font-family:monospace; font-size:12px; padding:15px; border:1px solid #333; overflow:auto; white-space:pre; outline:none;';
+    
+    // 3. Grab the current HTML state
+    // We wrap it in <html> tags because innerHTML/outerHTML sometimes strips them
+    const fullSource = "<!DOCTYPE html>\n<html>\n" + document.documentElement.innerHTML + "\n</html>";
+    codeBox.textContent = fullSource;
+    codeBox.select(); // Auto-select for easy copying
+
+    modal.appendChild(closeBtn);
+    modal.appendChild(codeBox);
+    document.body.appendChild(modal);
+};
+</script>
+</body>
+</html>
