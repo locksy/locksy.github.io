@@ -12,9 +12,9 @@
         .control { margin-bottom: 15px; }
         label { display: flex; justify-content: space-between; font-size: 11px; text-transform: uppercase; color: #aaa; margin-bottom: 6px; font-weight: 600; }
         input[type="range"] { width: 100%; cursor: pointer; accent-color: var(--accent); }
-        .marker { position: absolute; width: 60px; height: 60px; border-radius: 50%; transform: translate(-50%, -50%); cursor: grab; z-index: 500; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 10px; border: 2px solid rgba(255,255,255,0.5); user-select: none; color: white; text-shadow: 0 1px 3px #000; touch-action: none; }
-        #phone-marker { background: radial-gradient(circle, rgba(0,204,255,0.4) 0%, rgba(0,204,255,0.05) 70%); border-color: var(--accent); }
-        #beanie-marker { background: radial-gradient(circle, rgba(255,51,0,0.4) 0%, rgba(255,51,0,0.05) 70%); border-color: var(--danger); }
+        .marker { position: absolute; width: 60px; height: 60px; border-radius: 50%; transform: translate(-50%, -50%); cursor: grab; z-index: 500; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 10px; border: 2px solid rgba(255,255,255,0.5); user-select: none; color: white; text-shadow: 0 1px 3px #000; touch-action: none; top: 50%; left: 50%; }
+        #phone-marker { background: radial-gradient(circle, rgba(0,204,255,0.4) 0%, rgba(0,204,255,0.05) 70%); border-color: var(--accent); left: 40%; }
+        #beanie-marker { background: radial-gradient(circle, rgba(255,51,0,0.4) 0%, rgba(255,51,0,0.05) 70%); border-color: var(--danger); left: 60%; }
         #image-label { display: block; background: var(--accent); color: #000; text-align: center; padding: 12px; border-radius: 6px; font-size: 12px; cursor: pointer; margin-bottom: 20px; font-weight: 800; }
         #lock-btn { width: 100%; padding: 12px; border: 1px solid var(--accent); border-radius: 6px; cursor: pointer; background: #333; color: var(--accent); font-weight: bold; }
         .hidden { display: none !important; }
@@ -51,23 +51,14 @@ out vec4 c;
 void main() {
     vec2 uv = gl_FragCoord.xy / u_res;
     vec2 d = 1.0 / u_res;
-    
-    // Transparent boundary: if near edges, kill the wave energy (prevents reflection)
     float edge = smoothstep(0.0, 0.05, uv.x) * smoothstep(1.0, 0.95, uv.x) * smoothstep(0.0, 0.05, uv.y) * smoothstep(1.0, 0.95, uv.y);
-
     vec4 data = texture(u_buf, uv);
     float n = (texture(u_buf, uv + vec2(d.x, 0.0)).r + texture(u_buf, uv - vec2(d.x, 0.0)).r +
                texture(u_buf, uv + vec2(0.0, d.y)).r + texture(u_buf, uv - vec2(0.0, d.y)).r);
-    
     float next = (n * 0.5) - data.g;
     next *= u_d * edge; 
-
-    // Fixed Shield Logic: Blocks propagation without creating internal "wild" noise
     float distB = distance(gl_FragCoord.xy, u_b);
-    if (distB < u_s) {
-        next *= 0.1; // Absorb energy inside the shield instead of negative reflection
-    }
-
+    if (distB < u_s) next *= 0.1;
     if (u_trig && distance(gl_FragCoord.xy, u_p) < 15.0) next = u_i;
     c = vec4(clamp(next, -4.0, 4.0), data.r, 0.0, 1.0);
 }`;
@@ -119,7 +110,6 @@ function setup(img) {
         const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, w, h, 0, gl.RGBA, gl.FLOAT, null);
         gl.texParameteri(gl.TEXTURE_2D, 10241, 9728); gl.texParameteri(gl.TEXTURE_2D, 10240, 9728);
-        gl.texParameteri(gl.TEXTURE_2D, 10242, 33071); gl.texParameteri(gl.TEXTURE_2D, 10243, 33071);
         return t;
     };
     fb1 = gl.createFramebuffer(); t1 = gen(); gl.bindFramebuffer(gl.FRAMEBUFFER, fb1); gl.framebufferTexture2D(gl.FRAMEBUFFER, 36064, gl.TEXTURE_2D, t1, 0);
@@ -135,11 +125,13 @@ function setup(img) {
 }
 
 function update() {
-    const cr = document.getElementById('container').getBoundingClientRect();
+    const cont = document.getElementById('container');
+    const cr = cont.getBoundingClientRect();
     const pm = document.getElementById('phone-marker');
     const bm = document.getElementById('beanie-marker');
-    pC = [(parseFloat(pm.offsetLeft)/cr.width * canvas.width), (canvas.height - (parseFloat(pm.offsetTop)/cr.height * canvas.height))];
-    bC = [(parseFloat(bm.offsetLeft)/cr.width * canvas.width), (canvas.height - (parseFloat(bm.offsetTop)/cr.height * canvas.height))];
+    
+    pC = [(pm.offsetLeft / cr.width) * canvas.width, canvas.height - (pm.offsetTop / cr.height) * canvas.height];
+    bC = [(bm.offsetLeft / cr.width) * canvas.width, canvas.height - (bm.offsetTop / cr.height) * canvas.height];
 }
 
 document.getElementById('image-input').onchange = (e) => {
@@ -178,7 +170,6 @@ function loop(t) {
         gl.uniform1i(gl.getUniformLocation(pP, "u_trig"), trig);
         gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0); gl.enableVertexAttribArray(0);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-
         gl.useProgram(rP); gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, ev ? t1 : t2);
         gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, imgT);
@@ -190,40 +181,21 @@ function loop(t) {
     requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
-document.getElementById('lock-btn').onclick = () => { document.getElementById('ui').classList.add('hidden'); document.querySelectorAll('.marker').forEach(m => m.classList.add('hidden')); };
-// Add this block to the bottom of your existing <script> tag.
-// It creates the function to generate and display the current state's code.
 
 document.getElementById('lock-btn').onclick = () => {
-    // 1. Hide the UI elements so they aren't visible in the final export
     document.getElementById('ui').style.display = 'none';
     document.querySelectorAll('.marker').forEach(m => m.style.display = 'none');
-
-    // 2. Create the Export Modal and Textarea on the fly
     const modal = document.createElement('div');
     modal.style.cssText = 'position:fixed; inset:40px; background:#111; border:2px solid #00ccff; z-index:9999; padding:20px; display:flex; flex-direction:column; border-radius:12px; color:#fff;';
-    
     const closeBtn = document.createElement('button');
     closeBtn.textContent = 'CLOSE';
     closeBtn.style.cssText = 'align-self:flex-end; padding:8px 20px; background:#ff3300; color:#fff; border:none; border-radius:4px; cursor:pointer; margin-bottom:10px; font-weight:bold;';
-    closeBtn.onclick = () => {
-        modal.remove();
-        document.getElementById('ui').style.display = 'block';
-        document.querySelectorAll('.marker').forEach(m => m.style.display = 'flex');
-    };
-
+    closeBtn.onclick = () => { modal.remove(); document.getElementById('ui').style.display = 'block'; document.querySelectorAll('.marker').forEach(m => m.style.display = 'flex'); };
     const codeBox = document.createElement('textarea');
     codeBox.style.cssText = 'flex:1; background:#000; color:#0f0; font-family:monospace; font-size:12px; padding:15px; border:1px solid #333; overflow:auto; white-space:pre; outline:none;';
-    
-    // 3. Grab the current HTML state
-    // We wrap it in <html> tags because innerHTML/outerHTML sometimes strips them
-    const fullSource = "<!DOCTYPE html>\n<html>\n" + document.documentElement.innerHTML + "\n</html>";
-    codeBox.textContent = fullSource;
-    codeBox.select(); // Auto-select for easy copying
-
-    modal.appendChild(closeBtn);
-    modal.appendChild(codeBox);
-    document.body.appendChild(modal);
+    codeBox.textContent = "<!DOCTYPE html>\n<html>\n" + document.documentElement.innerHTML + "\n</html>";
+    modal.appendChild(closeBtn); modal.appendChild(codeBox); document.body.appendChild(modal);
+    codeBox.select();
 };
 </script>
 </body>
