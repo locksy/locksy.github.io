@@ -5,143 +5,242 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tree Splat Viewer</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            width: 100%;
-            height: 100vh;
-            overflow: hidden;
+            width: 100%; height: 100vh; overflow: hidden;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            user-select: none;
+            user-select: none; background: #1a3a2e;
         }
-
-        #canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
-
+        canvas { display: block; }
         #info {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            color: rgba(255, 255, 255, 0.6);
-            font-size: 12px;
-            line-height: 1.6;
-            pointer-events: none;
-            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+            position: fixed; bottom: 20px; left: 20px;
+            color: rgba(255,255,255,0.6); font-size: 12px; line-height: 1.6;
+            pointer-events: none; text-shadow: 0 2px 8px rgba(0,0,0,0.4);
         }
-
         #status {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 14px;
-            letter-spacing: 0.5px;
-            pointer-events: none;
-            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            color: rgba(255,255,255,0.7); font-size: 14px; letter-spacing: 0.5px;
+            pointer-events: none; text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            opacity: 0; transition: opacity 0.6s;
         }
-
-        .loading {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            color: rgba(255, 255, 255, 0.8);
-            font-size: 16px;
-            pointer-events: none;
-            z-index: 10;
+        #loadingScreen {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+            text-align: center; color: rgba(255,255,255,0.85); font-size: 16px;
+            pointer-events: none; z-index: 10;
         }
-
-        .loading::after {
-            content: '';
-            display: inline-block;
-            width: 4px;
-            height: 4px;
-            background: rgba(255, 255, 255, 0.8);
-            border-radius: 50%;
-            margin-left: 8px;
-            animation: dot-pulse 1.5s infinite;
-        }
-
-        @keyframes dot-pulse {
-            0%, 100% { opacity: 0.3; }
-            50% { opacity: 1; }
+        #debug {
+            position: fixed; top: 80px; left: 20px; background: rgba(0,0,0,0.9);
+            color: #0f0; font-family: monospace; font-size: 10px; padding: 10px;
+            max-width: 320px; max-height: 60vh; overflow-y: auto; z-index: 100;
+            border: 1px solid #0f0; line-height: 1.5;
         }
     </style>
 </head>
 <body>
-    <div class="loading" id="loadingScreen">Loading tree splat</div>
+    <div id="loadingScreen">Loading tree splat…</div>
     <div id="status">Move mouse or touch to explore</div>
     <div id="info">
         <div>🌳 Tree Splat Viewer</div>
-        <div style="font-size: 11px; margin-top: 6px; opacity: 0.5;">Mouse: pan • Touch: move</div>
+        <div style="font-size:11px; margin-top:6px; opacity:0.5;">Mouse: pan • Touch: move</div>
     </div>
-    <div id="debug" style="position: fixed; top: 80px; left: 20px; background: rgba(0,0,0,0.9); color: #0f0; font-family: monospace; font-size: 10px; padding: 10px; max-width: 300px; max-height: 400px; overflow-y: auto; z-index: 100; border: 1px solid #0f0;"></div>
+    <div id="debug"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@r128/examples/js/postprocessing/EffectComposer.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@r128/examples/js/postprocessing/RenderPass.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@r128/examples/js/postprocessing/ShaderPass.js"></script>
 
     <script>
         const debugLog = (msg) => {
             console.log(msg);
-            const debugDiv = document.getElementById('debug');
-            if (debugDiv) {
-                debugDiv.innerHTML += msg + '<br>';
-                debugDiv.scrollTop = debugDiv.scrollHeight;
-            }
+            const d = document.getElementById('debug');
+            if (d) { d.innerHTML += msg + '<br>'; d.scrollTop = d.scrollHeight; }
         };
-        
-        debugLog('🟢 Script starting...');
-        
+
+        debugLog('🟢 Script starting…');
+
         function initWhenReady() {
             if (typeof THREE === 'undefined') {
-                debugLog('⏳ Waiting for Three.js...');
+                debugLog('⏳ Waiting for Three.js…');
                 setTimeout(initWhenReady, 100);
                 return;
             }
-            
-            debugLog('🟢 Three.js loaded!');
-            init();
+            debugLog('🟢 Three.js loaded (' + THREE.REVISION + ')');
+            try { init(); }
+            catch (e) { debugLog('🔴 INIT ERROR: ' + e.message); }
         }
-        
+
+        const TYPE_SIZES = {
+            char:1, uchar:1, int8:1, uint8:1,
+            short:2, ushort:2, int16:2, uint16:2,
+            int:4, uint:4, int32:4, uint32:4,
+            float:4, float32:4, double:8, float64:8
+        };
+        const SH_C0 = 0.28209479177387814;
+
+        async function loadPLY(url) {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('HTTP ' + res.status + ' fetching ' + url);
+            const buffer = await res.arrayBuffer();
+            return parsePLY(buffer);
+        }
+
+        function parsePLY(buffer) {
+            const bytes = new Uint8Array(buffer);
+            const marker = 'end_header';
+            let headerEnd = -1;
+            for (let i = 0; i < bytes.length - marker.length; i++) {
+                let match = true;
+                for (let j = 0; j < marker.length; j++) {
+                    if (bytes[i + j] !== marker.charCodeAt(j)) { match = false; break; }
+                }
+                if (match) {
+                    let k = i + marker.length;
+                    while (k < bytes.length && bytes[k] !== 0x0A) k++;
+                    headerEnd = k + 1;
+                    break;
+                }
+            }
+            if (headerEnd === -1) throw new Error('No PLY header found');
+
+            const headerText = new TextDecoder('ascii').decode(bytes.subarray(0, headerEnd));
+            const lines = headerText.split('\n');
+
+            let format = 'ascii';
+            let vertexCount = 0;
+            let inVertex = false;
+            const props = [];
+            for (const raw of lines) {
+                const t = raw.trim();
+                if (t.startsWith('format')) {
+                    if (t.indexOf('binary_little_endian') !== -1) format = 'binary_le';
+                    else if (t.indexOf('binary_big_endian') !== -1) format = 'binary_be';
+                    else format = 'ascii';
+                } else if (t.startsWith('element vertex')) {
+                    vertexCount = parseInt(t.split(/\s+/)[2]);
+                    inVertex = true;
+                } else if (t.startsWith('element')) {
+                    inVertex = false;
+                } else if (t.startsWith('property') && inVertex) {
+                    const parts = t.split(/\s+/);
+                    props.push({ type: parts[1], name: parts[parts.length - 1] });
+                }
+            }
+
+            debugLog('📄 format=' + format + ', verts=' + vertexCount);
+            debugLog('📄 props: ' + props.map(p => p.name).join(','));
+
+            const names = props.map(p => p.name);
+            const hasRGB = names.indexOf('red') !== -1 && names.indexOf('green') !== -1 && names.indexOf('blue') !== -1;
+            const hasDC  = names.indexOf('f_dc_0') !== -1;
+
+            const positions = new Float32Array(vertexCount * 3);
+            const colors = new Float32Array(vertexCount * 3);
+
+            if (format === 'ascii') {
+                const text = new TextDecoder('ascii').decode(bytes.subarray(headerEnd));
+                const rows = text.split('\n');
+                const idx = {};
+                props.forEach((p, i) => idx[p.name] = i);
+                let v = 0;
+                for (let r = 0; r < rows.length && v < vertexCount; r++) {
+                    const parts = rows[r].trim().split(/\s+/);
+                    if (parts.length < props.length) continue;
+                    positions[v*3]   = parseFloat(parts[idx['x']]);
+                    positions[v*3+1] = parseFloat(parts[idx['y']]);
+                    positions[v*3+2] = parseFloat(parts[idx['z']]);
+                    if (hasRGB) {
+                        colors[v*3]   = parseFloat(parts[idx['red']]) / 255;
+                        colors[v*3+1] = parseFloat(parts[idx['green']]) / 255;
+                        colors[v*3+2] = parseFloat(parts[idx['blue']]) / 255;
+                    } else if (hasDC) {
+                        colors[v*3]   = clamp01(0.5 + SH_C0 * parseFloat(parts[idx['f_dc_0']]));
+                        colors[v*3+1] = clamp01(0.5 + SH_C0 * parseFloat(parts[idx['f_dc_1']]));
+                        colors[v*3+2] = clamp01(0.5 + SH_C0 * parseFloat(parts[idx['f_dc_2']]));
+                    } else { colors[v*3]=colors[v*3+1]=colors[v*3+2]=1; }
+                    v++;
+                }
+            } else {
+                const le = (format === 'binary_le');
+                const dv = new DataView(buffer, headerEnd);
+                let stride = 0;
+                const offsets = {};
+                for (const p of props) { offsets[p.name] = stride; stride += TYPE_SIZES[p.type] || 4; }
+
+                const read = (base, name, type) => {
+                    const o = base + offsets[name];
+                    switch (type) {
+                        case 'float': case 'float32': return dv.getFloat32(o, le);
+                        case 'double': case 'float64': return dv.getFloat64(o, le);
+                        case 'uchar': case 'uint8': return dv.getUint8(o);
+                        case 'char': case 'int8': return dv.getInt8(o);
+                        case 'ushort': case 'uint16': return dv.getUint16(o, le);
+                        case 'short': case 'int16': return dv.getInt16(o, le);
+                        case 'uint': case 'uint32': return dv.getUint32(o, le);
+                        case 'int': case 'int32': return dv.getInt32(o, le);
+                        default: return 0;
+                    }
+                };
+                const typeOf = {};
+                props.forEach(p => typeOf[p.name] = p.type);
+
+                for (let i = 0; i < vertexCount; i++) {
+                    const base = i * stride;
+                    positions[i*3]   = read(base, 'x', typeOf['x']);
+                    positions[i*3+1] = read(base, 'y', typeOf['y']);
+                    positions[i*3+2] = read(base, 'z', typeOf['z']);
+                    if (hasRGB) {
+                        colors[i*3]   = read(base, 'red', typeOf['red']) / 255;
+                        colors[i*3+1] = read(base, 'green', typeOf['green']) / 255;
+                        colors[i*3+2] = read(base, 'blue', typeOf['blue']) / 255;
+                    } else if (hasDC) {
+                        colors[i*3]   = clamp01(0.5 + SH_C0 * read(base, 'f_dc_0', typeOf['f_dc_0']));
+                        colors[i*3+1] = clamp01(0.5 + SH_C0 * read(base, 'f_dc_1', typeOf['f_dc_1']));
+                        colors[i*3+2] = clamp01(0.5 + SH_C0 * read(base, 'f_dc_2', typeOf['f_dc_2']));
+                    } else { colors[i*3]=colors[i*3+1]=colors[i*3+2]=1; }
+                }
+            }
+
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            geometry.computeBoundingSphere();
+            return geometry;
+        }
+
+        function clamp01(x) { return x < 0 ? 0 : (x > 1 ? 1 : x); }
+
         function init() {
-            let scene, camera, renderer, composer, chromaticPass, points, animate;
-            let aberrationValue = { x: 0, y: 0 };
-            let mouseX = 0;
-            let mouseY = 0;
-            let targetX = 0;
-            let targetY = 0;
-            
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-            
+            let mouseX = 0, mouseY = 0, targetX = 0, targetY = 0;
+            let points = null;
+
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 2.2;
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.setClearColor(0x000000);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             document.body.appendChild(renderer.domElement);
-            
-            camera.position.z = 2;
-            
-            composer = new THREE.EffectComposer(renderer);
-            const renderPass = new THREE.RenderPass(scene, camera);
-            composer.addPass(renderPass);
-            
-            const chromaticShader = {
+            debugLog('✓ Renderer ready');
+
+            const bgCanvas = document.createElement('canvas');
+            bgCanvas.width = 512; bgCanvas.height = 512;
+            const ctx = bgCanvas.getContext('2d');
+            const grad = ctx.createLinearGradient(0, 0, 0, 512);
+            grad.addColorStop(0, '#1a3a2e');
+            grad.addColorStop(0.4, '#0f5233');
+            grad.addColorStop(0.7, '#2d6a52');
+            grad.addColorStop(1, '#4a9d83');
+            ctx.fillStyle = grad; ctx.fillRect(0, 0, 512, 512);
+            scene.background = new THREE.CanvasTexture(bgCanvas);
+
+            const pr = renderer.getPixelRatio();
+            let rt = new THREE.WebGLRenderTarget(window.innerWidth * pr, window.innerHeight * pr);
+
+            const postScene = new THREE.Scene();
+            const postCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+            const postMaterial = new THREE.ShaderMaterial({
                 uniforms: {
-                    tDiffuse: { value: null },
-                    aberration: { value: new THREE.Vector2(0, 0) },
-                    intensity: { value: 0 }
+                    tDiffuse: { value: rt.texture },
+                    aberration: { value: new THREE.Vector2(0, 0) }
                 },
                 vertexShader: `
                     varying vec2 vUv;
@@ -153,157 +252,84 @@
                 fragmentShader: `
                     uniform sampler2D tDiffuse;
                     uniform vec2 aberration;
-                    uniform float intensity;
                     varying vec2 vUv;
-                    
                     void main() {
-                        vec2 offset = aberration * intensity * 0.01;
-                        float r = texture2D(tDiffuse, vUv + offset).r;
+                        vec2 off = aberration * 0.01;
+                        float r = texture2D(tDiffuse, vUv + off).r;
                         float g = texture2D(tDiffuse, vUv).g;
-                        float b = texture2D(tDiffuse, vUv - offset).b;
+                        float b = texture2D(tDiffuse, vUv - off).b;
                         gl_FragColor = vec4(r, g, b, 1.0);
                     }
                 `
-            };
-            
-            chromaticPass = new THREE.ShaderPass(chromaticShader);
-            composer.addPass(chromaticPass);
-            
-            const createGradientBackground = () => {
-                const canvas = document.createElement('canvas');
-                canvas.width = 512;
-                canvas.height = 512;
-                const ctx = canvas.getContext('2d');
-                
-                const gradient = ctx.createLinearGradient(0, 0, 0, 512);
-                gradient.addColorStop(0, '#1a3a2e');
-                gradient.addColorStop(0.4, '#0f5233');
-                gradient.addColorStop(0.7, '#2d6a52');
-                gradient.addColorStop(1, '#4a9d83');
-                
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, 512, 512);
-                
-                const texture = new THREE.CanvasTexture(canvas);
-                scene.background = texture;
-            };
-            
-            createGradientBackground();
-            
-            class SimplePLYLoader {
-                async load(url) {
-                    const response = await fetch(url);
-                    const text = await response.text();
-                    return this.parse(text);
-                }
-                
-                parse(text) {
-                    const lines = text.split('\n');
-                    let headerEnd = 0;
-                    let vertexCount = 0;
-                    
-                    for (let i = 0; i < lines.length; i++) {
-                        if (lines[i].startsWith('element vertex')) {
-                            vertexCount = parseInt(lines[i].split(' ')[2]);
-                        }
-                        if (lines[i] === 'end_header') {
-                            headerEnd = i + 1;
-                            break;
-                        }
-                    }
-                    
-                    const vertices = [];
-                    const colors = [];
-                    
-                    for (let i = headerEnd; i < headerEnd + vertexCount; i++) {
-                        const parts = lines[i].trim().split(/\s+/);
-                        if (parts.length >= 6) {
-                            vertices.push(parseFloat(parts[0]), parseFloat(parts[1]), parseFloat(parts[2]));
-                            colors.push(parseInt(parts[3]) / 255, parseInt(parts[4]) / 255, parseInt(parts[5]) / 255);
-                        }
-                    }
-                    
-                    const geometry = new THREE.BufferGeometry();
-                    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices), 3));
-                    geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(colors), 3));
-                    geometry.computeBoundingSphere();
-                    
-                    return geometry;
-                }
-            }
-            
-            const material = new THREE.PointsMaterial({
-                size: 0.003,
-                vertexColors: true,
-                sizeAttenuation: true,
-                transparent: true,
-                opacity: 0.8
             });
-            
-            const loader = new SimplePLYLoader();
-            debugLog('🟡 Attempting to load Tree.ply...');
-            loader.load('Tree.ply').then(geometry => {
-                debugLog('🟢 PLY loaded! Creating 3D points...');
+            const postQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), postMaterial);
+            postScene.add(postQuad);
+            debugLog('✓ Post-processing ready');
+
+            debugLog('🟡 Loading Tree.ply…');
+            loadPLY('Tree.ply').then(geometry => {
+                debugLog('🟢 Parsed! Building points…');
+                const material = new THREE.PointsMaterial({
+                    size: 0.01, vertexColors: true, sizeAttenuation: true
+                });
                 points = new THREE.Points(geometry, material);
                 geometry.center();
-                const boundingSphere = geometry.boundingSphere;
-                const scale = 1 / boundingSphere.radius;
-                points.scale.multiplyScalar(scale);
+                const radius = geometry.boundingSphere.radius || 1;
+                points.scale.setScalar(1 / radius);
                 scene.add(points);
                 document.getElementById('loadingScreen').style.display = 'none';
                 document.getElementById('status').style.opacity = '1';
-                debugLog('✅ Ready!');
-                animate();
+                debugLog('✅ Tree visible! (' + (geometry.attributes.position.count) + ' pts)');
+                setTimeout(() => { const d = document.getElementById('debug'); if (d) d.style.display = 'none'; }, 4000);
             }).catch(err => {
-                debugLog('🔴 ERROR: ' + err.message);
-                debugLog('Check: Tree.ply in root?');
-                console.error('Failed to load PLY:', err);
-                document.getElementById('loadingScreen').innerHTML = 'Error loading tree splat<br><small>Check that Tree.ply is in the same directory</small>';
+                debugLog('🔴 PLY ERROR: ' + err.message);
+                document.getElementById('loadingScreen').innerHTML =
+                    'Could not load Tree.ply<br><small>' + err.message + '</small>';
             });
-            
-            document.addEventListener('mousemove', (e) => {
+
+            window.addEventListener('mousemove', e => {
                 targetX = (e.clientX / window.innerWidth) * 2 - 1;
                 targetY = -(e.clientY / window.innerHeight) * 2 + 1;
             });
-            
-            document.addEventListener('touchmove', (e) => {
-                if (e.touches.length > 0) {
-                    const touch = e.touches[0];
-                    targetX = (touch.clientX / window.innerWidth) * 2 - 1;
-                    targetY = -(touch.clientY / window.innerHeight) * 2 + 1;
+            window.addEventListener('touchmove', e => {
+                if (e.touches.length) {
+                    targetX = (e.touches[0].clientX / window.innerWidth) * 2 - 1;
+                    targetY = -(e.touches[0].clientY / window.innerHeight) * 2 + 1;
                 }
             }, { passive: true });
-            
-            animate = () => {
-                requestAnimationFrame(animate);
-                mouseX += (targetX - mouseX) * 0.08;
-                mouseY += (targetY - mouseY) * 0.08;
-                
-                if (points) {
-                    points.rotation.y = mouseX * 1.5;
-                    points.rotation.x = mouseY * 0.8;
-                    points.rotation.y += 0.0002;
-                }
-                
-                aberrationValue.x = mouseX * 0.5;
-                aberrationValue.y = mouseY * 0.5;
-                chromaticPass.uniforms.aberration.value.set(aberrationValue.x, aberrationValue.y);
-                chromaticPass.uniforms.intensity.value = Math.sqrt(aberrationValue.x * aberrationValue.x + aberrationValue.y * aberrationValue.y) * 2;
-                
-                composer.render();
-            };
-            
+
             window.addEventListener('resize', () => {
                 camera.aspect = window.innerWidth / window.innerHeight;
                 camera.updateProjectionMatrix();
                 renderer.setSize(window.innerWidth, window.innerHeight);
-                composer.setSize(window.innerWidth, window.innerHeight);
+                const p = renderer.getPixelRatio();
+                rt.setSize(window.innerWidth * p, window.innerHeight * p);
             });
-            
-            composer.render();
+
+            function animate() {
+                requestAnimationFrame(animate);
+                mouseX += (targetX - mouseX) * 0.08;
+                mouseY += (targetY - mouseY) * 0.08;
+
+                if (points) {
+                    points.rotation.y = mouseX * 1.5 + performance.now() * 0.00002;
+                    points.rotation.x = mouseY * 0.8;
+                }
+
+                const mag = Math.sqrt(mouseX * mouseX + mouseY * mouseY);
+                postMaterial.uniforms.aberration.value.set(mouseX * mag * 2, mouseY * mag * 2);
+
+                renderer.setRenderTarget(rt);
+                renderer.render(scene, camera);
+                renderer.setRenderTarget(null);
+                renderer.render(postScene, postCamera);
+            }
+            animate();
+            debugLog('✓ Render loop running');
         }
-        
+
         initWhenReady();
     </script>
 </body>
 </html>
+
