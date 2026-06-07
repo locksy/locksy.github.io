@@ -103,193 +103,207 @@
         
         debugLog('🟢 Script starting...');
         
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-        
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.setClearColor(0x000000);
-        document.body.appendChild(renderer.domElement);
-        
-        camera.position.z = 2;
-        
-        const composer = new THREE.EffectComposer(renderer);
-        const renderPass = new THREE.RenderPass(scene, camera);
-        composer.addPass(renderPass);
-        
-        const chromaticShader = {
-            uniforms: {
-                tDiffuse: { value: null },
-                aberration: { value: new THREE.Vector2(0, 0) },
-                intensity: { value: 0 }
-            },
-            vertexShader: `
-                varying vec2 vUv;
-                void main() {
-                    vUv = uv;
-                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                }
-            `,
-            fragmentShader: `
-                uniform sampler2D tDiffuse;
-                uniform vec2 aberration;
-                uniform float intensity;
-                varying vec2 vUv;
-                
-                void main() {
-                    vec2 offset = aberration * intensity * 0.01;
-                    float r = texture2D(tDiffuse, vUv + offset).r;
-                    float g = texture2D(tDiffuse, vUv).g;
-                    float b = texture2D(tDiffuse, vUv - offset).b;
-                    gl_FragColor = vec4(r, g, b, 1.0);
-                }
-            `
-        };
-        
-        const chromaticPass = new THREE.ShaderPass(chromaticShader);
-        composer.addPass(chromaticPass);
-        
-        const createGradientBackground = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = 512;
-            canvas.height = 512;
-            const ctx = canvas.getContext('2d');
-            
-            const gradient = ctx.createLinearGradient(0, 0, 0, 512);
-            gradient.addColorStop(0, '#1a3a2e');
-            gradient.addColorStop(0.4, '#0f5233');
-            gradient.addColorStop(0.7, '#2d6a52');
-            gradient.addColorStop(1, '#4a9d83');
-            
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, 512, 512);
-            
-            const texture = new THREE.CanvasTexture(canvas);
-            scene.background = texture;
-        };
-        
-        createGradientBackground();
-        
-        class SimplePLYLoader {
-            async load(url) {
-                const response = await fetch(url);
-                const text = await response.text();
-                return this.parse(text);
+        function initWhenReady() {
+            if (typeof THREE === 'undefined') {
+                debugLog('⏳ Waiting for Three.js...');
+                setTimeout(initWhenReady, 100);
+                return;
             }
             
-            parse(text) {
-                const lines = text.split('\n');
-                let headerEnd = 0;
-                let vertexCount = 0;
-                
-                for (let i = 0; i < lines.length; i++) {
-                    if (lines[i].startsWith('element vertex')) {
-                        vertexCount = parseInt(lines[i].split(' ')[2]);
-                    }
-                    if (lines[i] === 'end_header') {
-                        headerEnd = i + 1;
-                        break;
-                    }
-                }
-                
-                const vertices = [];
-                const colors = [];
-                
-                for (let i = headerEnd; i < headerEnd + vertexCount; i++) {
-                    const parts = lines[i].trim().split(/\s+/);
-                    if (parts.length >= 6) {
-                        vertices.push(parseFloat(parts[0]), parseFloat(parts[1]), parseFloat(parts[2]));
-                        colors.push(parseInt(parts[3]) / 255, parseInt(parts[4]) / 255, parseInt(parts[5]) / 255);
-                    }
-                }
-                
-                const geometry = new THREE.BufferGeometry();
-                geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices), 3));
-                geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(colors), 3));
-                geometry.computeBoundingSphere();
-                
-                return geometry;
-            }
+            debugLog('🟢 Three.js loaded!');
+            init();
         }
         
-        let points = null;
-        let aberrationValue = { x: 0, y: 0 };
-        
-        const material = new THREE.PointsMaterial({
-            size: 0.003,
-            vertexColors: true,
-            sizeAttenuation: true,
-            transparent: true,
-            opacity: 0.8
-        });
-        
-        const loader = new SimplePLYLoader();
-        debugLog('🟡 Attempting to load Tree.ply...');
-        loader.load('Tree.ply').then(geometry => {
-            debugLog('🟢 PLY loaded! Creating 3D points...');
-            points = new THREE.Points(geometry, material);
-            geometry.center();
-            const boundingSphere = geometry.boundingSphere;
-            const scale = 1 / boundingSphere.radius;
-            points.scale.multiplyScalar(scale);
-            scene.add(points);
-            document.getElementById('loadingScreen').style.display = 'none';
-            document.getElementById('status').style.opacity = '1';
-            debugLog('✅ Ready!');
-            animate();
-        }).catch(err => {
-            debugLog('🔴 ERROR: ' + err.message);
-            debugLog('Check: Tree.ply in root?');
-            console.error('Failed to load PLY:', err);
-            document.getElementById('loadingScreen').innerHTML = 'Error loading tree splat<br><small>Check that Tree.ply is in the same directory</small>';
-        });
-        
-        let mouseX = 0;
-        let mouseY = 0;
-        let targetX = 0;
-        let targetY = 0;
-        
-        document.addEventListener('mousemove', (e) => {
-            targetX = (e.clientX / window.innerWidth) * 2 - 1;
-            targetY = -(e.clientY / window.innerHeight) * 2 + 1;
-        });
-        
-        document.addEventListener('touchmove', (e) => {
-            if (e.touches.length > 0) {
-                const touch = e.touches[0];
-                targetX = (touch.clientX / window.innerWidth) * 2 - 1;
-                targetY = -(touch.clientY / window.innerHeight) * 2 + 1;
-            }
-        }, { passive: true });
-        
-        const animate = () => {
-            requestAnimationFrame(animate);
-            mouseX += (targetX - mouseX) * 0.08;
-            mouseY += (targetY - mouseY) * 0.08;
+        function init() {
+            let scene, camera, renderer, composer, chromaticPass, points, animate;
+            let aberrationValue = { x: 0, y: 0 };
+            let mouseX = 0;
+            let mouseY = 0;
+            let targetX = 0;
+            let targetY = 0;
             
-            if (points) {
-                points.rotation.y = mouseX * 1.5;
-                points.rotation.x = mouseY * 0.8;
-                points.rotation.y += 0.0002;
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+            
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setClearColor(0x000000);
+            document.body.appendChild(renderer.domElement);
+            
+            camera.position.z = 2;
+            
+            composer = new THREE.EffectComposer(renderer);
+            const renderPass = new THREE.RenderPass(scene, camera);
+            composer.addPass(renderPass);
+            
+            const chromaticShader = {
+                uniforms: {
+                    tDiffuse: { value: null },
+                    aberration: { value: new THREE.Vector2(0, 0) },
+                    intensity: { value: 0 }
+                },
+                vertexShader: `
+                    varying vec2 vUv;
+                    void main() {
+                        vUv = uv;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform sampler2D tDiffuse;
+                    uniform vec2 aberration;
+                    uniform float intensity;
+                    varying vec2 vUv;
+                    
+                    void main() {
+                        vec2 offset = aberration * intensity * 0.01;
+                        float r = texture2D(tDiffuse, vUv + offset).r;
+                        float g = texture2D(tDiffuse, vUv).g;
+                        float b = texture2D(tDiffuse, vUv - offset).b;
+                        gl_FragColor = vec4(r, g, b, 1.0);
+                    }
+                `
+            };
+            
+            chromaticPass = new THREE.ShaderPass(chromaticShader);
+            composer.addPass(chromaticPass);
+            
+            const createGradientBackground = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 512;
+                canvas.height = 512;
+                const ctx = canvas.getContext('2d');
+                
+                const gradient = ctx.createLinearGradient(0, 0, 0, 512);
+                gradient.addColorStop(0, '#1a3a2e');
+                gradient.addColorStop(0.4, '#0f5233');
+                gradient.addColorStop(0.7, '#2d6a52');
+                gradient.addColorStop(1, '#4a9d83');
+                
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, 512, 512);
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                scene.background = texture;
+            };
+            
+            createGradientBackground();
+            
+            class SimplePLYLoader {
+                async load(url) {
+                    const response = await fetch(url);
+                    const text = await response.text();
+                    return this.parse(text);
+                }
+                
+                parse(text) {
+                    const lines = text.split('\n');
+                    let headerEnd = 0;
+                    let vertexCount = 0;
+                    
+                    for (let i = 0; i < lines.length; i++) {
+                        if (lines[i].startsWith('element vertex')) {
+                            vertexCount = parseInt(lines[i].split(' ')[2]);
+                        }
+                        if (lines[i] === 'end_header') {
+                            headerEnd = i + 1;
+                            break;
+                        }
+                    }
+                    
+                    const vertices = [];
+                    const colors = [];
+                    
+                    for (let i = headerEnd; i < headerEnd + vertexCount; i++) {
+                        const parts = lines[i].trim().split(/\s+/);
+                        if (parts.length >= 6) {
+                            vertices.push(parseFloat(parts[0]), parseFloat(parts[1]), parseFloat(parts[2]));
+                            colors.push(parseInt(parts[3]) / 255, parseInt(parts[4]) / 255, parseInt(parts[5]) / 255);
+                        }
+                    }
+                    
+                    const geometry = new THREE.BufferGeometry();
+                    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices), 3));
+                    geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(colors), 3));
+                    geometry.computeBoundingSphere();
+                    
+                    return geometry;
+                }
             }
             
-            aberrationValue.x = mouseX * 0.5;
-            aberrationValue.y = mouseY * 0.5;
-            chromaticPass.uniforms.aberration.value.set(aberrationValue.x, aberrationValue.y);
-            chromaticPass.uniforms.intensity.value = Math.sqrt(aberrationValue.x * aberrationValue.x + aberrationValue.y * aberrationValue.y) * 2;
+            const material = new THREE.PointsMaterial({
+                size: 0.003,
+                vertexColors: true,
+                sizeAttenuation: true,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            const loader = new SimplePLYLoader();
+            debugLog('🟡 Attempting to load Tree.ply...');
+            loader.load('Tree.ply').then(geometry => {
+                debugLog('🟢 PLY loaded! Creating 3D points...');
+                points = new THREE.Points(geometry, material);
+                geometry.center();
+                const boundingSphere = geometry.boundingSphere;
+                const scale = 1 / boundingSphere.radius;
+                points.scale.multiplyScalar(scale);
+                scene.add(points);
+                document.getElementById('loadingScreen').style.display = 'none';
+                document.getElementById('status').style.opacity = '1';
+                debugLog('✅ Ready!');
+                animate();
+            }).catch(err => {
+                debugLog('🔴 ERROR: ' + err.message);
+                debugLog('Check: Tree.ply in root?');
+                console.error('Failed to load PLY:', err);
+                document.getElementById('loadingScreen').innerHTML = 'Error loading tree splat<br><small>Check that Tree.ply is in the same directory</small>';
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                targetX = (e.clientX / window.innerWidth) * 2 - 1;
+                targetY = -(e.clientY / window.innerHeight) * 2 + 1;
+            });
+            
+            document.addEventListener('touchmove', (e) => {
+                if (e.touches.length > 0) {
+                    const touch = e.touches[0];
+                    targetX = (touch.clientX / window.innerWidth) * 2 - 1;
+                    targetY = -(touch.clientY / window.innerHeight) * 2 + 1;
+                }
+            }, { passive: true });
+            
+            animate = () => {
+                requestAnimationFrame(animate);
+                mouseX += (targetX - mouseX) * 0.08;
+                mouseY += (targetY - mouseY) * 0.08;
+                
+                if (points) {
+                    points.rotation.y = mouseX * 1.5;
+                    points.rotation.x = mouseY * 0.8;
+                    points.rotation.y += 0.0002;
+                }
+                
+                aberrationValue.x = mouseX * 0.5;
+                aberrationValue.y = mouseY * 0.5;
+                chromaticPass.uniforms.aberration.value.set(aberrationValue.x, aberrationValue.y);
+                chromaticPass.uniforms.intensity.value = Math.sqrt(aberrationValue.x * aberrationValue.x + aberrationValue.y * aberrationValue.y) * 2;
+                
+                composer.render();
+            };
+            
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                composer.setSize(window.innerWidth, window.innerHeight);
+            });
             
             composer.render();
-        };
+        }
         
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            composer.setSize(window.innerWidth, window.innerHeight);
-        });
-        
-        composer.render();
+        initWhenReady();
     </script>
 </body>
 </html>
