@@ -1,25 +1,285 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AR.js Marker-Based AR Demo</title>
-  <!-- Include A-Frame library -->
-  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-  <!-- Include AR.js library -->
-  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
-  <style>
-    body { margin: 0; overflow: hidden; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tree Splat Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+
+        #canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #info {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 12px;
+            line-height: 1.6;
+            pointer-events: none;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        }
+
+        #status {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            letter-spacing: 0.5px;
+            pointer-events: none;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 16px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            margin-left: 8px;
+            animation: dot-pulse 1.5s infinite;
+        }
+
+        @keyframes dot-pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+    </style>
 </head>
 <body>
-  <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
-    <!-- Define the marker using your custom .patt file -->
-    <a-marker preset="hiro">
-        <a-box position="0 0.5 0" material="color: yellow;"></a-box>
-      </a-marker>
-    <!-- Optionally, add a camera -->
-    <a-entity camera></a-entity>
-  </a-scene>
+    <div class="loading" id="loadingScreen">Loading tree splat</div>
+    <div id="status">Move mouse or touch to explore</div>
+    <div id="info">
+        <div>🌳 Tree Splat Viewer</div>
+        <div style="font-size: 11px; margin-top: 6px; opacity: 0.5;">Mouse: pan • Touch: move</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@r128/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@r128/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@r128/examples/js/postprocessing/ShaderPass.js"></script>
+
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setClearColor(0x000000);
+        document.body.appendChild(renderer.domElement);
+        
+        camera.position.z = 2;
+        
+        const composer = new THREE.EffectComposer(renderer);
+        const renderPass = new THREE.RenderPass(scene, camera);
+        composer.addPass(renderPass);
+        
+        const chromaticShader = {
+            uniforms: {
+                tDiffuse: { value: null },
+                aberration: { value: new THREE.Vector2(0, 0) },
+                intensity: { value: 0 }
+            },
+            vertexShader: `
+                varying vec2 vUv;
+                void main() {
+                    vUv = uv;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform sampler2D tDiffuse;
+                uniform vec2 aberration;
+                uniform float intensity;
+                varying vec2 vUv;
+                
+                void main() {
+                    vec2 offset = aberration * intensity * 0.01;
+                    
+                    float r = texture2D(tDiffuse, vUv + offset).r;
+                    float g = texture2D(tDiffuse, vUv).g;
+                    float b = texture2D(tDiffuse, vUv - offset).b;
+                    
+                    gl_FragColor = vec4(r, g, b, 1.0);
+                }
+            `
+        };
+        
+        const chromaticPass = new THREE.ShaderPass(chromaticShader);
+        composer.addPass(chromaticPass);
+        
+        const createGradientBackground = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            
+            const gradient = ctx.createLinearGradient(0, 0, 0, 512);
+            gradient.addColorStop(0, '#1a3a2e');
+            gradient.addColorStop(0.4, '#0f5233');
+            gradient.addColorStop(0.7, '#2d6a52');
+            gradient.addColorStop(1, '#4a9d83');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 512, 512);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            scene.background = texture;
+        };
+        
+        createGradientBackground();
+        
+        class SimplePLYLoader {
+            async load(url) {
+                const response = await fetch(url);
+                const text = await response.text();
+                return this.parse(text);
+            }
+            
+            parse(text) {
+                const lines = text.split('\n');
+                let headerEnd = 0;
+                let vertexCount = 0;
+                
+                for (let i = 0; i < lines.length; i++) {
+                    if (lines[i].startsWith('element vertex')) {
+                        vertexCount = parseInt(lines[i].split(' ')[2]);
+                    }
+                    if (lines[i] === 'end_header') {
+                        headerEnd = i + 1;
+                        break;
+                    }
+                }
+                
+                const vertices = [];
+                const colors = [];
+                
+                for (let i = headerEnd; i < headerEnd + vertexCount; i++) {
+                    const parts = lines[i].trim().split(/\s+/);
+                    if (parts.length >= 6) {
+                        vertices.push(parseFloat(parts[0]), parseFloat(parts[1]), parseFloat(parts[2]));
+                        colors.push(
+                            parseInt(parts[3]) / 255,
+                            parseInt(parts[4]) / 255,
+                            parseInt(parts[5]) / 255
+                        );
+                    }
+                }
+                
+                const geometry = new THREE.BufferGeometry();
+                geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices), 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(colors), 3));
+                geometry.computeBoundingSphere();
+                
+                return geometry;
+            }
+        }
+        
+        let points = null;
+        let aberrationValue = { x: 0, y: 0 };
+        
+        const material = new THREE.PointsMaterial({
+            size: 0.003,
+            vertexColors: true,
+            sizeAttenuation: true,
+            transparent: true,
+            opacity: 0.8
+        });
+        
+        const loader = new SimplePLYLoader();
+        loader.load('Tree.ply').then(geometry => {
+            points = new THREE.Points(geometry, material);
+            geometry.center();
+            const boundingSphere = geometry.boundingSphere;
+            const scale = 1 / boundingSphere.radius;
+            points.scale.multiplyScalar(scale);
+            scene.add(points);
+            document.getElementById('loadingScreen').style.display = 'none';
+            document.getElementById('status').style.opacity = '1';
+            animate();
+        }).catch(err => {
+            console.error('Failed to load PLY:', err);
+            document.getElementById('loadingScreen').innerHTML = 'Error loading tree splat<br><small>Check that Tree.ply is in the same directory</small>';
+        });
+        
+        let mouseX = 0;
+        let mouseY = 0;
+        let targetX = 0;
+        let targetY = 0;
+        
+        document.addEventListener('mousemove', (e) => {
+            targetX = (e.clientX / window.innerWidth) * 2 - 1;
+            targetY = -(e.clientY / window.innerHeight) * 2 + 1;
+        });
+        
+        document.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 0) {
+                const touch = e.touches[0];
+                targetX = (touch.clientX / window.innerWidth) * 2 - 1;
+                targetY = -(touch.clientY / window.innerHeight) * 2 + 1;
+            }
+        }, { passive: true });
+        
+        const animate = () => {
+            requestAnimationFrame(animate);
+            
+            mouseX += (targetX - mouseX) * 0.08;
+            mouseY += (targetY - mouseY) * 0.08;
+            
+            if (points) {
+                points.rotation.y = mouseX * 1.5;
+                points.rotation.x = mouseY * 0.8;
+                points.rotation.y += 0.0002;
+            }
+            
+            aberrationValue.x = mouseX * 0.5;
+            aberrationValue.y = mouseY * 0.5;
+            chromaticPass.uniforms.aberration.value.set(aberrationValue.x, aberrationValue.y);
+            chromaticPass.uniforms.intensity.value = Math.sqrt(aberrationValue.x * aberrationValue.x + aberrationValue.y * aberrationValue.y) * 2;
+            
+            composer.render();
+        };
+        
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        composer.render();
+    </script>
 </body>
 </html>
