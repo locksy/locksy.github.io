@@ -84,6 +84,7 @@
         <div>🌳 Tree Splat Viewer</div>
         <div style="font-size: 11px; margin-top: 6px; opacity: 0.5;">Mouse: pan • Touch: move</div>
     </div>
+    <div id="debug" style="position: fixed; top: 80px; left: 20px; background: rgba(0,0,0,0.9); color: #0f0; font-family: monospace; font-size: 10px; padding: 10px; max-width: 300px; max-height: 400px; overflow-y: auto; z-index: 100; border: 1px solid #0f0;"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@r128/examples/js/postprocessing/EffectComposer.js"></script>
@@ -91,6 +92,17 @@
     <script src="https://cdn.jsdelivr.net/npm/three@r128/examples/js/postprocessing/ShaderPass.js"></script>
 
     <script>
+        const debugLog = (msg) => {
+            console.log(msg);
+            const debugDiv = document.getElementById('debug');
+            if (debugDiv) {
+                debugDiv.innerHTML += msg + '<br>';
+                debugDiv.scrollTop = debugDiv.scrollHeight;
+            }
+        };
+        
+        debugLog('🟢 Script starting...');
+        
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
@@ -127,11 +139,9 @@
                 
                 void main() {
                     vec2 offset = aberration * intensity * 0.01;
-                    
                     float r = texture2D(tDiffuse, vUv + offset).r;
                     float g = texture2D(tDiffuse, vUv).g;
                     float b = texture2D(tDiffuse, vUv - offset).b;
-                    
                     gl_FragColor = vec4(r, g, b, 1.0);
                 }
             `
@@ -190,11 +200,7 @@
                     const parts = lines[i].trim().split(/\s+/);
                     if (parts.length >= 6) {
                         vertices.push(parseFloat(parts[0]), parseFloat(parts[1]), parseFloat(parts[2]));
-                        colors.push(
-                            parseInt(parts[3]) / 255,
-                            parseInt(parts[4]) / 255,
-                            parseInt(parts[5]) / 255
-                        );
+                        colors.push(parseInt(parts[3]) / 255, parseInt(parts[4]) / 255, parseInt(parts[5]) / 255);
                     }
                 }
                 
@@ -219,7 +225,9 @@
         });
         
         const loader = new SimplePLYLoader();
+        debugLog('🟡 Attempting to load Tree.ply...');
         loader.load('Tree.ply').then(geometry => {
+            debugLog('🟢 PLY loaded! Creating 3D points...');
             points = new THREE.Points(geometry, material);
             geometry.center();
             const boundingSphere = geometry.boundingSphere;
@@ -228,8 +236,11 @@
             scene.add(points);
             document.getElementById('loadingScreen').style.display = 'none';
             document.getElementById('status').style.opacity = '1';
+            debugLog('✅ Ready!');
             animate();
         }).catch(err => {
+            debugLog('🔴 ERROR: ' + err.message);
+            debugLog('Check: Tree.ply in root?');
             console.error('Failed to load PLY:', err);
             document.getElementById('loadingScreen').innerHTML = 'Error loading tree splat<br><small>Check that Tree.ply is in the same directory</small>';
         });
@@ -254,7 +265,6 @@
         
         const animate = () => {
             requestAnimationFrame(animate);
-            
             mouseX += (targetX - mouseX) * 0.08;
             mouseY += (targetY - mouseY) * 0.08;
             
