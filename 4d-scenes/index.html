@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>4D Scenes — Dan Pedersen</title>
+  <meta name="description" content="A scroll-driven flythrough of four spatiotemporal scenes." />
+  <link rel="icon" href="../favicon.png" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/loaders/OBJLoader.js"></script>
+</head>
+<body>
+
+  <a class="home-link" href="../index.html">&larr; Dan Pedersen</a>
+
+  <div class="progress-rail"><div class="progress-fill" id="progress-fill"></div></div>
+
+  <canvas id="scene-canvas"></canvas>
+
+  <div class="scroll-track">
+
+    <section class="beat" data-beat="0">
+      <div class="beat-inner">
+        <span class="beat-eyebrow">I. Dawn</span>
+        <h1 class="beat-title">Arrival</h1>
+        <p class="beat-copy">A skyline rendered in first light. Scroll to move forward through space — and through time.</p>
+      </div>
+    </section>
+
+    <section class="beat" data-beat="1">
+      <div class="beat-inner">
+        <span class="beat-eyebrow">II. Day</span>
+        <h1 class="beat-title">The Sphere</h1>
+        <p class="beat-copy">A body in full sun, turning slowly on its own axis, indifferent to the hour.</p>
+      </div>
+    </section>
+
+    <section class="beat" data-beat="2">
+      <div class="beat-inner">
+        <span class="beat-eyebrow">III. Dusk</span>
+        <h1 class="beat-title">Crystalline Drift</h1>
+        <p class="beat-copy">Fractured light catching on mineral facets as the sky cools behind them.</p>
+      </div>
+    </section>
+
+    <section class="beat" data-beat="3">
+      <div class="beat-inner">
+        <span class="beat-eyebrow">IV. Night</span>
+        <h1 class="beat-title">Deep Field</h1>
+        <p class="beat-copy">Everything close falls away. What's left is distance, and a lot of it.</p>
+      </div>
+    </section>
+
+    <section class="outro">
+      <div class="beat-inner">
+        <span class="beat-eyebrow">End of the line</span>
+        <h1 class="beat-title">Four scenes, one continuous moment.</h1>
+        <p class="beat-copy"><a href="../index.html">Back to the rest of the work &rarr;</a></p>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="scroll-hint" id="scroll-hint">Scroll to travel</div>
+
+  <script src="main.js"></script>
+</body>
+</html>
