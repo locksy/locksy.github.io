@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>SUBSTRUCTURE // AEROGEL CORE</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Pirata+One&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bone:#d9d3c3;
+    --concrete:#726e66;
+    --rebar:#a9633a;
+    --aerogel:#9fe3e8;
+    --blood:#7a2c22;
+    --ink:#08080a;
+    --line: rgba(217,211,195,0.45);
+  }
+  *{ box-sizing:border-box; }
+  html,body{
+    margin:0; padding:0; background:var(--ink); color:var(--bone);
+    font-family:'Share Tech Mono', monospace;
+    overflow-x:hidden;
+  }
+  .gothic{ font-family:'Pirata One', 'UnifrakturMaguntia', serif; }
+
+  #scene{ position:fixed; top:0; left:0; width:100vw; height:100vh; display:block; z-index:0; }
+
+  #grain{
+    position:fixed; inset:0; z-index:5; pointer-events:none;
+    opacity:.07; mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+  #vignette{
+    position:fixed; inset:0; z-index:4; pointer-events:none;
+    background:radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,0.65) 100%);
+  }
+
+  #boot{
+    position:fixed; inset:0; z-index:50; background:var(--ink);
+    display:flex; align-items:center; justify-content:center;
+    letter-spacing:.3em; font-size:13px; color:var(--bone);
+    transition:opacity 1s ease; text-transform:uppercase;
+  }
+  #boot span{ opacity:.6; color:var(--rebar); }
+  #boot.hidden{ opacity:0; pointer-events:none; }
+
+  .frame{ position:fixed; inset:0; z-index:6; pointer-events:none; }
+  .frame .tick{ position:absolute; background:var(--line); }
+  .frame .tick.top{ top:18px; height:1px; }
+  .frame .tick.bot{ bottom:18px; height:1px; }
+  .frame .corner{ position:absolute; width:20px; height:20px; }
+  .frame .corner::before,.frame .corner::after{ content:""; position:absolute; background:var(--bone); }
+  .frame .corner::before{ width:100%; height:1px; top:0; left:0; }
+  .frame .corner::after{ width:1px; height:100%; top:0; left:0; }
+  .frame .corner.tl{ top:18px; left:18px; }
+  .frame .corner.tr{ top:18px; right:18px; transform:scaleX(-1); }
+  .frame .corner.bl{ bottom:18px; left:18px; transform:scaleY(-1); }
+  .frame .corner.br{ bottom:18px; right:18px; transform:scale(-1,-1); }
+  .frame .brand{ position:absolute; top:26px; left:48px; font-size:11px; letter-spacing:.25em; opacity:.75; }
+  .frame .coords{ position:absolute; top:26px; right:48px; font-size:11px; letter-spacing:.15em; opacity:.55; text-align:right; }
+
+  .dial{ position:fixed; right:38px; bottom:38px; z-index:7; width:64px; height:64px; }
+  .dial svg{ width:100%; height:100%; transform:rotate(-90deg); }
+  .dial circle{ fill:none; stroke-width:1; }
+  .dial .track{ stroke:rgba(217,211,195,.18); }
+  .dial .fill{ stroke:var(--aerogel); stroke-linecap:round; transition:stroke-dashoffset .1s linear; }
+  .dial .pct{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:10px; letter-spacing:.1em; }
+
+  nav.dots{ position:fixed; left:38px; top:50%; transform:translateY(-50%); z-index:7; display:flex; flex-direction:column; gap:18px; }
+  nav.dots .d{ width:7px; height:7px; border:1px solid var(--line); border-radius:50%; transition:all .3s ease; }
+  nav.dots .d.active{ background:var(--aerogel); border-color:var(--aerogel); box-shadow:0 0 8px var(--aerogel); }
+
+  main{ position:relative; z-index:4; }
+  section{ position:relative; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:12vh 8vw; }
+
+  .panel{
+    position:relative; max-width:580px; width:100%;
+    border:1px solid var(--line);
+    background:linear-gradient(180deg, rgba(8,8,10,.4), rgba(8,8,10,.62));
+    backdrop-filter: blur(1px);
+    padding:34px 38px;
+    opacity:0; transform:translateY(24px);
+    transition:opacity .9s ease, transform .9s ease;
+  }
+  section.active .panel{ opacity:1; transform:translateY(0); }
+
+  .panel .tag{ position:absolute; top:-11px; left:24px; background:var(--ink); padding:0 10px; font-size:11px; letter-spacing:.3em; color:var(--rebar); text-transform:uppercase; }
+  .panel .idx{ position:absolute; top:-11px; right:24px; background:var(--ink); padding:0 10px; font-size:11px; letter-spacing:.2em; opacity:.55; }
+  .panel h1,.panel h2{
+    font-weight:400; letter-spacing:.03em;
+    margin:8px 0 18px; font-size:clamp(30px,4.6vw,46px);
+    border-bottom:1px solid var(--line); padding-bottom:16px;
+    color:var(--bone); text-shadow:0 0 18px rgba(159,227,232,0.15);
+  }
+  .panel p{ line-height:1.75; font-size:14px; color:var(--bone); opacity:.88; margin:0 0 12px; }
+  .panel a{ color:var(--aerogel); text-decoration:none; border-bottom:1px dotted var(--aerogel); }
+  .panel a:hover{ color:var(--bone); border-color:var(--bone); }
+
+  .glyphs{ display:flex; gap:10px; margin-top:20px; font-size:11px; letter-spacing:.1em; opacity:.55; flex-wrap:wrap; }
+  .glyphs span{ border:1px solid var(--line); padding:3px 8px; }
+
+  .archive{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; }
+  .archive li{ display:flex; justify-content:space-between; gap:16px; border-bottom:1px dashed rgba(217,211,195,.25); padding-bottom:8px; font-size:13px; }
+  .archive li em{ font-style:normal; opacity:.5; }
+
+  .scrollcue{ position:absolute; bottom:26px; left:50%; transform:translateX(-50%); font-size:10px; letter-spacing:.3em; opacity:.5; display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .scrollcue .stem{ width:1px; height:26px; background:linear-gradient(var(--bone), transparent); animation:drop 1.8s infinite; }
+  @keyframes drop{ 0%{opacity:0; transform:translateY(-6px);} 40%{opacity:1;} 100%{opacity:0; transform:translateY(10px);} }
+
+  @media (max-width: 640px){
+    .frame .brand,.frame .coords{ font-size:9px; }
+    nav.dots{ left:14px; }
+    .panel{ padding:24px 22px; }
+  }
+</style>
+</head>
+<body>
+
+  <div id="boot"><span>⌐</span>&nbsp; SURVEYING SUBSTRUCTURE — CORE UNSTABLE</div>
+
+  <canvas id="scene"></canvas>
+  <div id="vignette"></div>
+  <div id="grain"></div>
+
+  <div class="frame">
+    <div class="tick top" style="left:18px; right:18px;"></div>
+    <div class="tick bot" style="left:18px; right:18px;"></div>
+    <div class="corner tl"></div>
+    <div class="corner tr"></div>
+    <div class="corner bl"></div>
+    <div class="corner br"></div>
+    <div class="brand">SAWWAVE // LOCKSY</div>
+    <div class="coords" id="coords">SITE 07 — DECOMMISSIONED<br>AEROGEL CORE: CONTAINED</div>
+  </div>
+
+  <div class="dial">
+    <svg viewBox="0 0 64 64">
+      <circle class="track" cx="32" cy="32" r="28"></circle>
+      <circle class="fill" id="dialFill" cx="32" cy="32" r="28" stroke-dasharray="175.9" stroke-dashoffset="175.9"></circle>
+    </svg>
+    <div class="pct" id="dialPct">00</div>
+  </div>
+
+  <nav class="dots" id="dots">
+    <div class="d active"></div>
+    <div class="d"></div>
+    <div class="d"></div>
+    <div class="d"></div>
+    <div class="d"></div>
+  </nav>
+
+  <main>
+    <section id="s0" class="active">
+      <div class="panel">
+        <span class="tag">Survey</span>
+        <span class="idx">01 / 05</span>
+        <h1 class="gothic">Substructure</h1>
+        <p>Raw concrete, poured once and never finished pouring. Rebar reaching out of broken edges like something trying to grow back. And held inside it, quietly glowing — aerogel, the lightest solid ever cast, doing the work the concrete forgot how to do.</p>
+        <p>Scroll to descend into the ruin.</p>
+        <div class="glyphs"><span>STRUCTURAL: FAILING</span><span>CORE: STABLE</span><span>ATMOSPHERE: HEAVY</span></div>
+      </div>
+      <div class="scrollcue"><span>SCROLL</span><div class="stem"></div></div>
+    </section>
+
+    <section id="s1">
+      <div class="panel">
+        <span class="tag">Origin</span>
+        <span class="idx">02 / 05</span>
+        <h2 class="gothic">Sawwave</h2>
+        <p>Work poured out of Northern California in the same way — brutal first, ornament later, if ever. Branding, fliers, three-dimensional sketches for rooms that stopped paying rent years ago.</p>
+        <p>Some structures are meant to be abandoned. That's when they get interesting.</p>
+        <div class="glyphs"><span>DESIGN</span><span>WEB</span><span>3D</span><span>PRINT</span></div>
+      </div>
+    </section>
+
+    <section id="s2">
+      <div class="panel">
+        <span class="tag">Archive Nodes</span>
+        <span class="idx">03 / 05</span>
+        <h2 class="gothic">Field Sites</h2>
+        <ul class="archive">
+          <li><a href="../black-rock/index.html">black-rock</a><em>playa transmission</em></li>
+          <li><a href="../loot/index.html">loot</a><em>mouse parallax study</em></li>
+          <li><a href="../ar-project/index.html">ar-project</a><em>marker-tracked AR tree</em></li>
+          <li><a href="../Starfield-Mobile/dist/index.html">starfield-mobile</a><em>tilt-driven starfield</em></li>
+          <li><a href="../acidhaus/index.html">acidhaus</a><em>signal / static</em></li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="s3">
+      <div class="panel">
+        <span class="tag">Sound</span>
+        <span class="idx">04 / 05</span>
+        <h2 class="gothic">Minutia &amp; Locksy</h2>
+        <p>Sets built for spaces like this one — poured floors, exposed columns, a sound system loud enough to find every crack in the concrete. KDVS 90.3FM, warehouse fundraisers, rooms that don't exist anymore.</p>
+        <div class="glyphs"><span>DJ</span><span>LIVE</span><span>KDVS 90.3FM</span></div>
+      </div>
+    </section>
+
+    <section id="s4">
+      <div class="panel">
+        <span class="tag">Core Access</span>
+        <span class="idx">05 / 05</span>
+        <h2 class="gothic">Reach the Core</h2>
+        <p>The aerogel doesn't ask questions. Send something anyway.</p>
+        <p><a href="../contact.html">→ open a channel</a> &nbsp;·&nbsp; <a href="../index.html">← return to the archive</a></p>
+        <div class="glyphs"><span>END OF SITE</span></div>
+      </div>
+    </section>
+  </main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  var canvas = document.getElementById('scene');
+  var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha:false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  var scene = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 2000);
+  camera.position.set(0, 10, 46);
+
+  var FOG_NEAR = new THREE.Color(0x2b2a28);
+  var FOG_FAR = new THREE.Color(0x08090a);
+  scene.fog = new THREE.FogExp2(FOG_NEAR.getHex(), 0.020);
+  renderer.setClearColor(FOG_NEAR.getHex());
+
+  var ambient = new THREE.AmbientLight(0x8a8a88, 0.55);
+  scene.add(ambient);
+  var sky = new THREE.DirectionalLight(0xb9c2c4, 0.4);
+  sky.position.set(-20, 50, 30);
+  scene.add(sky);
+  var coreLight = new THREE.PointLight(0x9fe3e8, 1.6, 120, 2);
+  coreLight.position.set(0, 10, -40);
+  scene.add(coreLight);
+
+  // concrete ground texture
+  function makeConcreteTexture(){
+    var c = document.createElement('canvas');
+    c.width = c.height = 1024;
+    var ctx = c.getContext('2d');
+    ctx.fillStyle = '#3a3833';
+    ctx.fillRect(0,0,c.width,c.height);
+    ctx.fillStyle = 'rgba(0,0,0,0.08)';
+    for(var i=0;i<3000;i++){
+      ctx.fillRect(Math.random()*c.width, Math.random()*c.height, 1, 1);
+    }
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    ctx.lineWidth = 1.5;
+    for(var i=0;i<10;i++){
+      ctx.beginPath();
+      var x = Math.random()*c.width, y = 0;
+      ctx.moveTo(x,y);
+      for(var s=0;s<8;s++){
+        x += (Math.random()-0.5)*90;
+        y += c.height/8;
+        ctx.lineTo(x,y);
+      }
+      ctx.stroke();
+    }
+    ctx.strokeStyle = 'rgba(169,99,58,0.18)';
+    for(var i=0;i<40;i++){
+      var x = Math.random()*c.width, y = Math.random()*c.height;
+      ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+Math.random()*30-15, y+Math.random()*30-15); ctx.stroke();
+    }
+    var tex = new THREE.CanvasTexture(c);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(20,20);
+    return tex;
+  }
+
+  var ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(1400,1400),
+    new THREE.MeshStandardMaterial({ map: makeConcreteTexture(), roughness:1, metalness:0 })
+  );
+  ground.rotation.x = -Math.PI/2;
+  scene.add(ground);
+
+  // brutalist megastructure — stacked, staggered slabs forming a broken ziggurat
+  var concreteMat = new THREE.MeshStandardMaterial({ color:0x55534f, roughness:0.95, metalness:0.05, flatShading:true });
+  var darkMat = new THREE.MeshStandardMaterial({ color:0x1c1b19, roughness:1 });
+  var structure = new THREE.Group();
+  var tiers = 7;
+  for(var t=0;t<tiers;t++){
+    var w = 34 - t*3.6;
+    var d = 24 - t*2.6;
+    var h = 6.5;
+    var y = t*h;
+    var geo = new THREE.BoxGeometry(Math.max(w,4), h, Math.max(d,4));
+    var mesh = new THREE.Mesh(geo, concreteMat);
+    mesh.position.set((Math.random()-0.5)*2.4, y + h/2, -70 + (Math.random()-0.5)*1.5);
+    mesh.rotation.y = (Math.random()-0.5)*0.05;
+    structure.add(mesh);
+
+    // recessed dark window slit
+    if(t < tiers-1){
+      var slit = new THREE.Mesh(new THREE.BoxGeometry(Math.max(w,4)*0.7, 1.6, 1), darkMat);
+      slit.position.set(mesh.position.x, y + h*0.75, mesh.position.z + Math.max(d,4)/2 + 0.1);
+      structure.add(slit);
+    }
+  }
+  scene.add(structure);
+
+  // rebar spikes at broken edges
+  var rebarMat = new THREE.MeshStandardMaterial({ color:0xa9633a, roughness:0.6, metalness:0.4 });
+  for(var i=0;i<26;i++){
+    var len = 2 + Math.random()*4;
+    var rebar = new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,len,5), rebarMat);
+    var angleTier = Math.floor(Math.random()*tiers);
+    var w = 34 - angleTier*3.6;
+    rebar.position.set((Math.random()-0.5)*w*0.9, angleTier*6.5 + Math.random()*3, -70 + (Math.random()-0.5)*20);
+    rebar.rotation.set((Math.random()-0.5)*1.2, Math.random()*Math.PI, (Math.random()-0.5)*1.2);
+    scene.add(rebar);
+  }
+
+  // rubble at the base
+  var rubbleMat = new THREE.MeshStandardMaterial({ color:0x46443f, roughness:1, flatShading:true });
+  for(var i=0;i<30;i++){
+    var g = new THREE.BoxGeometry(0.6+Math.random()*2.4, 0.5+Math.random()*1.8, 0.6+Math.random()*2);
+    var m = new THREE.Mesh(g, rubbleMat);
+    var side = Math.random()<0.5?-1:1;
+    m.position.set(side*(16+Math.random()*40), 0.4+Math.random(), -Math.random()*150+10);
+    m.rotation.set(Math.random(), Math.random()*Math.PI, Math.random());
+    scene.add(m);
+  }
+
+  // distant fog-hidden silhouettes for depth
+  var silhouetteMat = new THREE.MeshBasicMaterial({ color:0x14140f, fog:true });
+  for(var i=0;i<8;i++){
+    var g = new THREE.BoxGeometry(10+Math.random()*14, 20+Math.random()*30, 8);
+    var m = new THREE.Mesh(g, silhouetteMat);
+    m.position.set((Math.random()-0.5)*260, m.geometry.parameters.height/2, -180 - Math.random()*160);
+    scene.add(m);
+  }
+
+  // aerogel cores — translucent glowing blocks fused into the ruin
+  var aerogelGroup = new THREE.Group();
+  var aerogelSpots = [
+    { pos:new THREE.Vector3(6, 8, -55), s:4.2 },
+    { pos:new THREE.Vector3(-9, 16, -62), s:3.2 },
+    { pos:new THREE.Vector3(2, 3, -38), s:5.6 }
+  ];
+  aerogelSpots.forEach(function(spot){
+    var mat = new THREE.MeshPhysicalMaterial({
+      color:0x9fe3e8, transparent:true, opacity:0.28,
+      roughness:0.15, metalness:0, emissive:0x9fe3e8, emissiveIntensity:0.35
+    });
+    var mesh = new THREE.Mesh(new THREE.IcosahedronGeometry(spot.s, 1), mat);
+    mesh.position.copy(spot.pos);
+    aerogelGroup.add(mesh);
+
+    var rim = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(spot.s*1.04, 1),
+      new THREE.MeshBasicMaterial({ color:0x9fe3e8, wireframe:true, transparent:true, opacity:0.35 })
+    );
+    rim.position.copy(spot.pos);
+    aerogelGroup.add(rim);
+
+    var glow = new THREE.PointLight(0x9fe3e8, 1.1, spot.s*9, 2);
+    glow.position.copy(spot.pos);
+    aerogelGroup.add(glow);
+  });
+  scene.add(aerogelGroup);
+
+  // haze particles around aerogel cores
+  var hazeGeo = new THREE.BufferGeometry();
+  var hazeCount = 500;
+  var hazePos = new Float32Array(hazeCount*3);
+  for(var i=0;i<hazeCount;i++){
+    var spot = aerogelSpots[i % aerogelSpots.length].pos;
+    hazePos[i*3] = spot.x + (Math.random()-0.5)*10;
+    hazePos[i*3+1] = spot.y + (Math.random()-0.5)*10;
+    hazePos[i*3+2] = spot.z + (Math.random()-0.5)*10;
+  }
+  hazeGeo.setAttribute('position', new THREE.BufferAttribute(hazePos,3));
+  var haze = new THREE.Points(hazeGeo, new THREE.PointsMaterial({ color:0x9fe3e8, size:0.5, transparent:true, opacity:0.4, blending:THREE.AdditiveBlending }));
+  scene.add(haze);
+
+  // ash / dust drifting through the ruin
+  var dustGeo = new THREE.BufferGeometry();
+  var dustCount = 700;
+  var dustPos = new Float32Array(dustCount*3);
+  for(var i=0;i<dustCount;i++){
+    dustPos[i*3] = (Math.random()-0.5)*220;
+    dustPos[i*3+1] = Math.random()*30;
+    dustPos[i*3+2] = -Math.random()*200+20;
+  }
+  dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos,3));
+  var dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ color:0xb8b3a6, size:0.3, transparent:true, opacity:0.3 }));
+  scene.add(dust);
+
+  function onResize(){
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+  window.addEventListener('resize', onResize);
+
+  var progress = 0;
+  function computeProgress(){
+    var max = document.documentElement.scrollHeight - window.innerHeight;
+    progress = max > 0 ? Math.min(Math.max(window.scrollY / max, 0), 1) : 0;
+  }
+  window.addEventListener('scroll', computeProgress, { passive:true });
+  computeProgress();
+
+  var mouse = { x:0, y:0 };
+  window.addEventListener('mousemove', function(e){
+    mouse.x = (e.clientX / window.innerWidth - 0.5);
+    mouse.y = (e.clientY / window.innerHeight - 0.5);
+  });
+
+  var clock = new THREE.Clock();
+
+  function animate(){
+    requestAnimationFrame(animate);
+    var t = clock.getElapsedTime();
+
+    var zStart = 46, zEnd = -50;
+    var camZ = zStart + (zEnd - zStart) * progress;
+    var camY = 10 - progress*3 + Math.sin(t*0.25)*0.2;
+    camera.position.x += (mouse.x*5 - camera.position.x) * 0.03;
+    camera.position.z += (camZ - camera.position.z) * 0.06;
+    camera.position.y += (camY - camera.position.y) * 0.06;
+    camera.lookAt(0, 8 - progress*2, -60);
+
+    var fogT = progress;
+    scene.fog.color.copy(FOG_NEAR).lerp(FOG_FAR, fogT);
+    renderer.setClearColor(scene.fog.color.getHex());
+
+    aerogelGroup.children.forEach(function(child, i){
+      if(child.type === 'Mesh' && child.material.wireframe){
+        child.rotation.y += 0.0015 * (i%2===0?1:-1);
+        child.rotation.x += 0.001;
+      }
+      if(child.isPointLight){
+        child.intensity = 1.0 + Math.sin(t*1.4 + i)*0.3;
+      }
+    });
+
+    var hp = haze.geometry.attributes.position;
+    for(var i=0;i<hazeCount;i++){
+      hp.array[i*3+1] += 0.006;
+      if(hp.array[i*3+1] > 30) hp.array[i*3+1] = 0;
+    }
+    hp.needsUpdate = true;
+
+    var dp = dust.geometry.attributes.position;
+    for(var i=0;i<dustCount;i++){
+      dp.array[i*3] += 0.008;
+      if(dp.array[i*3] > 110) dp.array[i*3] = -110;
+    }
+    dp.needsUpdate = true;
+
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  var sections = Array.prototype.slice.call(document.querySelectorAll('section'));
+  var dots = Array.prototype.slice.call(document.querySelectorAll('nav.dots .d'));
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if(entry.isIntersecting){
+        entry.target.classList.add('active');
+        var idx = sections.indexOf(entry.target);
+        dots.forEach(function(d,i){ d.classList.toggle('active', i===idx); });
+      }
+    });
+  }, { threshold:0.4 });
+  sections.forEach(function(s){ io.observe(s); });
+
+  var dialFill = document.getElementById('dialFill');
+  var dialPct = document.getElementById('dialPct');
+  var circumference = 175.9;
+  function updateDial(){
+    computeProgress();
+    dialFill.style.strokeDashoffset = circumference * (1 - progress);
+    dialPct.textContent = String(Math.round(progress*100)).padStart(2,'0');
+  }
+  window.addEventListener('scroll', updateDial, { passive:true });
+  updateDial();
+
+  window.addEventListener('load', function(){
+    setTimeout(function(){
+      document.getElementById('boot').classList.add('hidden');
+    }, 900);
+  });
+})();
+</script>
+</body>
+</html>
