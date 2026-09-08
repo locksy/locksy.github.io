@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>BLACK ROCK // TRANSMISSION</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bone:#e7ddc6;
+    --rust:#c1682e;
+    --ink:#0a0a0c;
+    --line: rgba(231,221,198,0.55);
+  }
+  *{ box-sizing:border-box; }
+  html,body{
+    margin:0; padding:0; background:var(--ink); color:var(--bone);
+    font-family:'Share Tech Mono', monospace;
+    overflow-x:hidden;
+  }
+  #scene{
+    position:fixed; top:0; left:0; width:100vw; height:100vh; display:block; z-index:0;
+  }
+  /* faint print-grain overlay for a hand-inked feel */
+  #grain{
+    position:fixed; inset:0; z-index:5; pointer-events:none;
+    opacity:.06; mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+  #boot{
+    position:fixed; inset:0; z-index:50; background:var(--ink);
+    display:flex; align-items:center; justify-content:center;
+    letter-spacing:.3em; font-size:13px; color:var(--bone);
+    transition:opacity 1s ease; text-transform:uppercase;
+  }
+  #boot span{ opacity:.6; }
+  #boot.hidden{ opacity:0; pointer-events:none; }
+
+  .frame{ position:fixed; inset:0; z-index:6; pointer-events:none; }
+  .frame .tick{ position:absolute; background:var(--line); }
+  .frame .tick.top{ top:18px; height:1px; }
+  .frame .tick.bot{ bottom:18px; height:1px; }
+  .frame .corner{ position:absolute; width:20px; height:20px; }
+  .frame .corner::before,.frame .corner::after{ content:""; position:absolute; background:var(--bone); }
+  .frame .corner::before{ width:100%; height:1px; top:0; left:0; }
+  .frame .corner::after{ width:1px; height:100%; top:0; left:0; }
+  .frame .corner.tl{ top:18px; left:18px; }
+  .frame .corner.tr{ top:18px; right:18px; transform:scaleX(-1); }
+  .frame .corner.bl{ bottom:18px; left:18px; transform:scaleY(-1); }
+  .frame .corner.br{ bottom:18px; right:18px; transform:scale(-1,-1); }
+
+  .frame .brand{
+    position:absolute; top:26px; left:48px; font-size:11px; letter-spacing:.25em; opacity:.75;
+  }
+  .frame .coords{
+    position:absolute; top:26px; right:48px; font-size:11px; letter-spacing:.15em; opacity:.55; text-align:right;
+  }
+
+  .dial{ position:fixed; right:38px; bottom:38px; z-index:7; width:64px; height:64px; }
+  .dial svg{ width:100%; height:100%; transform:rotate(-90deg); }
+  .dial circle{ fill:none; stroke-width:1; }
+  .dial .track{ stroke:rgba(231,221,198,.18); }
+  .dial .fill{ stroke:var(--rust); stroke-linecap:round; transition:stroke-dashoffset .1s linear; }
+  .dial .pct{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:10px; letter-spacing:.1em; transform:none;
+  }
+
+  nav.dots{ position:fixed; left:38px; top:50%; transform:translateY(-50%); z-index:7; display:flex; flex-direction:column; gap:18px; }
+  nav.dots .d{ width:7px; height:7px; border:1px solid var(--line); border-radius:50%; transition:all .3s ease; }
+  nav.dots .d.active{ background:var(--rust); border-color:var(--rust); box-shadow:0 0 8px var(--rust); }
+
+  main{ position:relative; z-index:4; }
+  section{
+    position:relative;
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:12vh 8vw;
+  }
+
+  .panel{
+    position:relative; max-width:560px; width:100%;
+    border:1px solid var(--line);
+    background:linear-gradient(180deg, rgba(10,10,12,.35), rgba(10,10,12,.55));
+    backdrop-filter: blur(1px);
+    padding:34px 38px;
+    opacity:0; transform:translateY(24px);
+    transition:opacity .9s ease, transform .9s ease;
+  }
+  section.active .panel{ opacity:1; transform:translateY(0); }
+
+  .panel .tag{
+    position:absolute; top:-11px; left:24px; background:var(--ink); padding:0 10px;
+    font-size:11px; letter-spacing:.3em; color:var(--rust); text-transform:uppercase;
+  }
+  .panel .idx{
+    position:absolute; top:-11px; right:24px; background:var(--ink); padding:0 10px;
+    font-size:11px; letter-spacing:.2em; opacity:.55;
+  }
+  .panel h1,.panel h2{
+    font-weight:400; text-transform:uppercase; letter-spacing:.08em;
+    margin:6px 0 18px; font-size:clamp(22px,3.4vw,34px);
+    border-bottom:1px solid var(--line); padding-bottom:14px;
+  }
+  .panel p{ line-height:1.75; font-size:14px; color:var(--bone); opacity:.88; margin:0 0 12px; }
+  .panel a{ color:var(--rust); text-decoration:none; border-bottom:1px dotted var(--rust); }
+  .panel a:hover{ color:var(--bone); border-color:var(--bone); }
+
+  .glyphs{ display:flex; gap:10px; margin-top:20px; font-size:11px; letter-spacing:.1em; opacity:.5; flex-wrap:wrap; }
+  .glyphs span{ border:1px solid var(--line); padding:3px 8px; }
+
+  .archive{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; }
+  .archive li{ display:flex; justify-content:space-between; gap:16px; border-bottom:1px dashed rgba(231,221,198,.25); padding-bottom:8px; font-size:13px; }
+  .archive li em{ font-style:normal; opacity:.5; }
+
+  .scrollcue{
+    position:absolute; bottom:26px; left:50%; transform:translateX(-50%);
+    font-size:10px; letter-spacing:.3em; opacity:.5; display:flex; flex-direction:column; align-items:center; gap:6px;
+  }
+  .scrollcue .stem{ width:1px; height:26px; background:linear-gradient(var(--bone), transparent); animation:drop 1.8s infinite; }
+  @keyframes drop{ 0%{opacity:0; transform:translateY(-6px);} 40%{opacity:1;} 100%{opacity:0; transform:translateY(10px);} }
+
+  @media (max-width: 640px){
+    .frame .brand,.frame .coords{ font-size:9px; }
+    nav.dots{ left:14px; }
+    .panel{ padding:24px 22px; }
+  }
+</style>
+</head>
+<body>
+
+  <div id="boot"><span>›</span>&nbsp; ESTABLISHING TRANSMISSION — BLACK ROCK SECTOR</div>
+
+  <canvas id="scene"></canvas>
+  <div id="grain"></div>
+
+  <div class="frame">
+    <div class="tick top" style="left:18px; right:18px;"></div>
+    <div class="tick bot" style="left:18px; right:18px;"></div>
+    <div class="corner tl"></div>
+    <div class="corner tr"></div>
+    <div class="corner bl"></div>
+    <div class="corner br"></div>
+    <div class="brand">SAWWAVE // LOCKSY</div>
+    <div class="coords" id="coords">40.7863° N · 119.2065° W<br>ALT — VARIABLE</div>
+  </div>
+
+  <div class="dial">
+    <svg viewBox="0 0 64 64">
+      <circle class="track" cx="32" cy="32" r="28"></circle>
+      <circle class="fill" id="dialFill" cx="32" cy="32" r="28" stroke-dasharray="175.9" stroke-dashoffset="175.9"></circle>
+    </svg>
+    <div class="pct" id="dialPct">00</div>
+  </div>
+
+  <nav class="dots" id="dots">
+    <div class="d active"></div>
+    <div class="d"></div>
+    <div class="d"></div>
+    <div class="d"></div>
+    <div class="d"></div>
+  </nav>
+
+  <main>
+    <section id="s0" class="active">
+      <div class="panel">
+        <span class="tag">Transmission</span>
+        <span class="idx">01 / 05</span>
+        <h1>Black Rock Playa</h1>
+        <p>A flat white expanse under an emptied sky. Something dark and vertical stands where nothing should. You are not the first signal sent out here, and you will not be the last.</p>
+        <p>Scroll to move deeper into the sector. The rock does not move. Everything else does.</p>
+        <div class="glyphs"><span>SIGNAL LOCKED</span><span>NIGHT CYCLE</span><span>DUST: NOMINAL</span></div>
+      </div>
+      <div class="scrollcue"><span>SCROLL</span><div class="stem"></div></div>
+    </section>
+
+    <section id="s1">
+      <div class="panel">
+        <span class="tag">Origin</span>
+        <span class="idx">02 / 05</span>
+        <h2>Sawwave Art &amp; Media</h2>
+        <p>Work built out of Northern California, moving between print, screen, and playa dust. Branding for small labels, fliers for rooms that don't exist anymore, and experiments that never left the sandbox.</p>
+        <p>Camp Treebeard, most years. Renegade when it has to be.</p>
+        <div class="glyphs"><span>DESIGN</span><span>WEB</span><span>3D</span><span>PRINT</span></div>
+      </div>
+    </section>
+
+    <section id="s2">
+      <div class="panel">
+        <span class="tag">Archive Nodes</span>
+        <span class="idx">03 / 05</span>
+        <h2>Field Experiments</h2>
+        <ul class="archive">
+          <li><a href="../loot/index.html">loot</a><em>mouse parallax study</em></li>
+          <li><a href="../ar-project/index.html">ar-project</a><em>marker-tracked AR tree</em></li>
+          <li><a href="../Starfield-Mobile/dist/index.html">starfield-mobile</a><em>tilt-driven starfield</em></li>
+          <li><a href="../acidhaus/index.html">acidhaus</a><em>signal / static</em></li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="s3">
+      <div class="panel">
+        <span class="tag">Sound</span>
+        <span class="idx">04 / 05</span>
+        <h2>Minutia &amp; Locksy</h2>
+        <p>Sets played for rooms and deserts alike. KDVS 90.3FM, warehouse fundraisers, one long night that was supposed to be Black Rock City and became something else entirely.</p>
+        <div class="glyphs"><span>DJ</span><span>LIVE</span><span>KDVS 90.3FM</span></div>
+      </div>
+    </section>
+
+    <section id="s4">
+      <div class="panel">
+        <span class="tag">Signal Out</span>
+        <span class="idx">05 / 05</span>
+        <h2>Send Something Back</h2>
+        <p>If the transmission reached you, reply in kind.</p>
+        <p><a href="../contact.html">→ open a channel</a> &nbsp;·&nbsp; <a href="../index.html">← return to the archive</a></p>
+        <div class="glyphs"><span>END OF SECTOR</span></div>
+      </div>
+    </section>
+  </main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  var canvas = document.getElementById('scene');
+  var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha:false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  var scene = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(52, window.innerWidth/window.innerHeight, 0.1, 2000);
+  camera.position.set(0, 6, 24);
+
+  var palette = [
+    { fog:new THREE.Color(0x3b2213), glow:new THREE.Color(0xe7ddc6) },
+    { fog:new THREE.Color(0x33231c), glow:new THREE.Color(0xc1682e) },
+    { fog:new THREE.Color(0x241c22), glow:new THREE.Color(0x8a5a8f) },
+    { fog:new THREE.Color(0x141822), glow:new THREE.Color(0x4c6b8a) },
+    { fog:new THREE.Color(0x05070c), glow:new THREE.Color(0x9fd0d8) }
+  ];
+
+  scene.fog = new THREE.FogExp2(palette[0].fog.getHex(), 0.018);
+  renderer.setClearColor(palette[0].fog.getHex());
+
+  // lights
+  var ambient = new THREE.AmbientLight(0x554433, 0.7);
+  scene.add(ambient);
+  var moon = new THREE.DirectionalLight(0xcfd8ff, 0.35);
+  moon.position.set(-30, 60, -10);
+  scene.add(moon);
+  var glowLight = new THREE.PointLight(palette[0].glow.getHex(), 1.4, 140, 2);
+  glowLight.position.set(0, 22, -60);
+  scene.add(glowLight);
+
+  // playa ground with hand-drawn crack texture
+  function makeGroundTexture(){
+    var c = document.createElement('canvas');
+    c.width = c.height = 1024;
+    var ctx = c.getContext('2d');
+    ctx.fillStyle = '#1c1a17';
+    ctx.fillRect(0,0,c.width,c.height);
+    ctx.strokeStyle = 'rgba(231,221,198,0.10)';
+    ctx.lineWidth = 1;
+    var cells = 26;
+    for(var i=0;i<420;i++){
+      var x = Math.random()*c.width, y = Math.random()*c.height;
+      ctx.beginPath();
+      ctx.moveTo(x,y);
+      var segs = 3 + Math.floor(Math.random()*4);
+      for(var s=0;s<segs;s++){
+        x += (Math.random()-0.5)*70;
+        y += (Math.random()-0.5)*70;
+        ctx.lineTo(x,y);
+      }
+      ctx.stroke();
+    }
+    var tex = new THREE.CanvasTexture(c);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(24,24);
+    return tex;
+  }
+
+  var groundGeo = new THREE.PlaneGeometry(1400, 1400, 1, 1);
+  var groundMat = new THREE.MeshStandardMaterial({ map: makeGroundTexture(), roughness:1, metalness:0 });
+  var ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI/2;
+  ground.position.y = 0;
+  scene.add(ground);
+
+  // the black rock
+  var rockGroup = new THREE.Group();
+  var rockGeo = new THREE.DodecahedronGeometry(9, 0);
+  rockGeo.scale(1, 2.6, 1);
+  var rockMat = new THREE.MeshStandardMaterial({ color:0x08080a, roughness:0.85, metalness:0.15, flatShading:true });
+  var rock = new THREE.Mesh(rockGeo, rockMat);
+  rock.position.set(0, 16, -60);
+  rockGroup.add(rock);
+
+  // thin emissive edge rings around the monolith — moebius-tech glow
+  for(var r=0;r<3;r++){
+    var ringGeo = new THREE.TorusGeometry(6 + r*2.2, 0.05, 8, 48);
+    var ringMat = new THREE.MeshBasicMaterial({ color: palette[0].glow.getHex(), transparent:true, opacity:0.5 });
+    var ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.position.set(0, 6 + r*7, -60);
+    ring.rotation.x = Math.PI/2;
+    ring.userData.spin = 0.05 + r*0.03;
+    ring.userData.isRing = true;
+    rockGroup.add(ring);
+  }
+  scene.add(rockGroup);
+
+  // scattered smaller rocks along the path
+  var smallRockMat = new THREE.MeshStandardMaterial({ color:0x0c0c0e, roughness:0.9, flatShading:true });
+  for(var i=0;i<24;i++){
+    var g = new THREE.DodecahedronGeometry(1 + Math.random()*2.6, 0);
+    var m = new THREE.Mesh(g, smallRockMat);
+    var side = Math.random() < 0.5 ? -1 : 1;
+    m.position.set(side*(14 + Math.random()*40), 0.6 + Math.random()*1.5, -Math.random()*160);
+    m.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
+    scene.add(m);
+  }
+
+  // stars
+  var starGeo = new THREE.BufferGeometry();
+  var starCount = 2200;
+  var starPos = new Float32Array(starCount*3);
+  for(var i=0;i<starCount;i++){
+    var theta = Math.random()*Math.PI*2;
+    var phi = Math.acos((Math.random()*0.9));
+    var rad = 600;
+    starPos[i*3] = rad*Math.sin(phi)*Math.cos(theta);
+    starPos[i*3+1] = Math.abs(rad*Math.cos(phi))*0.6 + 40;
+    starPos[i*3+2] = rad*Math.sin(phi)*Math.sin(theta) - 100;
+  }
+  starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+  var starMat = new THREE.PointsMaterial({ color:0xe7ddc6, size:1.1, transparent:true, opacity:0.75, sizeAttenuation:false });
+  var stars = new THREE.Points(starGeo, starMat);
+  scene.add(stars);
+
+  // drifting dust
+  var dustGeo = new THREE.BufferGeometry();
+  var dustCount = 900;
+  var dustPos = new Float32Array(dustCount*3);
+  for(var i=0;i<dustCount;i++){
+    dustPos[i*3] = (Math.random()-0.5)*260;
+    dustPos[i*3+1] = Math.random()*14;
+    dustPos[i*3+2] = -Math.random()*220 + 20;
+  }
+  dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+  var dustMat = new THREE.PointsMaterial({ color:0xc9b592, size:0.35, transparent:true, opacity:0.35, sizeAttenuation:true });
+  var dust = new THREE.Points(dustGeo, dustMat);
+  scene.add(dust);
+
+  function onResize(){
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+  window.addEventListener('resize', onResize);
+
+  // scroll-driven progress
+  var progress = 0;
+  function computeProgress(){
+    var max = document.documentElement.scrollHeight - window.innerHeight;
+    progress = max > 0 ? Math.min(Math.max(window.scrollY / max, 0), 1) : 0;
+  }
+  window.addEventListener('scroll', computeProgress, { passive:true });
+  computeProgress();
+
+  // mouse parallax
+  var mouse = { x:0, y:0 };
+  window.addEventListener('mousemove', function(e){
+    mouse.x = (e.clientX / window.innerWidth - 0.5);
+    mouse.y = (e.clientY / window.innerHeight - 0.5);
+  });
+
+  function lerpColor(a, b, t){ return a.clone().lerp(b, t); }
+
+  function paletteAt(p){
+    var scaled = p * (palette.length - 1);
+    var i = Math.min(Math.floor(scaled), palette.length - 2);
+    var t = scaled - i;
+    return {
+      fog: lerpColor(palette[i].fog, palette[i+1].fog, t),
+      glow: lerpColor(palette[i].glow, palette[i+1].glow, t)
+    };
+  }
+
+  var clock = new THREE.Clock();
+
+  function animate(){
+    requestAnimationFrame(animate);
+    var t = clock.getElapsedTime();
+
+    var zStart = 24, zEnd = -52;
+    var camZ = zStart + (zEnd - zStart) * progress;
+    var camY = 6 + Math.sin(t*0.3)*0.25 + progress*2.5;
+    camera.position.x += (mouse.x*4 - (camera.position.x)) * 0.03;
+    camera.position.z += (camZ - camera.position.z) * 0.06;
+    camera.position.y += (camY - camera.position.y) * 0.06;
+    camera.lookAt(0, 14 + progress*4, -60);
+
+    var col = paletteAt(progress);
+    scene.fog.color.copy(col.fog);
+    renderer.setClearColor(col.fog.getHex());
+    glowLight.color.copy(col.glow);
+
+    rockGroup.children.forEach(function(child){
+      if(child.userData.isRing){
+        child.rotation.z += child.userData.spin * 0.01;
+        child.material.color.copy(col.glow);
+      }
+    });
+    rock.rotation.y = t * 0.02;
+
+    stars.rotation.y = t * 0.002;
+
+    var dp = dust.geometry.attributes.position;
+    for(var i=0;i<dustCount;i++){
+      dp.array[i*3] += 0.01 + progress*0.01;
+      if(dp.array[i*3] > 130) dp.array[i*3] = -130;
+    }
+    dp.needsUpdate = true;
+
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  // section reveal + dial + dots
+  var sections = Array.prototype.slice.call(document.querySelectorAll('section'));
+  var dots = Array.prototype.slice.call(document.querySelectorAll('nav.dots .d'));
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if(entry.isIntersecting){
+        entry.target.classList.add('active');
+        var idx = sections.indexOf(entry.target);
+        dots.forEach(function(d,i){ d.classList.toggle('active', i===idx); });
+      }
+    });
+  }, { threshold:0.4 });
+  sections.forEach(function(s){ io.observe(s); });
+
+  var dialFill = document.getElementById('dialFill');
+  var dialPct = document.getElementById('dialPct');
+  var circumference = 175.9;
+  function updateDial(){
+    computeProgress();
+    dialFill.style.strokeDashoffset = circumference * (1 - progress);
+    dialPct.textContent = String(Math.round(progress*100)).padStart(2,'0');
+  }
+  window.addEventListener('scroll', updateDial, { passive:true });
+  updateDial();
+
+  window.addEventListener('load', function(){
+    setTimeout(function(){
+      document.getElementById('boot').classList.add('hidden');
+    }, 900);
+  });
+})();
+</script>
+</body>
+</html>
