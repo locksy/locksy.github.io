@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Bubble Chamber</title>
+<meta name="description" content="Interactive WebGL2 bubble chamber: charged particle tracks curling in a magnetic field, with beam, field, target, source and inspection layers.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="gl"></canvas>
+<canvas id="ui"></canvas>
+
+<header class="hud" id="hud">
+  <div class="brand">
+    <span class="dot"></span>
+    <div>
+      <h1>Bubble Chamber</h1>
+      <p>liquid H₂ · <span id="bread">1.20 T</span></p>
+    </div>
+  </div>
+  <dl class="stats">
+    <div><dt>live</dt><dd id="sLive">0</dd></div>
+    <div><dt>tracks</dt><dd id="sTracks">0</dd></div>
+    <div><dt>bubbles/s</dt><dd id="sBub">0</dd></div>
+    <div><dt>fps</dt><dd id="sFps">0</dd></div>
+  </dl>
+</header>
+
+<div class="toolwrap" id="toolwrap">
+  <div class="toolopts" id="toolopts"></div>
+  <nav class="tools" id="tools" aria-label="Tools"></nav>
+</div>
+
+<button class="paneltoggle" id="paneltoggle" aria-label="Toggle controls">
+  <svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 6h16M4 12h10M4 18h16" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+</button>
+<aside class="panel" id="panel"></aside>
+
+<div class="log" id="log"></div>
+<div class="tip" id="tip"></div>
+<div class="inspector" id="inspector"></div>
+<div class="hint" id="hint">
+  <b>Drag</b> to fire a particle · <b>tap</b> for a spark event · <b>1–6</b> switch layers · <b>R</b> reconstruction · <b>H</b> hide UI
+</div>
+<div class="nogl" id="nogl" hidden>This visualizer needs WebGL2. Try a current Chrome, Edge, Firefox or Safari.</div>
+
+<script src="chamber.js"></script>
+</body>
+</html>
