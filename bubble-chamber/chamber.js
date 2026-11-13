@@ -604,7 +604,11 @@ function render(time) {
 function snapshot() {
   const c = document.createElement('canvas'); c.width = RW; c.height = RH;
   const g = c.getContext('2d'); g.drawImage(glc, 0, 0);
-  c.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `bubble-chamber-${Date.now()}.png`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); });
+  c.toBlob(b => {
+    const box = $('#photo'), img = box.querySelector('img');
+    if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
+    img.src = URL.createObjectURL(b); box.hidden = false;
+  });
 }
 function clearAll() {
   for (const t of [stA, stB]) { gl.bindFramebuffer(gl.FRAMEBUFFER, t.fbo); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); }
@@ -1027,6 +1031,7 @@ function buildTools() {
   $('#tools').innerHTML = TOOLS.map(t => `<button data-id="${t.id}" title="${t.label} (${t.key})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${t.icon}</svg><span class="lbl">${t.label}</span></button>`).join('');
   document.querySelectorAll('#tools button').forEach(b => b.onclick = () => setTool(b.dataset.id));
 }
+$('#photo').onclick = () => $('#photo').hidden = true;
 $('#paneltoggle').onclick = () => panel.classList.toggle('closed');
 if (innerWidth < 720) panel.classList.add('closed');
 
