@@ -20,6 +20,7 @@ const P = {
   aperture: 0.55, focusMode: 'auto', focus: 0.5, glow: 1.0, trail: 0.9, species: 0.0, torch: true, torchHue: 195, chroma: false,
   caustics: 1.0, motes: 1.0,
   cosmics: true, pulsed: false, audio: false, showField: false, recon: false, paused: false,
+  yantra: 1.0, rings: 1.0, ringRate: 1.0, waves: 1.0, florets: 144, floretSpacing: 5.5, fibElectrons: true,
   shootSpecies: 'pi-', burst: 1, brush: 0.8, brushR: 90, targetProb: 0.5, sourceType: 'mixed', sourceRate: 4,
 };
 
@@ -190,6 +191,8 @@ uniform vec2 uTexel, uPar, uShake;
 uniform float uAspect, uTime, uFlash, uFocus, uCoc, uMaxCoc, uSpecies, uCaustics, uMotes;
 uniform vec3 uLiquid, uFog, uAmbient;
 uniform vec4 uLP[${NL}]; uniform vec3 uLC[${NL}]; uniform int uNL;
+uniform sampler2D uEtch; uniform vec2 uEtchTexel, uBindu; uniform float uYantra, uRings, uRes;
+uniform vec4 uWave[6]; uniform int uNW;
 vec3 hsv(float h,float s,float v){ vec3 k = clamp(abs(fract(h+vec3(0.,2./3.,1./3.))*6.-3.)-1.,0.,1.); return v*mix(vec3(1.),k,s); }
 float ridge(vec2 q){ return 1.-abs(noise(q)*2.-1.); }
 vec3 lightAt(vec2 p){
@@ -221,7 +224,25 @@ void main(){
   vec2 uv0 = vUv + uShake;
   vec2 p = (uv0-.5)*vec2(uAspect,1.);
   vec2 wob = (vec2(noise(p*4.+t*.12), noise(p*4.+9.-t*.1))-.5)*.0018;
+  // pressure waves: expanding rings in the liquid that refract everything behind and inside them
+  vec2 wv = vec2(0.); float wring = 0.;
+  for(int i=0;i<6;i++){
+    if(i>=uNW) break;
+    vec2 d = p-uWave[i].xy; float dist = length(d)+1e-4;
+    float b = (dist-uWave[i].z)/(.010+uWave[i].z*.045);
+    float e = exp(-b*b)*uWave[i].w;
+    wv += d/dist*b*e; wring += e;
+  }
+  wob += wv*.0032;
   vec2 uv = uv0 + wob;
+  // ---- etched back glass: Sri Yantra (r) and tree rings (g); grooves only catch grazing light
+  vec2 et = uEtchTexel*1.6;
+  vec4 e0 = texture(uEtch, uv);
+  vec4 ex1 = texture(uEtch, uv+vec2(et.x,0.)), ex2 = texture(uEtch, uv-vec2(et.x,0.));
+  vec4 ey1 = texture(uEtch, uv+vec2(0.,et.y)), ey2 = texture(uEtch, uv-vec2(0.,et.y));
+  vec2 gY = vec2(ex1.r-ex2.r, ey1.r-ey2.r)*uYantra;
+  vec2 gR = vec2(ex1.g-ex2.g, ey1.g-ey2.g)*uRings;
+  vec3 glY = vec3(0.), glR = vec3(0.);
   // ---- liquid volume
   vec3 illum = lightAt(p);
   vec3 vol = uLiquid*(.35+.65*exp(-dot(p,p)*2.5));
@@ -232,14 +253,22 @@ void main(){
     float vk = smoothstep(.08, .3, uLP[i].z)*.9 + .1;
     vol += uLC[i]*exp(-dist*(4.2+uLP[i].w*.1))*(.01 + shaft*.03)*vk;
     vol += uLC[i]*.0007/(dist*dist + .002)*vk;
+    vec2 Ld = -d/max(dist,1e-4); float att = 1./(1.+dist*dist*uLP[i].w);
+    glY += uLC[i]*att*max(dot(gY, Ld), 0.);
+    glR += uLC[i]*att*max(dot(gR, Ld), 0.);
   }
+  vol += glY*vec3(1.,.88,.66)*.04 + glR*vec3(1.,.72,.46)*.05;
+  vol += illum*(e0.r*uYantra*.0007 + e0.g*uRings*.0006);
+  vol += wring*(length(gY)*vec3(1.,.8,.5)*.16 + length(gR)*vec3(.9,.6,.35)*.1) + wring*illum*.002;
+  float bd = length(p-uBindu);
+  vol += e0.r*uYantra*uRes*vec3(1.,.6,.24)*(.008 + .05*exp(-bd*9.)) + uRes*vec3(1.,.55,.2)*.05*exp(-bd*bd*1600.);
   vec2 cq = p*6.5 + vec2(t*.06, -t*.045);
   float caus = pow(ridge(cq)*ridge(cq*1.73+3.1), 7.);
   vol += illum*caus*.022*uCaustics;
   float px = uTexel.y*1.5;
   vec2 fc = (fract(p/.2+.5)-.5)*.2;
   float cr = max((1.-smoothstep(0.,px,abs(fc.x)))*step(abs(fc.y),.011), (1.-smoothstep(0.,px,abs(fc.y)))*step(abs(fc.x),.011));
-  vol += illum*cr*.02 + uAmbient*cr*.006;
+  vol += (illum*cr*.02 + uAmbient*cr*.006)*.35;
   vol += motes(p, t)*uMotes;
   // chamber window / steel body
   float sd = pow(pow(abs(p.x)/(uAspect*.5*.965),4.)+pow(abs(p.y)/(.5*.955),4.),.25);
@@ -401,6 +430,8 @@ function resize() {
   uic.width = Math.round(W * DPR); uic.height = Math.round(H * DPR);
   allocTargets(false);
   field.resize();
+  bindu.x = bindu.rx * W; bindu.y = bindu.ry * H;
+  etchResize();
 }
 
 // ---------------------------------------------------------------- chamber geometry
@@ -464,6 +495,171 @@ function packLights(dt) {
     const f = flashes[i]; f.t += dt; const k = Math.max(0, 1 - f.t / f.life);
     if (k <= 0) { flashes.splice(i, 1); continue; }
     put(f.x, f.y, .04, f.reach, f.rgb, f.int * k * k);
+  }
+}
+
+// ---------------------------------------------------------------- sacred geometry layer
+// One centre holds all three forms: the bindu of the yantra, the pith of the tree, the first seed of a cone.
+const GOLD = Math.PI * (3 - Math.sqrt(5));                 // 137.508°
+const FIB = new Set([1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377]);
+const bindu = { x: 0, y: 0, rx: .5, ry: .5 };
+let resonance = 0;
+
+// --- etched back glass (yantra in red, rings in green), redrawn only when something changes
+const etch = { cv: document.createElement('canvas'), tex: null, k: 1, dirty: true, t: 0 };
+etch.g = etch.cv.getContext('2d');
+function etchResize() {
+  etch.k = Math.min(DPR, 1.5);
+  etch.cv.width = Math.max(1, Math.round(W * etch.k)); etch.cv.height = Math.max(1, Math.round(H * etch.k));
+  if (!etch.tex) etch.tex = gl.createTexture();
+  etch.dirty = true;
+}
+// Sri Yantra: 4 upward (Shiva) and 5 downward (Shakti) triangles as [baseY, apexY, width] in units of the inner circle
+const YUP = [[-.62, .97, 1], [-.43, .63, .8], [-.27, .43, .63], [-.08, .23, .46]];
+const YDN = [[.70, -.97, 1], [.50, -.65, .81], [.32, -.46, .65], [.15, -.29, .5], [.03, -.13, .34]];
+function yantra(g, cx, cy, R) {
+  const tri = ([b, a, w], up) => {
+    const hw = Math.sqrt(Math.max(0, 1 - b * b)) * w;
+    g.beginPath(); g.moveTo(cx - hw * R, cy - b * R); g.lineTo(cx + hw * R, cy - b * R); g.lineTo(cx, cy - a * R); g.closePath(); g.stroke();
+    void up;
+  };
+  YUP.forEach(t => tri(t, 1)); YDN.forEach(t => tri(t, 0));
+  const circle = r => { g.beginPath(); g.arc(cx, cy, r * R, 0, 6.2832); g.stroke(); };
+  const petals = (n, r0, r1, off) => {
+    for (let i = 0; i < n; i++) {
+      const th = off + i * 6.2832 / n, hw = Math.PI / n * .96;
+      const P0 = [cx + Math.cos(th - hw) * r0 * R, cy + Math.sin(th - hw) * r0 * R], P1 = [cx + Math.cos(th + hw) * r0 * R, cy + Math.sin(th + hw) * r0 * R];
+      const T = [cx + Math.cos(th) * r1 * R, cy + Math.sin(th) * r1 * R];
+      const c0 = [cx + Math.cos(th - hw * .85) * (r1 - .04) * R, cy + Math.sin(th - hw * .85) * (r1 - .04) * R];
+      const c1 = [cx + Math.cos(th + hw * .85) * (r1 - .04) * R, cy + Math.sin(th + hw * .85) * (r1 - .04) * R];
+      g.beginPath(); g.moveTo(...P0); g.quadraticCurveTo(...c0, ...T); g.quadraticCurveTo(...c1, ...P1); g.stroke();
+    }
+  };
+  circle(1.03); petals(8, 1.06, 1.4, -Math.PI / 2); circle(1.43);
+  petals(16, 1.46, 1.74, -Math.PI / 2); circle(1.77); circle(1.84); circle(1.89); circle(1.94);
+  // bhupura: three nested squares, each with four T-shaped gates
+  for (const sq of [2.1, 2.18, 2.26]) {
+    const sR = sq * R, gw = .2 * R, d = .1 * R + (sq - 2.1) * R, w = .1 * R, h = .1 * R;
+    const side = [[-sR, -sR], [-gw, -sR], [-gw, -sR - d], [-gw - w, -sR - d], [-gw - w, -sR - d - h], [gw + w, -sR - d - h], [gw + w, -sR - d], [gw, -sR - d], [gw, -sR], [sR, -sR]];
+    g.beginPath();
+    for (let k = 0; k < 4; k++) {
+      const c = Math.cos(k * Math.PI / 2), sn = Math.sin(k * Math.PI / 2);
+      side.forEach(([x, y], i) => { const X = cx + x * c - y * sn, Y = cy + x * sn + y * c; (k === 0 && i === 0) ? g.moveTo(X, Y) : g.lineTo(X, Y); });
+    }
+    g.closePath(); g.stroke();
+  }
+  g.beginPath(); g.arc(cx, cy, 1.6, 0, 6.2832); g.fill();
+}
+const NB = 120;   // angular bins of the tree
+const tree = { rings: [], cur: new Float32Array(NB), bias: new Float32Array(NB), vari: new Float32Array(NB), t: 0, age: 0, rays: [] };
+function seedTree() {
+  tree.rings = []; tree.cur.fill(3); tree.bias.fill(0); tree.t = 0; tree.age = 0;
+  const ph = [rand() * 6.28, rand() * 6.28, rand() * 6.28];
+  for (let i = 0; i < NB; i++) { const a = i / NB * 6.2832; tree.vari[i] = 1 + .16 * Math.sin(a + ph[0]) + .07 * Math.sin(2 * a + ph[1]) + .04 * Math.sin(5 * a + ph[2]); }
+  tree.rays = Array.from({ length: 22 }, () => [rand() * 6.2832, .15 + rand() * .5, .3 + rand() * .5]);
+  for (let k = 0; k < 7; k++) { treeGrow(6.5, .6 + rand() * .9); }
+  etch.dirty = true;
+}
+function treeGrow(dt, act) {
+  const c = tree.cur, b = tree.bias;
+  for (let i = 0; i < NB; i++) c[i] += P.ringRate * 6 * act * (1 + b[i]) * tree.vari[i] * dt / Math.sqrt(1 + c[i] / 70);
+  for (let i = 0; i < NB; i++) b[i] *= Math.exp(-dt * .08);
+  tree.t += dt;
+  const period = P.pulsed ? CYCLE * 2 : 6.5;
+  if (tree.t >= period) {
+    tree.t = 0; tree.age++;
+    tree.rings.push(Float32Array.from(c, (r, i) => r * (1 + .012 * Math.sin(i * .9 + tree.age * 1.7))));
+    etch.dirty = true;
+    let mx = 0; for (const r of c) mx = Math.max(mx, r);
+    if (mx > Math.hypot(W, H) * .5) { logEvent(`tree felled at <em>${tree.age}</em> rings · a seedling starts at the bindu`); seedTree(); }
+  }
+}
+function treeBias(ang, amt) {
+  for (let i = 0; i < NB; i++) {
+    let d = Math.abs(i / NB * 6.2832 - ang) % 6.2832; d = Math.min(d, 6.2832 - d);
+    tree.bias[i] = Math.min(tree.bias[i] + amt * Math.exp(-d * d / .18), 2.5);
+  }
+}
+function drawEtch() {
+  const g = etch.g, k = etch.k;
+  g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-over';
+  g.fillStyle = '#000'; g.fillRect(0, 0, etch.cv.width, etch.cv.height);
+  g.setTransform(k, 0, 0, k, 0, 0); g.globalCompositeOperation = 'lighter'; g.lineJoin = 'round';
+  const cx = bindu.x, cy = bindu.y;
+  // tree rings: latewood lines, faint earlywood grain between, medullary rays, the living cambium edge
+  const ringPath = (r, scale = 1) => { g.beginPath(); for (let i = 0; i <= NB; i++) { const a = i / NB * 6.2832, rr = r[i % NB] * scale; i ? g.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr) : g.moveTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); } g.stroke(); };
+  let prev = null;
+  for (const r of tree.rings) {
+    if (prev) { g.strokeStyle = 'rgb(0,55,0)'; g.lineWidth = .8; for (const f of [.4, .7]) { g.beginPath(); for (let i = 0; i <= NB; i++) { const a = i / NB * 6.2832, rr = prev[i % NB] + (r[i % NB] - prev[i % NB]) * f; i ? g.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr) : g.moveTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); } g.stroke(); } }
+    g.strokeStyle = 'rgb(0,190,0)'; g.lineWidth = 1.6; ringPath(r);
+    prev = r;
+  }
+  g.strokeStyle = 'rgb(0,80,0)'; g.lineWidth = 1; ringPath(tree.cur);
+  const outer = prev || tree.cur;
+  g.strokeStyle = 'rgb(0,60,0)'; g.lineWidth = .8;
+  for (const [a, r0, len] of tree.rays) { const i = Math.round(a / 6.2832 * NB) % NB, R = outer[i]; g.beginPath(); g.moveTo(cx + Math.cos(a) * R * r0, cy + Math.sin(a) * R * r0); g.lineTo(cx + Math.cos(a) * R * Math.min(1, r0 + len), cy + Math.sin(a) * R * Math.min(1, r0 + len)); g.stroke(); }
+  // yantra
+  g.strokeStyle = g.fillStyle = 'rgb(255,0,0)'; g.lineWidth = 1.1;
+  yantra(g, cx, cy, S * .078);
+  gl.bindTexture(gl.TEXTURE_2D, etch.tex);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, etch.cv);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  etch.dirty = false;
+}
+
+// --- pressure waves: every interaction rings the liquid
+const waves = [];
+const WV = new Float32Array(24);
+function addWave(x, y, amp) {
+  if (P.waves <= 0) return;
+  if (waves.length >= 6) waves.shift();
+  waves.push({ x, y, r: 0, amp: amp * P.waves, reached: Math.hypot(x - bindu.x, y - bindu.y) < 8 });
+}
+function updateWaves(dt) {
+  for (let i = waves.length - 1; i >= 0; i--) {
+    const w = waves[i]; w.r += 300 * dt; w.amp *= Math.exp(-dt * .75);
+    if (!w.reached && w.r >= Math.hypot(w.x - bindu.x, w.y - bindu.y)) {   // the wave reaches the heartwood: the tree leans toward its source
+      w.reached = true; treeBias((Math.atan2(w.y - bindu.y, w.x - bindu.x) + 6.2832) % 6.2832, w.amp * .9);
+    }
+    if (w.amp < .02 || w.r > Math.hypot(W, H)) waves.splice(i, 1);
+  }
+  WV.fill(0);
+  waves.forEach((w, i) => { const [px, py] = toP(w.x, w.y); WV.set([px, py, w.r / H, w.amp], i * 4); });
+}
+
+// --- seed heads: golden-angle florets, Fibonacci electrons
+const cones = [];
+function addCone(x, y) {
+  cones.push({ x, y, z: focusCur, n: 0, N: P.florets, c: P.floretSpacing, acc: 0, rot: rand() * 6.2832, pts: [], born: simTime, done: false });
+  addWave(x, y, .5);
+  logEvent(`seed head · golden angle <em>137.5°</em>`);
+}
+function emitFloret(x, y, size, inten, hue, z) {
+  const B = BUB; if (B.n >= B.max) return; const k = B.n * 6;
+  B.data.set([x, y, size, inten, hue, z], k); B.n++; bubblesThisSec++;
+}
+function updateCones(dt) {
+  for (let i = cones.length - 1; i >= 0; i--) {
+    const c = cones[i];
+    if (!c.done) {
+      c.acc += dt * 80 * P.speed;
+      while (c.acc >= 1 && c.n < c.N) {
+        c.acc -= 1; c.n++;
+        const th = c.n * GOLD + c.rot, r = c.c * Math.sqrt(c.n), fx = c.x + Math.cos(th) * r, fy = c.y + Math.sin(th) * r;
+        c.pts.push(fx, fy);
+        if (!inWindow(fx, fy)) continue;
+        const sz = (1.3 + .19 * Math.sqrt(c.n)) * simScale * P.size;
+        emitFloret(fx, fy, sz, .55 + .25 * Math.sqrt(c.n / c.N), .08 + .25 * c.n / c.N, c.z);
+        if (FIB.has(c.n) && P.fibElectrons) {
+          spawn('e-', fx, fy, -Math.sin(th), Math.cos(th), 1.5 + c.n * .055, null, c.z, gauss() * .05);
+          addFlash(fx, fy, [1.4, .9, .45], .5 + Math.sqrt(c.n) * .08, .5, 160);
+        }
+      }
+      if (c.n >= c.N) { c.done = true; logEvent(`${c.N} florets · parastichies <em>8 · 13 · 21</em>`); }
+    } else if (simTime - c.born > Math.log(0.04) / Math.log(fadeRate()) / 60 + 3) cones.splice(i, 1);
   }
 }
 
@@ -549,6 +745,7 @@ function decay(o, inFlight) {
   }
   kill(o, inFlight ? 'decay' : 'decay at rest');
   addFlash(x, y, speciesRGB(sp), sp === 'e+' ? 1.4 : 0.9, .45, 90);
+  addWave(x, y, .22);
   lastEventZ = o.z;
   if (txt) { logEvent(txt); audio.ping(sp); }
 }
@@ -566,6 +763,7 @@ function pair(o) {
   spawn('e+', o.x, o.y, o.dx * ca + o.dy * sa, o.dy * ca - o.dx * sa, p2, o.track, o.z, dz - .03);
   kill(o, 'pair conversion'); logEvent(`γ → <em>e⁺ e⁻</em> ${fmtE(o.E)}`); audio.ping('pair');
   addFlash(o.x, o.y, [.35, .7, 1.6], 1.6, .5, 120); lastEventZ = o.z;
+  addWave(o.x, o.y, .35);
 }
 function nuclearStar(o, kind) {
   const Tin = kind === 'annihilation' ? 1876 + (o.E - o.s.m) : kind === 'capture' ? 140 : Math.max(60, (o.E - o.s.m) * 0.85);
@@ -584,6 +782,7 @@ function nuclearStar(o, kind) {
   logEvent(`${o.s.sym} ${kind} · <em>${n}-prong star</em>`); audio.star(n);
   addFlash(o.x, o.y, kind === 'annihilation' ? [1.6, .35, 1.1] : [1.7, .75, .28], 2.4 + n * .25, .9, 40);
   shake = Math.min(shake + n * .0007, .006); lastEventZ = o.z;
+  addWave(o.x, o.y, .6 + n * .08);
 }
 
 function emitBubble(x, y, ion, hue, z) {
@@ -646,6 +845,11 @@ function stepParticle(o, f) {
     o.track.len += ds;
     if ((o.ptAcc += ds) > 3) { o.ptAcc = 0; o.track.pts.push(o.x, o.y, o.z); }
     if (!inWindow(o.x, o.y) || o.z < 0 || o.z > 1) { kill(o, 'left chamber'); return; }
+    if (q && !o.bd && (o.x - bindu.x) ** 2 + (o.y - bindu.y) ** 2 < 49) {
+      o.bd = true;
+      if (resonance < .25) { logEvent(`${s.sym} threads the <em>bindu</em>`); addWave(bindu.x, bindu.y, .45); audio.ping('L0'); }
+      resonance = 1;
+    }
     for (const tg of targets) {
       const dx = o.x - tg.x, dy = o.y - tg.y;
       if (dx * dx + dy * dy < tg.r * tg.r && o.hit !== tg) {
@@ -720,6 +924,10 @@ function simulate(dt) {
   if (!P.pulsed) for (const e of emitters) { e.acc += e.rate * dt; while (e.acc >= 1) { e.acc -= 1; fireEmitter(e); } }
   if (P.cosmics && rand() < dt * 0.45) cosmic();
   for (const s of sources) { s.acc += P.sourceRate * dt; while (s.acc >= 1) { s.acc -= 1; sourceEmit(s); } }
+  updateCones(dt);
+  treeGrow(dt, clamp(.25 + bubRate / 4000, .25, 2.2));
+  if ((etch.t += dt) > 1) { etch.t = 0; etch.dirty = true; }
+  resonance *= Math.exp(-dt / 2.2);
   for (let i = 0; i < particles.length; i++) stepParticle(particles[i], f);
   for (let i = particles.length - 1; i >= 0; i--) if (!particles[i].alive) { particles[i] = particles[particles.length - 1]; particles.pop(); }
   if (simTime - lastPrune > 0.5) {
@@ -800,6 +1008,7 @@ function blur(src, tmp, dst, k) {
 }
 let snapRequested = false;
 function render(time) {
+  if (etch.dirty) drawEtch();
   const tex = [1 / RW, 1 / RH];
   // 1. nucleation seeds
   gl.bindFramebuffer(gl.FRAMEBUFFER, seed.fbo); gl.viewport(0, 0, RW, RH); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
@@ -831,6 +1040,9 @@ function render(time) {
     gl.uniform3fv(u.uLiquid, G.liquid); gl.uniform3fv(u.uFog, G.fog); gl.uniform3fv(u.uAmbient, G.ambient);
     gl.uniform4fv(u['uLP[0]'], LP); gl.uniform3fv(u['uLC[0]'], LC); gl.uniform1i(u.uNL, nLights);
     gl.uniform2f(u.uPar, parX, parY); gl.uniform2f(u.uShake, gauss() * shake, gauss() * shake);
+    bindTex(2, etch.tex); gl.uniform1i(u.uEtch, 2); gl.uniform2f(u.uEtchTexel, 1 / etch.cv.width, 1 / etch.cv.height);
+    gl.uniform2f(u.uBindu, ...toP(bindu.x, bindu.y)); gl.uniform1f(u.uYantra, P.yantra); gl.uniform1f(u.uRings, P.rings); gl.uniform1f(u.uRes, resonance);
+    gl.uniform4fv(u['uWave[0]'], WV); gl.uniform1i(u.uNW, waves.length);
   });
   bindTex(0, shadeT.tex); gl.generateMipmap(gl.TEXTURE_2D);
   // 5. depth of field + compose
@@ -911,6 +1123,7 @@ const audio = {
 const TOOLS = [
   { id: 'shoot', label: 'fire', key: '1', icon: '<path d="M4 20c6-2 10-7 12-14" /><path d="M13 5l3 1 1-3"/><circle cx="4" cy="20" r="1.6" fill="currentColor"/>' },
   { id: 'light', label: 'light', key: '2', icon: '<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>' },
+  { id: 'seed', label: 'seed', key: '8', icon: '<path d="M12 12m-1 0a1 1 0 1 0 2 0a3 3 0 1 0-6 0a5 5 0 1 0 10 0a7.5 7.5 0 1 0-15 0"/>' },
   { id: 'field', label: 'field', key: '3', icon: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2" fill="currentColor"/>' },
   { id: 'target', label: 'target', key: '4', icon: '<circle cx="12" cy="12" r="6"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/>' },
   { id: 'source', label: 'source', key: '5', icon: '<circle cx="12" cy="12" r="2.2" fill="currentColor"/><path d="M12 4a8 8 0 0 1 7 4M5 16a8 8 0 0 0 7 4M19 16l-2-1M5 8l2 1"/>' },
@@ -946,8 +1159,10 @@ uic.addEventListener('pointerdown', ev => {
   mouse.x = x; mouse.y = y; torch.x = x; torch.y = y; torch.live = true;
   const st = { x0: x, y0: y, x, y, t0: performance.now(), mode: tool, neg: ev.button === 2 || ev.altKey, shift: ev.shiftKey };
   const he = hitEmitter(x, y), hl = hitList(lamps, x, y, 18);
-  if (hl) { st.mode = 'lamp'; st.obj = hl; selLamp = hl; if (tool === 'light') buildToolOpts(); }
+  if (Math.hypot(x - bindu.x, y - bindu.y) < 11) { st.mode = 'bindu'; }
+  else if (hl) { st.mode = 'lamp'; st.obj = hl; selLamp = hl; if (tool === 'light') buildToolOpts(); }
   else if (he) { st.mode = 'emitter-' + he.part; st.obj = he.e; }
+  else if (tool === 'seed') { if (inWindow(x, y)) { addCone(x, y); st.mode = 'seeded'; } }
   else if (tool === 'light') {
     if (lamps.length < 6) { const l = { x, y, rx: x / W, ry: y / H, hue: rand() * 360, sat: .85, int: 0, th: 0, ts: .85, ti: 1.3, on: true }; l.th = l.hue; lamps.push(l); selLamp = l; st.mode = 'lamp'; st.obj = l; st.placed = true; buildToolOpts(); buildLampUI(); }
   } else if (tool === 'target' || tool === 'source') {
@@ -965,7 +1180,8 @@ uic.addEventListener('pointermove', ev => {
   const st = pointers.get(ev.pointerId);
   if (!st) { if (tool === 'inspect') updateHover(x, y); updateCursor(x, y); return; }
   const dx = x - st.x, dy = y - st.y; st.x = x; st.y = y;
-  if (st.mode === 'lamp') { st.obj.x = x; st.obj.y = y; st.obj.rx = x / W; st.obj.ry = y / H; }
+  if (st.mode === 'bindu') { if (Math.hypot(x - st.x0, y - st.y0) > 4 && inWindow(x, y)) { bindu.x = x; bindu.y = y; bindu.rx = x / W; bindu.ry = y / H; etch.dirty = true; st.moved = true; } }
+  else if (st.mode === 'lamp') { st.obj.x = x; st.obj.y = y; st.obj.rx = x / W; st.obj.ry = y / H; }
   else if (st.mode === 'emitter-body' || st.mode === 'move' || st.mode === 'placed') {
     if (Math.hypot(x - st.x0, y - st.y0) > 4 && st.mode === 'placed') st.mode = 'move';
     if (inWindow(x, y)) { st.obj.x = x; st.obj.y = y; if (st.obj.rx !== undefined) { st.obj.rx = x / W; st.obj.ry = y / H; } }
@@ -977,7 +1193,8 @@ function endPointer(ev) {
   pointers.delete(ev.pointerId);
   if (ev.pointerType !== 'mouse' && !pointers.size) setTimeout(() => { if (!pointers.size) torch.live = false; }, 900);
   const d = Math.hypot(st.x - st.x0, st.y - st.y0);
-  if (st.mode === 'shoot') {
+  if (st.mode === 'bindu') { if (!st.moved) addCone(bindu.x, bindu.y); }
+  else if (st.mode === 'shoot') {
     if (!inWindow(st.x0, st.y0)) { /* outside the glass */ }
     else if (d < 8) spark(st.x0, st.y0);
     else {
@@ -1015,7 +1232,7 @@ uic.addEventListener('wheel', ev => {
 }, { passive: false });
 function updateCursor(x, y) {
   const he = hitEmitter(x, y);
-  uic.style.cursor = hitList(lamps, x, y, 18) ? 'grab' : he ? (he.part === 'aim' ? 'grab' : 'move')
+  uic.style.cursor = Math.hypot(x - bindu.x, y - bindu.y) < 11 ? 'grab' : hitList(lamps, x, y, 18) ? 'grab' : he ? (he.part === 'aim' ? 'grab' : 'move')
     : (tool === 'target' && hitList(targets, x, y)) || (tool === 'source' && hitList(sources, x, y)) ? 'move'
     : tool === 'inspect' ? (hover ? 'pointer' : 'default') : 'crosshair';
 }
@@ -1173,6 +1390,25 @@ function drawOverlay(time) {
     ctx.fillStyle = C.muted; ctx.textAlign = 'right'; ctx.fillText(`${(focusCur * 100).toFixed(0)} cm`, x - 12, yy + 3);
     ctx.fillText(P.focusMode === 'auto' ? 'AF' : 'MF', x + 4, y0 - 8);
   }
+  // bindu: barely there unless you look for it
+  {
+    const near = mouse.x >= 0 && Math.hypot(mouse.x - bindu.x, mouse.y - bindu.y) < 40, show = near || tool === 'seed';
+    ctx.globalAlpha = show ? .7 : .22 + resonance * .5;
+    ctx.strokeStyle = C.warm; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(bindu.x, bindu.y, 6 + resonance * 4, 0, 6.283); ctx.stroke();
+    ctx.fillStyle = C.warm; ctx.beginPath(); ctx.arc(bindu.x, bindu.y, 1.4, 0, 6.283); ctx.fill();
+    if (show) { ctx.fillStyle = C.muted; ctx.textAlign = 'center'; ctx.fillText(`bindu · ${tree.age} rings`, bindu.x, bindu.y + 22); }
+    ctx.globalAlpha = 1;
+  }
+  if (P.recon) {   // seed-head parastichies: the 8 and 13 spiral families
+    ctx.lineWidth = .8;
+    for (const c of cones) {
+      for (const [k, col] of [[8, 'rgba(255,194,122,.45)'], [13, 'rgba(140,220,255,.4)']]) {
+        ctx.strokeStyle = col;
+        for (let s0 = 0; s0 < k; s0++) { ctx.beginPath(); let first = true; for (let n = s0; n * 2 + 1 < c.pts.length; n += k) { const x = c.pts[n * 2], y = c.pts[n * 2 + 1]; first ? ctx.moveTo(x, y) : ctx.lineTo(x, y); first = false; } ctx.stroke(); }
+      }
+    }
+  }
   if (P.pulsed) {
     const x = W - 34, y = H - 34;
     ctx.strokeStyle = 'rgba(230,238,240,.2)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, 14, 0, 6.283); ctx.stroke();
@@ -1229,6 +1465,15 @@ function buildPanel() {
   slider(panel, 'glow', 'Ionisation glow', 0, 3, 0.01, v => '×' + v.toFixed(2));
   slider(panel, 'trail', 'Glow trail', 0.6, 0.985, 0.001, v => v.toFixed(3));
   slider(panel, 'species', 'Tint bubbles by particle', 0, 1, 0.01);
+  heading(panel, 'Sacred geometry', ['bloom', () => addCone(bindu.x, bindu.y)]);
+  slider(panel, 'yantra', 'Śrī Yantra etching', 0, 3, 0.01, v => v < .01 ? 'off' : '×' + v.toFixed(2));
+  slider(panel, 'rings', 'Tree rings', 0, 3, 0.01, v => v < .01 ? 'off' : '×' + v.toFixed(2));
+  slider(panel, 'ringRate', 'Ring growth', 0, 4, 0.01, v => '×' + v.toFixed(2));
+  slider(panel, 'waves', 'Pressure waves', 0, 2, 0.01, v => v < .01 ? 'off' : '×' + v.toFixed(2));
+  { const b = document.createElement('div'); b.className = 'btnrow'; b.style.margin = '0 0 6px';
+    b.innerHTML = `<button class="btn" id="bFell">fell the tree</button><button class="btn" id="bCentre">centre the bindu</button>`; panel.appendChild(b);
+    b.querySelector('#bFell').onclick = () => { logEvent(`tree felled at <em>${tree.age}</em> rings`); seedTree(); };
+    b.querySelector('#bCentre').onclick = () => { bindu.rx = bindu.ry = .5; bindu.x = W / 2; bindu.y = H / 2; etch.dirty = true; }; }
   heading(panel, 'Camera');
   const fm = seg(panel, 'Focus', [['auto', 'autofocus'], ['manual', 'manual']], P.focusMode, v => { P.focusMode = v; }, 'fm');
   void fm;
@@ -1265,7 +1510,7 @@ function buildPanel() {
   toggles.paused = toggle(panel, 'paused', 'Pause  ␣');
   heading(panel, 'Keys');
   const k = document.createElement('p'); k.className = 'keys';
-  k.innerHTML = `<b>1–7</b> layers · <b>G</b> next grade · <b>␣</b> pause · <b>C</b> clear<br><b>wheel</b> pull focus · <b>A</b> autofocus · <b>L</b> letterbox<br><b>wheel on lamp</b> hue · <b>alt+wheel</b> torch hue<br><b>R</b> reconstruction · <b>F</b> field · <b>X</b> pulse · <b>B</b> burst<br><b>P</b> photograph · <b>H</b> hide UI · <b>Esc</b> unpin`;
+  k.innerHTML = `<b>1–8</b> layers · <b>G</b> next grade · <b>␣</b> pause · <b>C</b> clear<br><b>wheel</b> pull focus · <b>A</b> autofocus · <b>L</b> letterbox<br><b>wheel on lamp</b> hue · <b>alt+wheel</b> torch hue<br><b>R</b> reconstruction · <b>F</b> field · <b>X</b> pulse · <b>B</b> burst<br><b>P</b> photograph · <b>H</b> hide UI · <b>Esc</b> unpin<br><b>tap the bindu</b> bloom a seed head · <b>drag it</b> move the centre`;
   panel.appendChild(k);
   const b = document.createElement('div'); b.className = 'btnrow'; b.style.marginTop = '10px';
   b.innerHTML = `<button class="btn" id="bPhoto">photograph</button><button class="btn" id="bBurst">burst</button><button class="btn" id="bReset">reset scene</button>`;
@@ -1346,6 +1591,13 @@ function buildToolOpts() {
     s.querySelector('select').value = P.sourceType; s.querySelector('select').onchange = e => P.sourceType = e.target.value;
     const r = add(`activity <input type="range" id="opt-act" min="0.5" max="30" step="0.5" value="${P.sourceRate}">`); r.querySelector('input').oninput = e => P.sourceRate = +e.target.value;
     add(`<span class="desc">sources sit at the current focus depth</span>`);
+  } else if (tool === 'seed') {
+    const n = add(`florets <select id="opt-fl">${[55, 89, 144, 233, 377].map(v => `<option ${v === P.florets ? 'selected' : ''}>${v}</option>`).join('')}</select>`);
+    n.querySelector('select').onchange = e => P.florets = +e.target.value;
+    const sp = add(`spacing <input type="range" id="opt-fs" min="3" max="10" step="0.1" value="${P.floretSpacing}">`); sp.querySelector('input').oninput = e => P.floretSpacing = +e.target.value;
+    const t = add(`Fibonacci electrons <span class="switch"><input type="checkbox" id="opt-fe" ${P.fibElectrons ? 'checked' : ''}><i></i></span>`);
+    t.querySelector('input').onchange = e => P.fibElectrons = e.target.checked;
+    add(`<span class="desc">click to grow a seed head · drag the bindu to move the yantra and tree</span>`);
   } else if (tool === 'beam') {
     add(`<span class="desc">click inside to place a beam port, drag to aim · panel ▸ Beam line for species, rate, depth</span>`);
   } else if (tool === 'inspect') {
@@ -1393,7 +1645,8 @@ function defaultScene(reset) {
   buildLampUI();
   addEmitter(Math.PI, 'mix', 750, 1.3, .45);
   addEmitter(Math.PI * 1.16, 'K-', 420, 0.35, .7);
-  targets.push({ x: W * 0.44, y: H * 0.48, r: 20 });
+  targets.push({ x: W * 0.33, y: H * 0.56, r: 20 });
+  bindu.rx = .5; bindu.ry = .5; bindu.x = W / 2; bindu.y = H / 2; seedTree();
   sources.push({ x: W * 0.72, y: H * 0.68, acc: 0, type: 'mixed', z: .3 });
 }
 
@@ -1405,6 +1658,7 @@ addEventListener('resize', () => {
     const sx = W / ow, sy = H / oh;
     for (const o of [...targets, ...sources]) { o.x *= sx; o.y *= sy; }
     for (const o of [...emitters, ...lamps]) { o.x = o.rx * W; o.y = o.ry * H; }
+    cones.length = 0; waves.length = 0;
     particles.length = 0; tracks.length = 0; pinned = null; showInspector();
   }, 150);
 });
@@ -1414,20 +1668,22 @@ resize();
 buildTools(); buildPanel(); setTool('shoot'); defaultScene(false);
 setTimeout(() => $('#hint').classList.add('gone'), 9000);
 
-let last = performance.now(), fpsAcc = 0, fpsN = 0, statT = 0, slowT = 0;
+let last = performance.now(), realAcc = 0, fpsAcc = 0, fpsN = 0, statT = 0, slowT = 0;
 const root = document.documentElement;
 function frame(now) {
+  realAcc += (now - last) / 1000;
   const dt = Math.min((now - last) / 1000, 0.05); last = now;
   const time = now / 1000;
   if (!P.paused) simulate(dt);
   for (const st of pointers.values()) if (st.mode === 'field') field.paint(st.x, st.y, (st.neg ? -1 : 1) * P.brush * dt * 0.6, P.brushR);
   updateCamera(dt);
+  if (!P.paused) updateWaves(dt);
   packLights(dt);
   render(time);
   drawOverlay(time);
   fpsAcc += dt; fpsN++; statT += dt;
   if (statT > 0.5) {
-    const fps = fpsN / fpsAcc;
+    const fps = fpsN / Math.max(realAcc, 1e-3); realAcc = 0;
     bubRate = bubblesThisSec / statT; bubblesThisSec = 0;
     $('#sLive').textContent = particles.length; $('#sTracks').textContent = tracks.length;
     $('#sBub').textContent = bubRate > 9999 ? (bubRate / 1000).toFixed(1) + 'k' : Math.round(bubRate);
