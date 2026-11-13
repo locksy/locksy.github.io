@@ -30,6 +30,7 @@ body.hideui .log, body.hideui .hint, body.hideui .inspector { opacity: 0; pointe
 @keyframes pulse { 50% { opacity: .35; } }
 .brand h1 { margin: 0; font: 600 14px/1.1 var(--sans); letter-spacing: .14em; text-transform: uppercase; }
 .brand p { margin: 2px 0 0; font: 11px var(--mono); color: var(--muted); }
+.brand p.lens { color: var(--accent); opacity: .8; transition: color 1s; }
 .stats { display: flex; gap: 16px; margin: 0; }
 .stats div { min-width: 46px; }
 .stats dt { font: 10px var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
@@ -108,7 +109,7 @@ select { background: rgba(0,0,0,.35); color: var(--text); border: 1px solid var(
 .hint b { color: var(--text); font-weight: 600; }
 .hint.gone { opacity: 0; }
 
-.nogl[hidden] { display: none; }
+[hidden] { display: none !important; }
 .nogl { position: fixed; inset: 0; display: grid; place-items: center; z-index: 9; font: 14px var(--mono); color: var(--muted); padding: 24px; text-align: center; }
 
 @media (max-width: 720px) {
@@ -128,3 +129,9 @@ select { background: rgba(0,0,0,.35); color: var(--text); border: 1px solid var(
 .photo figure { margin: 0; display: flex; flex-direction: column; gap: 10px; align-items: center; max-width: 100%; max-height: 100%; }
 .photo img { max-width: 100%; max-height: calc(100vh - 110px); border: 1px solid var(--line-hi); border-radius: 6px; cursor: context-menu; }
 .photo figcaption { font: 11px var(--mono); color: var(--muted); text-align: center; }
+
+.sw { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; vertical-align: -1px; box-shadow: 0 0 8px currentColor; }
+input[type=range].hue::-webkit-slider-runnable-track { height: 4px; background: linear-gradient(90deg, #f44, #fb4, #ef4, #4f6, #4ef, #46f, #c4f, #f44); opacity: .8; }
+input[type=range].hue::-moz-range-track { height: 4px; background: linear-gradient(90deg, #f44, #fb4, #ef4, #4f6, #4ef, #46f, #c4f, #f44); }
+input[type=range].hue::-webkit-slider-thumb { margin-top: -4px; background: #fff; }
+.brand .dot, .tools button.on, .switch input:checked + i, input[type=range]::-webkit-slider-thumb { transition: background-color 1s, box-shadow 1s; }
