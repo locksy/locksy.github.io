@@ -16,9 +16,9 @@
 // ---------------------------------------------------------------- params
 const P = {
   B: 1.2, density: 1.0, bubbles: 1.0, size: 1.0, growth: 1.0, persistence: 0.55, spread: 0.55, drift: 0.12, speed: 1.0,
-  grade: 'cherenkov', exposure: 1.0, bloom: 1.0, streak: 0.7, dirt: 0.8, grain: 1.0, distort: 0.6, letterbox: false,
-  aperture: 0.55, focusMode: 'auto', focus: 0.5, glow: 1.0, trail: 0.9, species: 0.0, torch: true, torchHue: 195, chroma: false,
-  caustics: 1.0, motes: 1.0,
+  grade: 'studio', exposure: 1.0, bloom: 0.8, streak: 0.12, dirt: 0.2, grain: 1.0, distort: 0.35, letterbox: false,
+  aperture: 0.55, focusMode: 'auto', focus: 0.5, glow: 1.0, trail: 0.9, species: 0.0, torch: true, torchK: 4200, chroma: false, yantraKey: 'shri', tree: 'oak',
+  caustics: 0.7, motes: 0.8,
   cosmics: true, pulsed: false, audio: false, showField: false, recon: false, paused: false,
   yantra: 1.0, rings: 1.0, ringRate: 1.0, waves: 1.0, florets: 144, floretSpacing: 5.5, fibElectrons: true,
   shootSpecies: 'pi-', burst: 1, brush: 0.8, brushR: 90, targetProb: 0.5, sourceType: 'mixed', sourceRate: 4,
@@ -26,17 +26,17 @@ const P = {
 
 // film grades: lamp rig [hue°, sat, intensity] + colour pipeline
 const GRADES = {
-  cherenkov: { name: 'cherenkov', lamps: [[205, .9, 1.7], [30, .85, 1.35], [272, .75, 1.0]], liquid: [.0016, .0042, .0085], fog: [.01, .035, .07], ambient: [.10, .14, .2],
-    shadow: [.82, 1.0, 1.18], high: [1.1, 1.0, .88], sat: 1.05, contrast: .35, mono: 0, streakTint: [.35, .6, 1.0], hal: .45, vig: .6, flicker: 0, grainAmt: .045, species: 0 },
-  sodium: { name: 'sodium noir', lamps: [[28, .95, 2.0], [6, .9, 1.0], [188, .55, .55]], liquid: [.0055, .0026, .0010], fog: [.06, .025, .01], ambient: [.14, .09, .06],
-    shadow: [.78, .98, 1.14], high: [1.18, 1.0, .78], sat: 1.15, contrast: .55, mono: 0, streakTint: [1.0, .55, .22], hal: .9, vig: .75, flicker: .3, grainAmt: .06, species: 0 },
-  aurora: { name: 'aurora', lamps: [[148, .9, 1.5], [308, .85, 1.5], [205, .6, .8]], liquid: [.0022, .0012, .0065], fog: [.03, .02, .07], ambient: [.08, .1, .14],
-    shadow: [1.04, .9, 1.12], high: [.96, 1.06, 1.0], sat: 1.25, contrast: .3, mono: 0, streakTint: [.7, .45, 1.0], hal: .35, vig: .55, flicker: 0, grainAmt: .04, species: .55 },
-  archive: { name: 'archive', lamps: [[40, .1, 1.6], [210, .1, 1.1], [0, 0, .7]], liquid: [.004, .004, .004], fog: [.04, .04, .04], ambient: [.14, .14, .14],
-    shadow: [.92, .96, 1.04], high: [1.12, 1.03, .88], sat: 1.0, contrast: .7, mono: 1, streakTint: [.8, .8, .8], hal: .25, vig: .9, flicker: 1, grainAmt: .11, species: 0 },
+  studio: { name: 'studio', lamps: [[4300, 0, 0, 1.8], [3200, 0, 0, 1.1], [6500, 0, 0, .75]], liquid: [.0020, .0026, .0033], fog: [.03, .034, .04], ambient: [.11, .115, .12],
+    shadow: [.95, .99, 1.04], high: [1.04, 1.0, .95], sat: .9, contrast: .42, mono: 0, streakTint: [.85, .9, 1.0], hal: .3, vig: .55, flicker: 0, grainAmt: .05, species: 0, glow: .22, glowSat: .2 },
+  silver: { name: 'silver gelatin', lamps: [[5000, 0, 0, 1.9], [5600, 0, 0, 1.1], [4000, 0, 0, .7]], liquid: [.0035, .0035, .0035], fog: [.04, .04, .04], ambient: [.13, .13, .13],
+    shadow: [.95, .97, 1.02], high: [1.08, 1.02, .92], sat: 1.0, contrast: .7, mono: 1, streakTint: [.8, .8, .8], hal: .2, vig: .85, flicker: .8, grainAmt: .1, species: 0, glow: .15, glowSat: 0 },
+  sodium: { name: 'sodium night', lamps: [[1900, 0, 0, 2.0], [2300, 0, 0, 1.0], [6500, 210, .35, .55]], liquid: [.0045, .0025, .0012], fog: [.05, .03, .015], ambient: [.12, .09, .07],
+    shadow: [.86, .97, 1.1], high: [1.12, 1.0, .84], sat: 1.05, contrast: .5, mono: 0, streakTint: [1.0, .6, .3], hal: .7, vig: .75, flicker: .25, grainAmt: .065, species: 0, glow: .3, glowSat: .3 },
+  cherenkov: { name: 'cherenkov', lamps: [[9000, 205, .55, 1.6], [3000, 0, 0, 1.0], [7500, 265, .4, .8]], liquid: [.0016, .0042, .0085], fog: [.01, .035, .07], ambient: [.10, .14, .2],
+    shadow: [.82, 1.0, 1.18], high: [1.1, 1.0, .88], sat: 1.05, contrast: .35, mono: 0, streakTint: [.35, .6, 1.0], hal: .45, vig: .6, flicker: 0, grainAmt: .045, species: 0, glow: 1.0, glowSat: 1.0 },
 };
 const GRADE_KEYS = Object.keys(GRADES);
-const G = JSON.parse(JSON.stringify(GRADES.cherenkov)); // live (lerped) grade
+const G = JSON.parse(JSON.stringify(GRADES.studio)); // live (lerped) grade
 
 // ---------------------------------------------------------------- species
 const SP = {
@@ -193,6 +193,7 @@ uniform vec3 uLiquid, uFog, uAmbient;
 uniform vec4 uLP[${NL}]; uniform vec3 uLC[${NL}]; uniform int uNL;
 uniform sampler2D uEtch; uniform vec2 uEtchTexel, uBindu; uniform float uYantra, uRings, uRes;
 uniform vec4 uWave[6]; uniform int uNW;
+uniform vec4 uObj[12], uObjB[12]; uniform int uNO;
 vec3 hsv(float h,float s,float v){ vec3 k = clamp(abs(fract(h+vec3(0.,2./3.,1./3.))*6.-3.)-1.,0.,1.); return v*mix(vec3(1.),k,s); }
 float ridge(vec2 q){ return 1.-abs(noise(q)*2.-1.); }
 vec3 lightAt(vec2 p){
@@ -251,14 +252,14 @@ void main(){
     vec2 d = p-uLP[i].xy; float dist = length(d); float ang = atan(d.y, d.x);
     float shaft = pow(noise(vec2(ang*6.+float(i)*13.1, t*.12 + dist*.6)), 3.)*1.4 + pow(noise(vec2(ang*23.+float(i)*5., t*.05)), 6.)*1.5;
     float vk = smoothstep(.08, .3, uLP[i].z)*.9 + .1;
-    vol += uLC[i]*exp(-dist*(4.2+uLP[i].w*.1))*(.01 + shaft*.03)*vk;
+    vol += uLC[i]*exp(-dist*(4.2+uLP[i].w*.1))*(.01 + shaft*.014*smoothstep(.03, .22, dist))*vk;
     vol += uLC[i]*.0007/(dist*dist + .002)*vk;
     vec2 Ld = -d/max(dist,1e-4); float att = 1./(1.+dist*dist*uLP[i].w);
     glY += uLC[i]*att*max(dot(gY, Ld), 0.);
     glR += uLC[i]*att*max(dot(gR, Ld), 0.);
   }
-  vol += glY*vec3(1.,.88,.66)*.04 + glR*vec3(1.,.72,.46)*.05;
-  vol += illum*(e0.r*uYantra*.0007 + e0.g*uRings*.0006);
+  vol += glY*vec3(.95,.95,.92)*.022 + glR*vec3(1.,.9,.8)*.026;
+  vol += illum*(e0.r*uYantra*.0003 + e0.g*uRings*.0003);
   vol += wring*(length(gY)*vec3(1.,.8,.5)*.16 + length(gR)*vec3(.9,.6,.35)*.1) + wring*illum*.002;
   float bd = length(p-uBindu);
   vol += e0.r*uYantra*uRes*vec3(1.,.6,.24)*(.008 + .05*exp(-bd*9.)) + uRes*vec3(1.,.55,.2)*.05*exp(-bd*bd*1600.);
@@ -266,16 +267,58 @@ void main(){
   float caus = pow(ridge(cq)*ridge(cq*1.73+3.1), 7.);
   vol += illum*caus*.022*uCaustics;
   float px = uTexel.y*1.5;
-  vec2 fc = (fract(p/.2+.5)-.5)*.2;
-  float cr = max((1.-smoothstep(0.,px,abs(fc.x)))*step(abs(fc.y),.011), (1.-smoothstep(0.,px,abs(fc.y)))*step(abs(fc.x),.011));
-  vol += (illum*cr*.02 + uAmbient*cr*.006)*.35;
   vol += motes(p, t)*uMotes;
-  // chamber window / steel body
-  float sd = pow(pow(abs(p.x)/(uAspect*.5*.965),4.)+pow(abs(p.y)/(.5*.955),4.),.25);
+  // physical objects suspended in the liquid: tantalum beads (0), sealed sources (1), beam nozzles (2)
+  for(int i=0;i<12;i++){
+    if(i>=uNO) break;
+    vec2 a = uObj[i].xy, b = uObjB[i].xy; float r = uObj[i].z, kind = uObj[i].w;
+    vec2 ba = b-a; float hh = clamp(dot(p-a, ba)/max(dot(ba,ba), 1e-9), 0., 1.);
+    vec2 q = p-(a+ba*hh); float d = length(q);
+    float ao = d > r ? exp(-pow((d-r)/(r*1.4), 2.)) : 0.;
+    vol *= 1. - .45*ao;
+    if(d < r*1.02){
+      vec3 n = normalize(vec3(q/r, sqrt(max(1.-d*d/(r*r), .0))));
+      vec3 base = kind < .5 ? vec3(.030,.028,.026) : kind < 1.5 ? vec3(.10,.065,.025) : vec3(.045,.05,.055);
+      float gloss = kind < .5 ? 55. : kind < 1.5 ? 140. : 90.;
+      vec3 col = base*uAmbient*.6 + uFog*.02*pow(1.-n.z, 2.);
+      for(int j=0;j<${NL};j++){
+        if(j>=uNL) break;
+        vec3 L = vec3(uLP[j].xy - p, uLP[j].z); float dl = length(L); L /= dl;
+        float att = 1./(1.+dl*dl*uLP[j].w);
+        col += uLC[j]*att*(base*max(dot(n, L), 0.)*2.2 + pow(max(dot(n, normalize(L+vec3(0.,0.,1.))), 0.), gloss)*(kind < .5 ? .35 : .8));
+      }
+      vol = mix(vol, col, smoothstep(r*1.02, r*.86, d));
+    }
+  }
+  // chamber window, gasket, brushed steel flange with bolts
+  float sd = pow(pow(abs(p.x)/(uAspect*.5*.93),4.)+pow(abs(p.y)/(.5*.905),4.),.25);
   float win = smoothstep(1., 1.-px*2., sd);
-  vec3 steel = (uLiquid*2. + illum*.012)*(.6+.4*noise(vec2(p.x*600., p.y*4.)));
+  float pa = atan(p.y, p.x);
+  vec3 steel = uLiquid*1.4 + illum*.006;
+  steel *= .62 + .38*noise(vec2(sd*1400., pa*2.)) * (.7 + .3*noise(vec2(pa*40., 3.)));
+  steel += illum*.012*pow(noise(vec2(sd*60., pa*1.5 + 4.)), 3.);
+  const float NBOLT = 44.;
+  float kb = floor(pa/6.2832*NBOLT + .5), ab = kb/NBOLT*6.2832; vec2 bdir = vec2(cos(ab), sin(ab));
+  float brr = pow(pow(abs(bdir.x)/(uAspect*.5*.93),4.)+pow(abs(bdir.y)/(.5*.905),4.), -.25);
+  vec2 bc = bdir*brr*1.05; float bdd = length(p-bc), brad = .0085;
+  if(bdd < brad*1.05){
+    vec3 n = normalize(vec3((p-bc)/brad, sqrt(max(1.-bdd*bdd/(brad*brad), 0.))));
+    vec3 bolt = uLiquid*.8;
+    for(int j=0;j<${NL};j++){
+      if(j>=uNL) break;
+      vec3 L = vec3(uLP[j].xy - p, uLP[j].z); float dl = length(L); L /= dl; float att = 1./(1.+dl*dl*uLP[j].w);
+      bolt += uLC[j]*att*(vec3(.05)*max(dot(n,L),0.)*2. + pow(max(dot(n, normalize(L+vec3(0.,0.,1.))), 0.), 70.)*.5);
+    }
+    steel = mix(steel, bolt, smoothstep(brad*1.05, brad*.85, bdd));
+  } else steel *= 1. - .5*exp(-pow((bdd-brad)/.004, 2.));
+  float gasket = smoothstep(.998, 1.004, sd)*smoothstep(1.03, 1.018, sd);
+  steel *= 1. - gasket*.8;
   float lip = smoothstep(1.-px*16., 1., sd)*win;
-  vol = mix(steel, vol + illum*lip*.05, win);
+  // the glass itself: a large soft reflection of the studio and a faint edge glint
+  vec2 sb = p - vec2(-uAspect*.17, .25);
+  float soft = exp(-pow(length(max(abs(sb) - vec2(.16, .045), 0.)), 2.)*90.);
+  vol += (vec3(.010,.011,.012) + illum*.004)*soft*(1. + uFlash*2.);
+  vol = mix(steel, vol + illum*lip*.03, win);
   // ---- bubbles
   vec4 s = texture(uState, uv);
   float r = s.r, depth = s.a;
@@ -359,7 +402,7 @@ float dirt(vec2 uv){
 void main(){
   vec2 dc = vUv-.5;
   vec2 uv = .5 + dc*(1. - uDistort*.035 + uDistort*.12*dot(dc,dc));
-  vec2 ca = dc*.006*(.4+uDistort);
+  vec2 ca = dc*.0022*(.4+uDistort);
   vec3 c = vec3(texture(uHdr, uv-ca).r, texture(uHdr, uv).g, texture(uHdr, uv+ca).b);
   vec3 b2 = texture(uB2, uv).rgb, b4 = texture(uB4, uv).rgb, b8 = texture(uB8, uv).rgb;
   c += (b2*.25 + b4*.4 + b8*.55)*uBloom;
@@ -437,7 +480,7 @@ function resize() {
 // ---------------------------------------------------------------- chamber geometry
 function inWindow(x, y) {
   const px = (x / W - .5) * (W / H), py = (y / H - .5);
-  const a = W / H * .5 * .965, b = .5 * .955;
+  const a = W / H * .5 * .93, b = .5 * .905;
   return Math.pow(Math.pow(Math.abs(px) / a, 4) + Math.pow(Math.abs(py) / b, 4), .25) < 0.995;
 }
 function edgePoint(ang, inset = 18) {
@@ -467,13 +510,30 @@ const field = {
   clear() { this.g.fill(0); },
 };
 
-// ---------------------------------------------------------------- lights (interactive colour layer)
+// ---------------------------------------------------------------- lights: colour temperature + gels
+// Kelvin -> linear rgb (Tanner Helland fit), normalised to the brightest channel
+function blackbody(K) {
+  const t = K / 100; let r, g, b;
+  if (t <= 66) { r = 255; g = 99.4708025861 * Math.log(t) - 161.1195681661; b = t <= 19 ? 0 : 138.5177312231 * Math.log(t - 10) - 305.0447927307; }
+  else { r = 329.698727446 * Math.pow(t - 60, -0.1332047592); g = 288.1221695283 * Math.pow(t - 60, -0.0755148492); b = 255; }
+  return [r, g, b].map(c => Math.pow(clamp(c, 0, 255) / 255, 2.2));
+}
+const lum3 = v => .2126 * v[0] + .7152 * v[1] + .0722 * v[2];
+function lampRGB(l) {
+  const bb = blackbody(l.k); if (l.ga <= .001) return bb;
+  const gel = hsvLin(l.gh, 1, 1), t = bb.map((c, i) => c * gel[i]), sc = lum3(bb) / Math.max(lum3(t), 1e-3) * .7;
+  return bb.map((c, i) => c * (1 - l.ga) + t[i] * sc * l.ga);
+}
+function lampCss(l, light = .78) {
+  const c = lampRGB(l), m = Math.max(...c, 1e-3);
+  return 'rgb(' + c.map(v => Math.round(255 * (light + (1 - light) * Math.pow(v / m, 1 / 2.2)) * (.55 + .45 * Math.pow(v / m, 1 / 2.2)))).join(',') + ')';
+}
 const lamps = [];
 const flashes = [];        // transient event lights
 let selLamp = null;
-function addLamp(ang, hue, sat = .85, int = 1.3) {
+function addLamp(ang, k = 4300, gh = 0, ga = 0, int = 1.3) {
   const [x, y] = edgePoint(ang, -6);
-  const l = { x, y, rx: x / W, ry: y / H, hue, sat, int, th: hue, ts: sat, ti: int, on: true };
+  const l = { x, y, rx: x / W, ry: y / H, k, gh, ga, int, tk: k, tgh: gh, tga: ga, ti: int, on: true };
   lamps.push(l); return l;
 }
 function addFlash(x, y, rgb, int, life = 0.6, reach = 60) {
@@ -489,13 +549,23 @@ function packLights(dt) {
     if (nLights >= NL) return; const [px, py] = toP(x, y), i = nLights++;
     LP.set([px, py, z, w], i * 4); LC.set([rgb[0] * k, rgb[1] * k, rgb[2] * k], i * 3);
   };
-  for (const l of lamps) if (l.on) put(l.x, l.y, .32, 1.6, hsvLin(l.hue, l.sat, 1), l.int);
-  if (P.torch && torch.a > 0.01) put(torch.x, torch.y, .09, 30, hsvLin(P.torchHue, .55, 1), 1.1 * torch.a);
+  for (const l of lamps) if (l.on) put(l.x, l.y, .32, 1.6, lampRGB(l), l.int);
+  if (P.torch && torch.a > 0.01) put(torch.x, torch.y, .09, 30, blackbody(P.torchK), .9 * torch.a);
   for (let i = flashes.length - 1; i >= 0; i--) {
     const f = flashes[i]; f.t += dt; const k = Math.max(0, 1 - f.t / f.life);
     if (k <= 0) { flashes.splice(i, 1); continue; }
-    put(f.x, f.y, .04, f.reach, f.rgb, f.int * k * k);
+    put(f.x, f.y, .04, f.reach, f.rgb, f.int * k * k * (.35 + .65 * G.glow));
   }
+}
+// physical scene objects drawn into the liquid: tantalum target beads, sealed sources, beam nozzles
+const OA = new Float32Array(48), OB = new Float32Array(48);
+let nObj = 0;
+function packObjects() {
+  nObj = 0;
+  const put = (ax, ay, bx, by, r, kind) => { if (nObj >= 12) return; const [pa, qa] = toP(ax, ay), [pb, qb] = toP(bx, by); OA.set([pa, qa, r / H, kind], nObj * 4); OB.set([pb, qb, 0, 0], nObj * 4); nObj++; };
+  for (const t of targets) put(t.x, t.y, t.x, t.y, 6.5, 0);
+  for (const s of sources) put(s.x - 4, s.y - 2, s.x + 4, s.y + 2, 3.2, 1);
+  for (const e of emitters) { const c = Math.cos(e.a), sn = Math.sin(e.a); put(e.x - c * 30, e.y - sn * 30, e.x - c * 3, e.y - sn * 3, 4.2, 2); }
 }
 
 // ---------------------------------------------------------------- sacred geometry layer
@@ -514,32 +584,19 @@ function etchResize() {
   if (!etch.tex) etch.tex = gl.createTexture();
   etch.dirty = true;
 }
-// Sri Yantra: 4 upward (Shiva) and 5 downward (Shakti) triangles as [baseY, apexY, width] in units of the inner circle
-const YUP = [[-.62, .97, 1], [-.43, .63, .8], [-.27, .43, .63], [-.08, .23, .46]];
-const YDN = [[.70, -.97, 1], [.50, -.65, .81], [.32, -.46, .65], [.15, -.29, .5], [.03, -.13, .34]];
-function yantra(g, cx, cy, R) {
-  const tri = ([b, a, w], up) => {
-    const hw = Math.sqrt(Math.max(0, 1 - b * b)) * w;
-    g.beginPath(); g.moveTo(cx - hw * R, cy - b * R); g.lineTo(cx + hw * R, cy - b * R); g.lineTo(cx, cy - a * R); g.closePath(); g.stroke();
-    void up;
-  };
-  YUP.forEach(t => tri(t, 1)); YDN.forEach(t => tri(t, 0));
-  const circle = r => { g.beginPath(); g.arc(cx, cy, r * R, 0, 6.2832); g.stroke(); };
-  const petals = (n, r0, r1, off) => {
-    for (let i = 0; i < n; i++) {
-      const th = off + i * 6.2832 / n, hw = Math.PI / n * .96;
-      const P0 = [cx + Math.cos(th - hw) * r0 * R, cy + Math.sin(th - hw) * r0 * R], P1 = [cx + Math.cos(th + hw) * r0 * R, cy + Math.sin(th + hw) * r0 * R];
-      const T = [cx + Math.cos(th) * r1 * R, cy + Math.sin(th) * r1 * R];
-      const c0 = [cx + Math.cos(th - hw * .85) * (r1 - .04) * R, cy + Math.sin(th - hw * .85) * (r1 - .04) * R];
-      const c1 = [cx + Math.cos(th + hw * .85) * (r1 - .04) * R, cy + Math.sin(th + hw * .85) * (r1 - .04) * R];
-      g.beginPath(); g.moveTo(...P0); g.quadraticCurveTo(...c0, ...T); g.quadraticCurveTo(...c1, ...P1); g.stroke();
-    }
-  };
-  circle(1.03); petals(8, 1.06, 1.4, -Math.PI / 2); circle(1.43);
-  petals(16, 1.46, 1.74, -Math.PI / 2); circle(1.77); circle(1.84); circle(1.89); circle(1.94);
-  // bhupura: three nested squares, each with four T-shaped gates
-  for (const sq of [2.1, 2.18, 2.26]) {
-    const sR = sq * R, gw = .2 * R, d = .1 * R + (sq - 2.1) * R, w = .1 * R, h = .1 * R;
+// --- yantra library. R is the radius of the inner circle; every form keeps its traditional order:
+// bindu at the centre, triangles, lotus rings, enclosing circles, and the bhupura with four gates.
+function yCircle(g, cx, cy, R, r) { g.beginPath(); g.arc(cx, cy, r * R, 0, 6.2832); g.stroke(); }
+function yPetals(g, cx, cy, R, n, r0, r1, off = -Math.PI / 2) {
+  for (let i = 0; i < n; i++) {
+    const th = off + i * 6.2832 / n, hw = Math.PI / n * .96, at = (a, r) => [cx + Math.cos(a) * r * R, cy + Math.sin(a) * r * R];
+    g.beginPath(); g.moveTo(...at(th - hw, r0));
+    g.quadraticCurveTo(...at(th - hw * .85, r1 - .04), ...at(th, r1)); g.quadraticCurveTo(...at(th + hw * .85, r1 - .04), ...at(th + hw, r0)); g.stroke();
+  }
+}
+function yBhupura(g, cx, cy, R, s0) {
+  for (const sq of [s0, s0 + .08, s0 + .16]) {
+    const sR = sq * R, gw = .2 * R, d = .1 * R + (sq - s0) * R, w = .1 * R, h = .1 * R;
     const side = [[-sR, -sR], [-gw, -sR], [-gw, -sR - d], [-gw - w, -sR - d], [-gw - w, -sR - d - h], [gw + w, -sR - d - h], [gw + w, -sR - d], [gw, -sR - d], [gw, -sR], [sR, -sR]];
     g.beginPath();
     for (let k = 0; k < 4; k++) {
@@ -548,30 +605,88 @@ function yantra(g, cx, cy, R) {
     }
     g.closePath(); g.stroke();
   }
-  g.beginPath(); g.arc(cx, cy, 1.6, 0, 6.2832); g.fill();
 }
+function yTri(g, cx, cy, R, r, up, rot = 0) {
+  const a0 = (up ? -Math.PI / 2 : Math.PI / 2) + rot; g.beginPath();
+  for (let k = 0; k < 3; k++) { const a = a0 + k * 2.0944; k ? g.lineTo(cx + Math.cos(a) * r * R, cy + Math.sin(a) * r * R) : g.moveTo(cx + Math.cos(a) * r * R, cy + Math.sin(a) * r * R); }
+  g.closePath(); g.stroke();
+}
+const YUP = [[-.62, .97, 1], [-.43, .63, .8], [-.27, .43, .63], [-.08, .23, .46]];
+const YDN = [[.70, -.97, 1], [.50, -.65, .81], [.32, -.46, .65], [.15, -.29, .5], [.03, -.13, .34]];
+const YANTRAS = {
+  shri: { name: 'Śrī', draw(g, cx, cy, R) {
+    for (const [b, a, w] of [...YUP, ...YDN]) { const hw = Math.sqrt(Math.max(0, 1 - b * b)) * w; g.beginPath(); g.moveTo(cx - hw * R, cy - b * R); g.lineTo(cx + hw * R, cy - b * R); g.lineTo(cx, cy - a * R); g.closePath(); g.stroke(); }
+    yCircle(g, cx, cy, R, 1.03); yPetals(g, cx, cy, R, 8, 1.06, 1.4); yCircle(g, cx, cy, R, 1.43);
+    yPetals(g, cx, cy, R, 16, 1.46, 1.74); [1.77, 1.84, 1.89, 1.94].forEach(r => yCircle(g, cx, cy, R, r)); yBhupura(g, cx, cy, R, 2.1);
+  } },
+  kali: { name: 'Kālī', draw(g, cx, cy, R) {
+    [1, .8, .62, .45, .28].forEach(r => yTri(g, cx, cy, R, r, false));
+    yCircle(g, cx, cy, R, 1.03); yPetals(g, cx, cy, R, 8, 1.06, 1.48); yCircle(g, cx, cy, R, 1.52); yCircle(g, cx, cy, R, 1.58); yBhupura(g, cx, cy, R, 1.78);
+  } },
+  shatkona: { name: 'Ṣaṭkoṇa', draw(g, cx, cy, R) {
+    yTri(g, cx, cy, R, 1, true); yTri(g, cx, cy, R, 1, false); yTri(g, cx, cy, R, .42, false);
+    yCircle(g, cx, cy, R, 1.03); yPetals(g, cx, cy, R, 8, 1.06, 1.44); yCircle(g, cx, cy, R, 1.48); yCircle(g, cx, cy, R, 1.53); yBhupura(g, cx, cy, R, 1.72);
+  } },
+  padma: { name: 'Padma', draw(g, cx, cy, R) {
+    yCircle(g, cx, cy, R, .34); yPetals(g, cx, cy, R, 8, .37, .82); yCircle(g, cx, cy, R, .85);
+    yPetals(g, cx, cy, R, 16, .88, 1.26, -Math.PI / 2 + Math.PI / 16); yCircle(g, cx, cy, R, 1.29);
+    yPetals(g, cx, cy, R, 32, 1.32, 1.6); yCircle(g, cx, cy, R, 1.63); yCircle(g, cx, cy, R, 1.68); yBhupura(g, cx, cy, R, 1.88);
+  } },
+};
+const YANTRA_KEYS = Object.keys(YANTRAS);
+const yState = { prev: null, mix: 1 };
+function setYantra(key) {
+  if (key === P.yantraKey) return;
+  yState.prev = P.yantraKey; P.yantraKey = key; yState.mix = 0;
+  addWave(bindu.x, bindu.y, .55); etch.dirty = true;
+  logEvent(`${YANTRAS[key].name} yantra`);
+  document.querySelectorAll('[data-yk]').forEach(b => b.classList.toggle('on', b.dataset.yk === key));
+}
+const nextYantra = () => setYantra(YANTRA_KEYS[(YANTRA_KEYS.indexOf(P.yantraKey) + 1) % YANTRA_KEYS.length]);
+
+// --- tree species: how a wood lays down its rings
+const TREES = {
+  oak:     { name: 'oak', grow: 1.0, late: 1.7, lateI: 200, early: [.45, .75], earlyI: 50, pores: true, rays: [34, 1.5, 110], ecc: .12, lobes: 0, wav: .012, resin: false },
+  pine:    { name: 'Scots pine', grow: 1.25, late: 2.8, lateI: 255, early: [], earlyI: 0, pores: false, rays: [16, .6, 40], ecc: .2, lobes: 0, wav: .008, resin: true },
+  olive:   { name: 'olive', grow: .75, late: 1.2, lateI: 150, early: [.5], earlyI: 45, pores: false, rays: [10, .6, 35], ecc: .3, lobes: .22, wav: .06, resin: false },
+  yew:     { name: 'yew', grow: .42, late: 1.0, lateI: 170, early: [], earlyI: 0, pores: false, rays: [0, 0, 0], ecc: .1, lobes: .05, wav: .02, resin: false },
+  redwood: { name: 'redwood', grow: 1.9, late: 2.2, lateI: 210, early: [.3, .6, .85], earlyI: 40, pores: false, rays: [8, .6, 30], ecc: .05, lobes: 0, wav: .01, resin: false },
+};
+const TREE_KEYS = Object.keys(TREES);
+const hash1 = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
 const NB = 120;   // angular bins of the tree
-const tree = { rings: [], cur: new Float32Array(NB), bias: new Float32Array(NB), vari: new Float32Array(NB), t: 0, age: 0, rays: [] };
-function seedTree() {
-  tree.rings = []; tree.cur.fill(3); tree.bias.fill(0); tree.t = 0; tree.age = 0;
-  const ph = [rand() * 6.28, rand() * 6.28, rand() * 6.28];
-  for (let i = 0; i < NB; i++) { const a = i / NB * 6.2832; tree.vari[i] = 1 + .16 * Math.sin(a + ph[0]) + .07 * Math.sin(2 * a + ph[1]) + .04 * Math.sin(5 * a + ph[2]); }
-  tree.rays = Array.from({ length: 22 }, () => [rand() * 6.2832, .15 + rand() * .5, .3 + rand() * .5]);
-  for (let k = 0; k < 7; k++) { treeGrow(6.5, .6 + rand() * .9); }
+const tree = { rings: [], cur: new Float32Array(NB), bias: new Float32Array(NB), vari: new Float32Array(NB), t: 0, age: 0, rays: [], seed: 0 };
+function seedTree(key) {
+  if (key) P.tree = key;
+  const sp = TREES[P.tree];
+  tree.rings = []; tree.cur.fill(3); tree.bias.fill(0); tree.t = 0; tree.age = 0; tree.seed = rand() * 1000;
+  const ph = [0, 1, 2, 3].map(() => rand() * 6.28);
+  for (let i = 0; i < NB; i++) {
+    const a = i / NB * 6.2832;
+    tree.vari[i] = Math.max(.35, 1 + sp.ecc * Math.sin(a + ph[0]) + .06 * Math.sin(2 * a + ph[1]) + sp.lobes * (.6 * Math.sin(3 * a + ph[2]) + .4 * Math.sin(5 * a + ph[3])));
+  }
+  tree.rays = Array.from({ length: sp.rays[0] }, () => [rand() * 6.2832, .1 + rand() * .45, .3 + rand() * .6]);
+  for (let k = 0; k < 7; k++) treeGrow(6.5, .6 + rand() * .9);
   etch.dirty = true;
+  document.querySelectorAll('[data-tk]').forEach(b => b.classList.toggle('on', b.dataset.tk === P.tree));
 }
+function setTree(key) { logEvent(`${TREES[key].name} · a seedling at the bindu`); seedTree(key); addWave(bindu.x, bindu.y, .5); }
 function treeGrow(dt, act) {
-  const c = tree.cur, b = tree.bias;
-  for (let i = 0; i < NB; i++) c[i] += P.ringRate * 6 * act * (1 + b[i]) * tree.vari[i] * dt / Math.sqrt(1 + c[i] / 70);
+  const c = tree.cur, b = tree.bias, sp = TREES[P.tree];
+  for (let i = 0; i < NB; i++) c[i] += P.ringRate * 6 * sp.grow * act * (1 + b[i]) * tree.vari[i] * dt / Math.sqrt(1 + c[i] / 70);
   for (let i = 0; i < NB; i++) b[i] *= Math.exp(-dt * .08);
   tree.t += dt;
   const period = P.pulsed ? CYCLE * 2 : 6.5;
   if (tree.t >= period) {
     tree.t = 0; tree.age++;
-    tree.rings.push(Float32Array.from(c, (r, i) => r * (1 + .012 * Math.sin(i * .9 + tree.age * 1.7))));
+    const ph = hash1(tree.seed + tree.age) * 6.28, ph2 = hash1(tree.seed - tree.age) * 6.28;
+    tree.rings.push(Float32Array.from(c, (r, i) => r * (1 + sp.wav * (Math.sin(i * .21 + ph) * .7 + Math.sin(i * .53 + ph2) * .3))));
     etch.dirty = true;
     let mx = 0; for (const r of c) mx = Math.max(mx, r);
-    if (mx > Math.hypot(W, H) * .5) { logEvent(`tree felled at <em>${tree.age}</em> rings · a seedling starts at the bindu`); seedTree(); }
+    if (mx > Math.hypot(W, H) * .5) {
+      const next = TREE_KEYS[(TREE_KEYS.indexOf(P.tree) + 1) % TREE_KEYS.length];
+      logEvent(`${TREES[P.tree].name} felled at <em>${tree.age}</em> rings`); seedTree(next);
+    }
   }
 }
 function treeBias(ang, amt) {
@@ -581,26 +696,46 @@ function treeBias(ang, amt) {
   }
 }
 function drawEtch() {
-  const g = etch.g, k = etch.k;
-  g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-over';
+  const g = etch.g, k = etch.k, sp = TREES[P.tree];
+  g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
   g.fillStyle = '#000'; g.fillRect(0, 0, etch.cv.width, etch.cv.height);
   g.setTransform(k, 0, 0, k, 0, 0); g.globalCompositeOperation = 'lighter'; g.lineJoin = 'round';
   const cx = bindu.x, cy = bindu.y;
-  // tree rings: latewood lines, faint earlywood grain between, medullary rays, the living cambium edge
-  const ringPath = (r, scale = 1) => { g.beginPath(); for (let i = 0; i <= NB; i++) { const a = i / NB * 6.2832, rr = r[i % NB] * scale; i ? g.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr) : g.moveTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); } g.stroke(); };
+  const pt = (r, i, f = 1) => { const a = i / NB * 6.2832; return [cx + Math.cos(a) * r * f, cy + Math.sin(a) * r * f]; };
+  const ringPath = (fn) => { g.beginPath(); for (let i = 0; i <= NB; i++) { const [x, y] = fn(i % NB, i); i ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke(); };
   let prev = null;
-  for (const r of tree.rings) {
-    if (prev) { g.strokeStyle = 'rgb(0,55,0)'; g.lineWidth = .8; for (const f of [.4, .7]) { g.beginPath(); for (let i = 0; i <= NB; i++) { const a = i / NB * 6.2832, rr = prev[i % NB] + (r[i % NB] - prev[i % NB]) * f; i ? g.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr) : g.moveTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); } g.stroke(); } }
-    g.strokeStyle = 'rgb(0,190,0)'; g.lineWidth = 1.6; ringPath(r);
+  tree.rings.forEach((r, ri) => {
+    if (prev) {
+      g.strokeStyle = `rgb(0,${sp.earlyI},0)`; g.lineWidth = .7;
+      for (const f of sp.early) ringPath(i => { const rr = prev[i] + (r[i] - prev[i]) * f; return pt(rr, i); });
+      if (sp.pores) {   // ring-porous: a row of vessels in each spring's earlywood
+        g.fillStyle = 'rgb(0,130,0)';
+        const n = Math.round(2 * Math.PI * r[0] / 5);
+        for (let j = 0; j < n; j++) { const fi = (j + hash1(ri * 97 + j)) / n * NB, i = Math.floor(fi) % NB, rr = prev[i] + (r[i] - prev[i]) * (.06 + .2 * hash1(j * 13 + ri)); const [x, y] = pt(rr, fi); g.fillRect(x - .7, y - .7, 1.4, 1.4); }
+      }
+    }
+    g.strokeStyle = `rgb(0,${sp.lateI},0)`; g.lineWidth = sp.late; ringPath(i => pt(r[i], i));
+    if (sp.resin && prev) {
+      g.fillStyle = 'rgb(0,90,0)';
+      const n = Math.round(2 * Math.PI * r[0] / 45);
+      for (let j = 0; j < n; j++) { const fi = (j + hash1(ri * 31 + j)) / n * NB, i = Math.floor(fi) % NB; const [x, y] = pt(r[i] - sp.late * 1.5, fi); g.beginPath(); g.arc(x, y, 1.1, 0, 6.2832); g.fill(); }
+    }
     prev = r;
-  }
-  g.strokeStyle = 'rgb(0,80,0)'; g.lineWidth = 1; ringPath(tree.cur);
+  });
+  g.strokeStyle = 'rgb(0,70,0)'; g.lineWidth = .9; ringPath(i => pt(tree.cur[i], i));
   const outer = prev || tree.cur;
-  g.strokeStyle = 'rgb(0,60,0)'; g.lineWidth = .8;
-  for (const [a, r0, len] of tree.rays) { const i = Math.round(a / 6.2832 * NB) % NB, R = outer[i]; g.beginPath(); g.moveTo(cx + Math.cos(a) * R * r0, cy + Math.sin(a) * R * r0); g.lineTo(cx + Math.cos(a) * R * Math.min(1, r0 + len), cy + Math.sin(a) * R * Math.min(1, r0 + len)); g.stroke(); }
-  // yantra
-  g.strokeStyle = g.fillStyle = 'rgb(255,0,0)'; g.lineWidth = 1.1;
-  yantra(g, cx, cy, S * .078);
+  for (const [a, r0, len] of tree.rays) {
+    g.strokeStyle = `rgb(0,${sp.rays[2]},0)`; g.lineWidth = sp.rays[1];
+    const i = Math.round(a / 6.2832 * NB) % NB, Rr = outer[i];
+    g.beginPath(); g.moveTo(cx + Math.cos(a) * Rr * r0, cy + Math.sin(a) * Rr * r0); g.lineTo(cx + Math.cos(a) * Rr * Math.min(1, r0 + len), cy + Math.sin(a) * Rr * Math.min(1, r0 + len)); g.stroke();
+  }
+  // yantra, cross-fading between forms
+  g.lineWidth = 1.1;
+  const RY = S * .078;
+  const drawY = (key, a) => { if (a <= .003) return; g.globalAlpha = a; g.strokeStyle = g.fillStyle = 'rgb(255,0,0)'; YANTRAS[key].draw(g, cx, cy, RY); };
+  if (yState.mix < 1 && yState.prev) drawY(yState.prev, 1 - yState.mix);
+  drawY(P.yantraKey, yState.mix < 1 ? yState.mix : 1);
+  g.globalAlpha = 1; g.fillStyle = 'rgb(255,0,0)'; g.beginPath(); g.arc(cx, cy, 1.6, 0, 6.2832); g.fill();
   gl.bindTexture(gl.TEXTURE_2D, etch.tex);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, etch.cv);
@@ -801,7 +936,8 @@ function emitGlow(o, ion) {
   let r, g, bl;
   if (b > 0.9) { r = .22; g = .42; bl = 1.6; }
   else { const t = clamp((b - .15) / .75, 0, 1); r = 1.7 - 1.3 * t; g = .55 + .2 * t; bl = .12 + 1.1 * t * t; }
-  const inten = P.glow * (.22 + Math.min(ion, 12) * .035) * (1 - o.z * .5);
+  const inten = P.glow * G.glow * (.22 + Math.min(ion, 12) * .035) * (1 - o.z * .5);
+  { const l = .3 * r + .55 * g + .15 * bl; r = l + (r - l) * G.glowSat; g = l + (g - l) * G.glowSat; bl = l + (bl - l) * G.glowSat; }
   B.data[k] = o.x; B.data[k + 1] = o.y; B.data[k + 2] = (5 + Math.min(ion, 16) * .35) * simScale;
   B.data[k + 3] = r * inten; B.data[k + 4] = g * inten; B.data[k + 5] = bl * inten;
   B.n++;
@@ -965,12 +1101,13 @@ function updateCamera(dt) {
   // lerp grade + lamp colours
   const k = Math.min(1, dt * 2.2), tg = GRADES[P.grade];
   for (const key of ['liquid', 'fog', 'ambient', 'shadow', 'high', 'streakTint']) for (let i = 0; i < 3; i++) G[key][i] += (tg[key][i] - G[key][i]) * k;
-  for (const key of ['sat', 'contrast', 'mono', 'hal', 'vig', 'flicker', 'grainAmt']) G[key] += (tg[key] - G[key]) * k;
+  for (const key of ['sat', 'contrast', 'mono', 'hal', 'vig', 'flicker', 'grainAmt', 'glow', 'glowSat']) G[key] += (tg[key] - G[key]) * k;
   for (const l of lamps) {
-    if (P.chroma) l.th += dt * 14;
-    let dh = ((l.th - l.hue) % 360 + 540) % 360 - 180; l.hue += dh * k;
-    l.sat += (l.ts - l.sat) * k; l.int += (l.ti - l.int) * k;
+    if (P.chroma) { l.tgh += dt * 14; l.tga = Math.max(l.tga, .45); }
+    const dh = ((l.tgh - l.gh) % 360 + 540) % 360 - 180; l.gh += dh * k;
+    l.k += (l.tk - l.k) * k; l.ga += (l.tga - l.ga) * k; l.int += (l.ti - l.int) * k;
   }
+  if (yState.mix < 1) { yState.mix = Math.min(1, yState.mix + dt / 2.4); etch.dirty = true; }
   shake *= Math.pow(0.02, dt);
   torch.a += ((P.torch && torch.live && inWindow(torch.x, torch.y) ? 1 : 0) - torch.a) * Math.min(1, dt * 5);
   parX += ((mouse.x >= 0 ? mouse.x / W - .5 : 0) - parX) * Math.min(1, dt * 1.5);
@@ -978,7 +1115,8 @@ function updateCamera(dt) {
 }
 function applyGrade(key) {
   P.grade = key; const g = GRADES[key];
-  g.lamps.forEach(([h, s, i], n) => { if (lamps[n]) { lamps[n].th = h; lamps[n].ts = s; lamps[n].ti = i; } });
+  g.lamps.forEach(([kk, gh, ga, i], n) => { const l = lamps[n]; if (l) { l.tk = kk; l.tgh = gh; l.tga = ga; l.ti = i; } });
+  buildLampUI();
   P.species = g.species; syncInputs();
   document.querySelectorAll('[data-grade]').forEach(b => b.classList.toggle('on', b.dataset.grade === key));
   logEvent(`grade · <em>${g.name}</em>`);
@@ -1041,8 +1179,9 @@ function render(time) {
     gl.uniform4fv(u['uLP[0]'], LP); gl.uniform3fv(u['uLC[0]'], LC); gl.uniform1i(u.uNL, nLights);
     gl.uniform2f(u.uPar, parX, parY); gl.uniform2f(u.uShake, gauss() * shake, gauss() * shake);
     bindTex(2, etch.tex); gl.uniform1i(u.uEtch, 2); gl.uniform2f(u.uEtchTexel, 1 / etch.cv.width, 1 / etch.cv.height);
-    gl.uniform2f(u.uBindu, ...toP(bindu.x, bindu.y)); gl.uniform1f(u.uYantra, P.yantra); gl.uniform1f(u.uRings, P.rings); gl.uniform1f(u.uRes, resonance);
+    gl.uniform2f(u.uBindu, ...toP(bindu.x, bindu.y)); const etchK = W < H ? .55 : 1; gl.uniform1f(u.uYantra, P.yantra * etchK); gl.uniform1f(u.uRings, P.rings * etchK); gl.uniform1f(u.uRes, resonance);
     gl.uniform4fv(u['uWave[0]'], WV); gl.uniform1i(u.uNW, waves.length);
+    gl.uniform4fv(u['uObj[0]'], OA); gl.uniform4fv(u['uObjB[0]'], OB); gl.uniform1i(u.uNO, nObj);
   });
   bindTex(0, shadeT.tex); gl.generateMipmap(gl.TEXTURE_2D);
   // 5. depth of field + compose
@@ -1159,12 +1298,12 @@ uic.addEventListener('pointerdown', ev => {
   mouse.x = x; mouse.y = y; torch.x = x; torch.y = y; torch.live = true;
   const st = { x0: x, y0: y, x, y, t0: performance.now(), mode: tool, neg: ev.button === 2 || ev.altKey, shift: ev.shiftKey };
   const he = hitEmitter(x, y), hl = hitList(lamps, x, y, 18);
-  if (Math.hypot(x - bindu.x, y - bindu.y) < 11) { st.mode = 'bindu'; }
+  if (Math.hypot(x - bindu.x, y - bindu.y) < 14) { st.mode = 'bindu'; st.lp = setTimeout(() => { st.longed = true; nextYantra(); }, 520); }
   else if (hl) { st.mode = 'lamp'; st.obj = hl; selLamp = hl; if (tool === 'light') buildToolOpts(); }
   else if (he) { st.mode = 'emitter-' + he.part; st.obj = he.e; }
   else if (tool === 'seed') { if (inWindow(x, y)) { addCone(x, y); st.mode = 'seeded'; } }
   else if (tool === 'light') {
-    if (lamps.length < 6) { const l = { x, y, rx: x / W, ry: y / H, hue: rand() * 360, sat: .85, int: 0, th: 0, ts: .85, ti: 1.3, on: true }; l.th = l.hue; lamps.push(l); selLamp = l; st.mode = 'lamp'; st.obj = l; st.placed = true; buildToolOpts(); buildLampUI(); }
+    if (lamps.length < 6) { const kk = 2700 + rand() * 3800, l = { x, y, rx: x / W, ry: y / H, k: kk, gh: 0, ga: 0, int: 0, tk: kk, tgh: 0, tga: 0, ti: 1.3, on: true }; lamps.push(l); selLamp = l; st.mode = 'lamp'; st.obj = l; st.placed = true; buildToolOpts(); buildLampUI(); }
   } else if (tool === 'target' || tool === 'source') {
     const list = tool === 'target' ? targets : sources, o = hitList(list, x, y);
     if (o) { st.mode = 'move'; st.obj = o; st.list = list; }
@@ -1180,7 +1319,7 @@ uic.addEventListener('pointermove', ev => {
   const st = pointers.get(ev.pointerId);
   if (!st) { if (tool === 'inspect') updateHover(x, y); updateCursor(x, y); return; }
   const dx = x - st.x, dy = y - st.y; st.x = x; st.y = y;
-  if (st.mode === 'bindu') { if (Math.hypot(x - st.x0, y - st.y0) > 4 && inWindow(x, y)) { bindu.x = x; bindu.y = y; bindu.rx = x / W; bindu.ry = y / H; etch.dirty = true; st.moved = true; } }
+  if (st.mode === 'bindu') { if (Math.hypot(x - st.x0, y - st.y0) > 4 && inWindow(x, y)) { clearTimeout(st.lp); bindu.x = x; bindu.y = y; bindu.rx = x / W; bindu.ry = y / H; etch.dirty = true; st.moved = true; } }
   else if (st.mode === 'lamp') { st.obj.x = x; st.obj.y = y; st.obj.rx = x / W; st.obj.ry = y / H; }
   else if (st.mode === 'emitter-body' || st.mode === 'move' || st.mode === 'placed') {
     if (Math.hypot(x - st.x0, y - st.y0) > 4 && st.mode === 'placed') st.mode = 'move';
@@ -1193,7 +1332,7 @@ function endPointer(ev) {
   pointers.delete(ev.pointerId);
   if (ev.pointerType !== 'mouse' && !pointers.size) setTimeout(() => { if (!pointers.size) torch.live = false; }, 900);
   const d = Math.hypot(st.x - st.x0, st.y - st.y0);
-  if (st.mode === 'bindu') { if (!st.moved) addCone(bindu.x, bindu.y); }
+  if (st.mode === 'bindu') { clearTimeout(st.lp); if (!st.moved && !st.longed) addCone(bindu.x, bindu.y); }
   else if (st.mode === 'shoot') {
     if (!inWindow(st.x0, st.y0)) { /* outside the glass */ }
     else if (d < 8) spark(st.x0, st.y0);
@@ -1204,7 +1343,7 @@ function endPointer(ev) {
         const o = spawn(sp, st.x0, st.y0, Math.cos(a), Math.sin(a), p * (n > 1 ? 1 + gauss() * .05 : 1), null, focusCur, gauss() * .05);
         if (o && n === 1) logEvent(`fired <em>${SP[sp].sym}</em> ${fmtP(p)}`);
       }
-      addFlash(st.x0, st.y0, hsvLin(P.torchHue, .5, 1), 1.2, .3, 160); lastEventZ = focusCur;
+      addFlash(st.x0, st.y0, blackbody(P.torchK), 1.0, .3, 160); lastEventZ = focusCur;
     }
   } else if (st.mode === 'lamp' && tool === 'light' && !st.placed && d < 4) { lamps.splice(lamps.indexOf(st.obj), 1); selLamp = lamps[0] || null; buildToolOpts(); buildLampUI(); }
   else if (st.mode === 'move' && !inWindow(st.x, st.y)) st.list.splice(st.list.indexOf(st.obj), 1);
@@ -1222,17 +1361,17 @@ uic.addEventListener('dblclick', ev => {
 uic.addEventListener('wheel', ev => {
   const x = ev.clientX, y = ev.clientY;
   const hl = hitList(lamps, x, y, 22);
-  if (hl) { ev.preventDefault(); hl.th += ev.deltaY * 0.15; selLamp = hl; if (tool === 'light') buildToolOpts(); return; }
+  if (hl) { ev.preventDefault(); hl.tk = clamp(hl.tk - ev.deltaY * 4, 1700, 12000); selLamp = hl; if (tool === 'light') buildToolOpts(); return; }
   const he = hitEmitter(x, y);
   if (he) { ev.preventDefault(); he.e.p = clamp(he.e.p * Math.exp(-ev.deltaY * 0.0015), 20, 8000); buildEmitterUI(); return; }
   if (tool === 'field') { ev.preventDefault(); P.brushR = clamp(P.brushR * Math.exp(-ev.deltaY * 0.001), 30, 300); buildToolOpts(); return; }
-  if (tool === 'light' || ev.altKey) { ev.preventDefault(); P.torchHue = (P.torchHue + ev.deltaY * 0.15 + 360) % 360; syncInputs(); return; }
+  if (tool === 'light' || ev.altKey) { ev.preventDefault(); P.torchK = clamp(P.torchK - ev.deltaY * 4, 1700, 12000); syncInputs(); return; }
   // otherwise: wheel pulls focus by hand
   ev.preventDefault(); P.focusMode = 'manual'; P.focus = clamp(P.focus + ev.deltaY * 0.0006, 0, 1); syncInputs();
 }, { passive: false });
 function updateCursor(x, y) {
   const he = hitEmitter(x, y);
-  uic.style.cursor = Math.hypot(x - bindu.x, y - bindu.y) < 11 ? 'grab' : hitList(lamps, x, y, 18) ? 'grab' : he ? (he.part === 'aim' ? 'grab' : 'move')
+  uic.style.cursor = Math.hypot(x - bindu.x, y - bindu.y) < 14 ? 'grab' : hitList(lamps, x, y, 18) ? 'grab' : he ? (he.part === 'aim' ? 'grab' : 'move')
     : (tool === 'target' && hitList(targets, x, y)) || (tool === 'source' && hitList(sources, x, y)) ? 'move'
     : tool === 'inspect' ? (hover ? 'pointer' : 'default') : 'crosshair';
 }
@@ -1292,36 +1431,32 @@ function predict(x, y, a, p, sp) {
 }
 
 // ---------------------------------------------------------------- overlay drawing
-const C = { warm: '#ffc27a', text: '#e6eef0', muted: '#8a9aa0' };
+// The image carries everything; the overlay only draws the curl indicator while aiming,
+// plus analysis layers the viewer explicitly asks for (reconstruction, inspection).
+const C = { warm: '#ffd9a8', text: '#e6eef0', muted: '#8a9aa0' };
 function poly(pts, stride = 2) { ctx.beginPath(); ctx.moveTo(pts[0], pts[1]); for (let i = stride; i < pts.length; i += stride) ctx.lineTo(pts[i], pts[i + 1]); }
-const trackColor = t => { const s = SP[t.sp]; return s.q === 0 ? 'rgba(255,255,255,.6)' : `hsl(${(s.hue || 0) * 360} 85% 68%)`; };
+const trackColor = t => { const s = SP[t.sp]; return s.q === 0 ? 'rgba(255,255,255,.6)' : `hsl(${(s.hue || 0) * 360} 70% 72%)`; };
 function drawOverlay(time) {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.clearRect(0, 0, W, H);
   ctx.font = '10px "JetBrains Mono", monospace';
-  if (P.showField || tool === 'field') {
-    const c = field.cell * 2;
-    for (let y = c / 2; y < H; y += c) for (let x = c / 2; x < W; x += c) {
-      if (!inWindow(x, y)) continue;
-      const b = field.at(x, y), r = clamp(Math.abs(b) * 4, 1, 10), al = clamp(0.1 + Math.abs(b) * 0.1, 0, .45);
-      ctx.strokeStyle = ctx.fillStyle = b >= 0 ? `rgba(255,194,122,${al})` : `rgba(140,220,255,${al})`;
-      ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.stroke();
-      if (b >= 0) { ctx.beginPath(); ctx.arc(x, y, 1.3, 0, 6.283); ctx.fill(); }
-      else { const k = r * .6; ctx.beginPath(); ctx.moveTo(x - k, y - k); ctx.lineTo(x + k, y + k); ctx.moveTo(x + k, y - k); ctx.lineTo(x - k, y + k); ctx.stroke(); }
-    }
-    if (tool === 'field' && mouse.x >= 0) { ctx.strokeStyle = 'rgba(230,238,240,.3)'; ctx.setLineDash([4, 5]); ctx.beginPath(); ctx.arc(mouse.x, mouse.y, P.brushR, 0, 6.283); ctx.stroke(); ctx.setLineDash([]); }
-  }
+  for (const st of pointers.values()) if (st.mode === 'field') { ctx.strokeStyle = 'rgba(230,238,240,.18)'; ctx.setLineDash([3, 6]); ctx.beginPath(); ctx.arc(st.x, st.y, P.brushR, 0, 6.283); ctx.stroke(); ctx.setLineDash([]); }
   if (P.recon) {
     ctx.lineWidth = 1;
     for (const t of tracks) {
       if (t.pts.length < 6) continue;
       const neutral = SP[t.sp].q === 0;
-      ctx.strokeStyle = trackColor(t); ctx.globalAlpha = neutral ? .7 : .5; ctx.setLineDash(neutral ? [3, 4] : []);
+      ctx.strokeStyle = trackColor(t); ctx.globalAlpha = neutral ? .6 : .4; ctx.setLineDash(neutral ? [3, 4] : []);
       poly(t.pts, 3); ctx.stroke();
     }
     ctx.setLineDash([]); ctx.globalAlpha = 1; ctx.fillStyle = C.warm;
-    for (const t of tracks) if (t.kids.length && !t.alive) { const n = t.pts.length; ctx.beginPath(); ctx.arc(t.pts[n - 3], t.pts[n - 2], 2.5, 0, 6.283); ctx.fill(); }
+    for (const t of tracks) if (t.kids.length && !t.alive) { const n = t.pts.length; ctx.beginPath(); ctx.arc(t.pts[n - 3], t.pts[n - 2], 2, 0, 6.283); ctx.fill(); }
     for (const o of particles) if (o.s.q === 0) { const p = o.track.pts; ctx.strokeStyle = trackColor(o.track); ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.moveTo(p[p.length - 3], p[p.length - 2]); ctx.lineTo(o.x, o.y); ctx.stroke(); ctx.setLineDash([]); }
+    ctx.lineWidth = .8;
+    for (const c of cones) for (const [k, col] of [[8, 'rgba(255,217,168,.4)'], [13, 'rgba(170,215,255,.35)']]) {
+      ctx.strokeStyle = col;
+      for (let s0 = 0; s0 < k; s0++) { ctx.beginPath(); let first = true; for (let n = s0; n * 2 + 1 < c.pts.length; n += k) { const x = c.pts[n * 2], y = c.pts[n * 2 + 1]; first ? ctx.moveTo(x, y) : ctx.lineTo(x, y); first = false; } ctx.stroke(); }
+    }
   }
   const hl = (t, w, al) => {
     if (!t || t.pts.length < 3) return;
@@ -1329,91 +1464,24 @@ function drawOverlay(time) {
     poly(t.pts, 3); const live = particles.find(o => o.track === t); if (live) ctx.lineTo(live.x, live.y); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
   };
   if (pinned) {
-    const walk = (t, d) => { hl(t, d ? 1.2 : 2.2, d ? .5 : .9); if (d < 4) t.kids.forEach(k => walk(k, d + 1)); };
-    if (pinned.parent) hl(pinned.parent, 1, .3);
+    const walk = (t, d) => { hl(t, d ? 1 : 1.8, d ? .4 : .8); if (d < 4) t.kids.forEach(k => walk(k, d + 1)); };
+    if (pinned.parent) hl(pinned.parent, 1, .25);
     walk(pinned, 0);
-    ctx.fillStyle = C.text; ctx.beginPath(); ctx.arc(pinned.pts[0], pinned.pts[1], 3, 0, 6.283); ctx.fill();
   }
-  if (hover && hover !== pinned) hl(hover, 1.8, .75);
-  for (const t of targets) {
-    ctx.strokeStyle = 'rgba(255,194,122,.6)'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(t.x, t.y, t.r, 0, 6.283); ctx.stroke();
-    ctx.beginPath(); ctx.arc(t.x, t.y, t.r * .35 + Math.sin(time * 3) * 1.5, 0, 6.283); ctx.stroke();
-    ctx.beginPath(); for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2; ctx.moveTo(t.x + Math.cos(a) * (t.r + 3), t.y + Math.sin(a) * (t.r + 3)); ctx.lineTo(t.x + Math.cos(a) * (t.r + 9), t.y + Math.sin(a) * (t.r + 9)); } ctx.stroke();
-  }
-  for (const s of sources) {
-    ctx.fillStyle = 'rgba(255,120,150,.8)'; ctx.beginPath(); ctx.arc(s.x, s.y, 2.5, 0, 6.283); ctx.fill();
-    for (let k = 0; k < 3; k++) { const a = k * 2.094 + time * .6; ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.arc(s.x, s.y, 10, a, a + 0.75); ctx.closePath(); ctx.globalAlpha = .35; ctx.fill(); ctx.globalAlpha = 1; }
-  }
-  for (const e of emitters) {
-    const ca = Math.cos(e.a), sa = Math.sin(e.a);
-    ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.a);
-    ctx.fillStyle = 'rgba(8,12,14,.75)'; ctx.strokeStyle = 'rgba(230,238,240,.55)'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-22, -7, 30, 14, 2) : ctx.rect(-22, -7, 30, 14); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(8, -4); ctx.lineTo(13, 0); ctx.lineTo(8, 4); ctx.stroke();
-    ctx.setLineDash([2, 4]); ctx.globalAlpha = .4; ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(40, 0); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
-    ctx.restore();
-    ctx.beginPath(); ctx.arc(e.x + ca * 46, e.y + sa * 46, 4.5, 0, 6.283); ctx.strokeStyle = 'rgba(230,238,240,.55)'; ctx.stroke();
-    ctx.fillStyle = C.muted; ctx.textAlign = 'center';
-    ctx.fillText(`${symOf(e.sp)} ${fmtP(e.p)}`, clamp(e.x - ca * 4, 48, W - 48), clamp(e.y - sa * 4 + (sa > 0.3 ? -16 : 22), 12, H - 6));
-  }
-  // lamps: coloured handles
-  for (const l of lamps) {
-    const col = cssHue(l.hue, l.sat, .62), sel = l === selLamp && tool === 'light';
-    const g = ctx.createRadialGradient(l.x, l.y, 0, l.x, l.y, 26);
-    g.addColorStop(0, cssHue(l.hue, l.sat, .7).replace(')', ' / .55)')); g.addColorStop(1, cssHue(l.hue, l.sat, .5).replace(')', ' / 0)'));
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(l.x, l.y, 26, 0, 6.283); ctx.fill();
-    ctx.fillStyle = col; ctx.beginPath(); ctx.arc(l.x, l.y, 5, 0, 6.283); ctx.fill();
-    ctx.strokeStyle = sel ? '#fff' : 'rgba(255,255,255,.45)'; ctx.lineWidth = sel ? 1.5 : 1;
-    ctx.beginPath(); ctx.arc(l.x, l.y, 10, 0, 6.283); ctx.stroke();
-    if (sel || tool === 'light') { ctx.fillStyle = C.muted; ctx.textAlign = 'center'; ctx.fillText(`${Math.round(((l.hue % 360) + 360) % 360)}°`, clamp(l.x, 30, W - 30), clamp(l.y + 24, 12, H - 6)); }
-  }
+  if (tool === 'inspect' && hover && hover !== pinned) hl(hover, 1.5, .65);
+  // the curl indicator: predicted path of the particle being aimed
   for (const st of pointers.values()) {
     if (st.mode !== 'shoot') continue;
     const d = Math.hypot(st.x - st.x0, st.y - st.y0); if (d < 8) continue;
     const p = momentumFromDrag(d), a = Math.atan2(st.y - st.y0, st.x - st.x0), sp = P.shootSpecies === 'mix' ? 'pi-' : P.shootSpecies;
     const pts = predict(st.x0, st.y0, a, p, sp);
-    ctx.strokeStyle = C.warm; ctx.lineWidth = 1.2; ctx.setLineDash([5, 5]); ctx.lineDashOffset = -time * 30;
+    ctx.strokeStyle = C.warm; ctx.lineWidth = 1.1; ctx.globalAlpha = .85; ctx.setLineDash([4, 6]); ctx.lineDashOffset = -time * 30;
     poly(pts); ctx.stroke(); ctx.setLineDash([]);
-    ctx.globalAlpha = .3; ctx.beginPath(); ctx.moveTo(st.x0, st.y0); ctx.lineTo(st.x, st.y); ctx.stroke(); ctx.globalAlpha = 1;
-    ctx.beginPath(); ctx.arc(st.x0, st.y0, 3.5, 0, 6.283); ctx.fillStyle = C.warm; ctx.fill();
+    ctx.globalAlpha = .25; ctx.beginPath(); ctx.moveTo(st.x0, st.y0); ctx.lineTo(st.x, st.y); ctx.stroke(); ctx.globalAlpha = 1;
+    ctx.beginPath(); ctx.arc(st.x0, st.y0, 2.5, 0, 6.283); ctx.fillStyle = C.warm; ctx.fill();
     const B = field.at(st.x0, st.y0), r = SP[sp].q ? (p / 1000) / (0.3 * Math.abs(SP[sp].q) * Math.max(Math.abs(B), .01)) : Infinity;
-    ctx.textAlign = 'left'; ctx.fillStyle = C.text;
+    ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(230,238,240,.75)';
     ctx.fillText(`${symOf(P.shootSpecies)}  ${fmtP(p)}  r=${isFinite(r) ? r.toFixed(2) + 'm' : '∞'}`, st.x + 12, st.y - 10);
-  }
-  // focus reticle: a slim depth scale on the right edge of the glass
-  {
-    const x = W - 22, y0 = H * .3, y1 = H * .7, yy = y0 + (y1 - y0) * focusCur;
-    ctx.strokeStyle = 'rgba(230,238,240,.18)'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y1); for (let i = 0; i <= 10; i++) { const y = y0 + (y1 - y0) * i / 10; ctx.moveTo(x - (i % 5 ? 3 : 6), y); ctx.lineTo(x, y); } ctx.stroke();
-    ctx.strokeStyle = C.warm; ctx.beginPath(); ctx.moveTo(x - 9, yy); ctx.lineTo(x + 3, yy); ctx.stroke();
-    ctx.fillStyle = C.muted; ctx.textAlign = 'right'; ctx.fillText(`${(focusCur * 100).toFixed(0)} cm`, x - 12, yy + 3);
-    ctx.fillText(P.focusMode === 'auto' ? 'AF' : 'MF', x + 4, y0 - 8);
-  }
-  // bindu: barely there unless you look for it
-  {
-    const near = mouse.x >= 0 && Math.hypot(mouse.x - bindu.x, mouse.y - bindu.y) < 40, show = near || tool === 'seed';
-    ctx.globalAlpha = show ? .7 : .22 + resonance * .5;
-    ctx.strokeStyle = C.warm; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(bindu.x, bindu.y, 6 + resonance * 4, 0, 6.283); ctx.stroke();
-    ctx.fillStyle = C.warm; ctx.beginPath(); ctx.arc(bindu.x, bindu.y, 1.4, 0, 6.283); ctx.fill();
-    if (show) { ctx.fillStyle = C.muted; ctx.textAlign = 'center'; ctx.fillText(`bindu · ${tree.age} rings`, bindu.x, bindu.y + 22); }
-    ctx.globalAlpha = 1;
-  }
-  if (P.recon) {   // seed-head parastichies: the 8 and 13 spiral families
-    ctx.lineWidth = .8;
-    for (const c of cones) {
-      for (const [k, col] of [[8, 'rgba(255,194,122,.45)'], [13, 'rgba(140,220,255,.4)']]) {
-        ctx.strokeStyle = col;
-        for (let s0 = 0; s0 < k; s0++) { ctx.beginPath(); let first = true; for (let n = s0; n * 2 + 1 < c.pts.length; n += k) { const x = c.pts[n * 2], y = c.pts[n * 2 + 1]; first ? ctx.moveTo(x, y) : ctx.lineTo(x, y); first = false; } ctx.stroke(); }
-      }
-    }
-  }
-  if (P.pulsed) {
-    const x = W - 34, y = H - 34;
-    ctx.strokeStyle = 'rgba(230,238,240,.2)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, 14, 0, 6.283); ctx.stroke();
-    ctx.strokeStyle = C.warm; ctx.beginPath(); ctx.arc(x, y, 14, -Math.PI / 2, -Math.PI / 2 + cyclePhase * 6.283); ctx.stroke();
-    ctx.fillStyle = C.muted; ctx.textAlign = 'right'; ctx.fillText(sens > 0 ? 'EXPANSION' : wipe ? 'RECOMPRESS' : 'GROWTH', x - 22, y + 3);
   }
 }
 
@@ -1455,24 +1523,29 @@ function heading(parent, text, btn) {
 }
 const panel = $('#panel');
 function buildPanel() {
+  const tw = $('#toolwrap'); document.body.appendChild(tw);
   panel.innerHTML = ''; inputs.length = 0;
-  heading(panel, 'Light & colour');
-  seg(panel, 'Grade', GRADE_KEYS.map(k => [k, GRADES[k].name.split(' ')[0]]), P.grade, applyGrade, 'grade');
+  heading(panel, 'Hands');
+  panel.appendChild(tw);
+  heading(panel, 'Light');
+  seg(panel, 'Look', GRADE_KEYS.map(k => [k, GRADES[k].name.split(' ')[0]]), P.grade, applyGrade, 'grade');
   const lw = document.createElement('div'); lw.id = 'lamps'; panel.appendChild(lw);
-  toggles.chroma = toggle(panel, 'chroma', 'Chroma drift (lamps cycle hue)');
-  toggles.torch = toggle(panel, 'torch', 'Cursor torch');
-  slider(panel, 'torchHue', 'Torch hue', 0, 360, 1, v => Math.round(v) + '°');
+  toggles.chroma = toggle(panel, 'chroma', 'Drifting gels');
+  toggles.torch = toggle(panel, 'torch', 'Penlight follows the cursor');
+  slider(panel, 'torchK', 'Penlight', 1700, 12000, 10, v => Math.round(v) + ' K');
   slider(panel, 'glow', 'Ionisation glow', 0, 3, 0.01, v => '×' + v.toFixed(2));
   slider(panel, 'trail', 'Glow trail', 0.6, 0.985, 0.001, v => v.toFixed(3));
   slider(panel, 'species', 'Tint bubbles by particle', 0, 1, 0.01);
-  heading(panel, 'Sacred geometry', ['bloom', () => addCone(bindu.x, bindu.y)]);
-  slider(panel, 'yantra', 'Śrī Yantra etching', 0, 3, 0.01, v => v < .01 ? 'off' : '×' + v.toFixed(2));
+  heading(panel, 'Sacred geometry', ['seed head', () => addCone(bindu.x, bindu.y)]);
+  seg(panel, 'Yantra', YANTRA_KEYS.map(k => [k, YANTRAS[k].name]), P.yantraKey, setYantra, 'yk');
+  seg(panel, 'Tree', TREE_KEYS.map(k => [k, TREES[k].name.split(' ').pop()]), P.tree, setTree, 'tk');
+  slider(panel, 'yantra', 'Yantra etching', 0, 3, 0.01, v => v < .01 ? 'off' : '×' + v.toFixed(2));
   slider(panel, 'rings', 'Tree rings', 0, 3, 0.01, v => v < .01 ? 'off' : '×' + v.toFixed(2));
   slider(panel, 'ringRate', 'Ring growth', 0, 4, 0.01, v => '×' + v.toFixed(2));
   slider(panel, 'waves', 'Pressure waves', 0, 2, 0.01, v => v < .01 ? 'off' : '×' + v.toFixed(2));
   { const b = document.createElement('div'); b.className = 'btnrow'; b.style.margin = '0 0 6px';
-    b.innerHTML = `<button class="btn" id="bFell">fell the tree</button><button class="btn" id="bCentre">centre the bindu</button>`; panel.appendChild(b);
-    b.querySelector('#bFell').onclick = () => { logEvent(`tree felled at <em>${tree.age}</em> rings`); seedTree(); };
+    b.innerHTML = `<button class="btn" id="bFell">fell &amp; replant</button><button class="btn" id="bCentre">centre the bindu</button>`; panel.appendChild(b);
+    b.querySelector('#bFell').onclick = () => setTree(P.tree);
     b.querySelector('#bCentre').onclick = () => { bindu.rx = bindu.ry = .5; bindu.x = W / 2; bindu.y = H / 2; etch.dirty = true; }; }
   heading(panel, 'Camera');
   const fm = seg(panel, 'Focus', [['auto', 'autofocus'], ['manual', 'manual']], P.focusMode, v => { P.focusMode = v; }, 'fm');
@@ -1505,12 +1578,11 @@ function buildPanel() {
   toggles.cosmics = toggle(panel, 'cosmics', 'Cosmic-ray muons');
   toggles.pulsed = toggle(panel, 'pulsed', 'Pulsed expansion cycle  X');
   toggles.recon = toggle(panel, 'recon', 'Reconstruction overlay  R');
-  toggles.showField = toggle(panel, 'showField', 'Field map overlay  F');
   toggles.audio = toggle(panel, 'audio', 'Sonify events', () => { if (P.audio) { audio.init(); audio.ctx && audio.ctx.resume(); } });
   toggles.paused = toggle(panel, 'paused', 'Pause  ␣');
   heading(panel, 'Keys');
   const k = document.createElement('p'); k.className = 'keys';
-  k.innerHTML = `<b>1–8</b> layers · <b>G</b> next grade · <b>␣</b> pause · <b>C</b> clear<br><b>wheel</b> pull focus · <b>A</b> autofocus · <b>L</b> letterbox<br><b>wheel on lamp</b> hue · <b>alt+wheel</b> torch hue<br><b>R</b> reconstruction · <b>F</b> field · <b>X</b> pulse · <b>B</b> burst<br><b>P</b> photograph · <b>H</b> hide UI · <b>Esc</b> unpin<br><b>tap the bindu</b> bloom a seed head · <b>drag it</b> move the centre`;
+  k.innerHTML = `<b>Y</b> next yantra · <b>T</b> next tree · <b>hold the centre</b> change yantra<br><b>1–8</b> hands · <b>G</b> next look · <b>␣</b> pause · <b>C</b> clear<br><b>wheel</b> pull focus · <b>A</b> autofocus · <b>L</b> letterbox<br><b>wheel on a lamp</b> colour temperature<br><b>R</b> reconstruction · <b>X</b> pulse · <b>B</b> burst<br><b>P</b> photograph · <b>H</b> hide UI · <b>Esc</b> unpin<br><b>tap the centre</b> grow a seed head · <b>drag it</b> move the centre`;
   panel.appendChild(k);
   const b = document.createElement('div'); b.className = 'btnrow'; b.style.marginTop = '10px';
   b.innerHTML = `<button class="btn" id="bPhoto">photograph</button><button class="btn" id="bBurst">burst</button><button class="btn" id="bReset">reset scene</button>`;
@@ -1526,18 +1598,23 @@ function buildLampUI() {
   lamps.forEach((l, idx) => {
     const box = document.createElement('div'); box.className = 'emitter lamp';
     box.innerHTML = `<header><span><i class="sw"></i>LAMP ${idx + 1}</span><button aria-label="Remove lamp">×</button></header>
-      <label class="row"><span>Hue</span><output>${Math.round(l.th)}°</output><input type="range" id="lamp${idx}-h" class="hue" min="0" max="360" step="1" value="${((l.th % 360) + 360) % 360}"></label>
+      <label class="row"><span>Colour temperature</span><output>${Math.round(l.tk)} K</output><input type="range" id="lamp${idx}-k" class="kelvin" min="1700" max="12000" step="10" value="${l.tk}"></label>
+      <label class="row"><span>Gel</span><output>${l.tga < .01 ? 'none' : Math.round(l.tgh) + '°'}</output><input type="range" id="lamp${idx}-g" class="hue" min="0" max="360" step="1" value="${((l.tgh % 360) + 360) % 360}"></label>
+      <label class="row"><span>Gel density</span><output>${l.tga.toFixed(2)}</output><input type="range" id="lamp${idx}-d" min="0" max="1" step="0.01" value="${l.tga}"></label>
       <label class="row"><span>Intensity</span><output>${l.ti.toFixed(2)}</output><input type="range" id="lamp${idx}-i" min="0" max="4" step="0.01" value="${l.ti}"></label>`;
-    const sw = box.querySelector('.sw'); sw.style.background = cssHue(l.th, l.ts, .6);
+    const sw = box.querySelector('.sw'), paint = () => sw.style.background = lampCss({ k: l.tk, gh: l.tgh, ga: l.tga }, .2);
+    paint();
     box.querySelector('header button').onclick = () => { lamps.splice(lamps.indexOf(l), 1); buildLampUI(); };
-    const [h, i] = box.querySelectorAll('input'), [ho, io] = box.querySelectorAll('output');
-    h.oninput = () => { l.th = +h.value; ho.textContent = h.value + '°'; sw.style.background = cssHue(l.th, l.ts, .6); };
-    i.oninput = () => { l.ti = +i.value; io.textContent = l.ti.toFixed(2); };
+    const [kk, gh, ga, it] = box.querySelectorAll('input'), [ko, go, gao, io] = box.querySelectorAll('output');
+    kk.oninput = () => { l.tk = +kk.value; ko.textContent = kk.value + ' K'; paint(); };
+    gh.oninput = () => { l.tgh = +gh.value; if (l.tga < .05) { l.tga = .5; ga.value = .5; gao.textContent = '0.50'; } go.textContent = gh.value + '°'; paint(); };
+    ga.oninput = () => { l.tga = +ga.value; gao.textContent = l.tga.toFixed(2); go.textContent = l.tga < .01 ? 'none' : Math.round(l.tgh) + '°'; paint(); };
+    it.oninput = () => { l.ti = +it.value; io.textContent = l.ti.toFixed(2); };
     lw.appendChild(box);
   });
   const add = document.createElement('div'); add.className = 'btnrow'; add.style.margin = '0 0 10px';
   add.innerHTML = `<button class="btn">+ lamp</button>`;
-  add.firstChild.onclick = () => { if (lamps.length < 6) { addLamp(rand() * 6.283, rand() * 360); buildLampUI(); } };
+  add.firstChild.onclick = () => { if (lamps.length < 6) { addLamp(rand() * 6.283, 2700 + rand() * 3800); buildLampUI(); } };
   lw.appendChild(add);
 }
 function buildEmitterUI() {
@@ -1570,14 +1647,14 @@ function buildToolOpts() {
   } else if (tool === 'light') {
     if (selLamp) {
       const l = selLamp;
-      const h = add(`hue <input type="range" id="opt-lh" class="hue" min="0" max="360" step="1" value="${((l.th % 360) + 360) % 360}">`);
-      h.querySelector('input').oninput = e => { l.th = +e.target.value; buildLampUI(); };
-      const s = add(`saturation <input type="range" id="opt-ls" min="0" max="1" step="0.01" value="${l.ts}">`);
-      s.querySelector('input').oninput = e => l.ts = +e.target.value;
+      const h = add(`kelvin <input type="range" id="opt-lk" class="kelvin" min="1700" max="12000" step="10" value="${l.tk}">`);
+      h.querySelector('input').oninput = e => { l.tk = +e.target.value; buildLampUI(); };
+      const s = add(`gel <input type="range" id="opt-lg" class="hue" min="0" max="360" step="1" value="${((l.tgh % 360) + 360) % 360}">`);
+      s.querySelector('input').oninput = e => { l.tgh = +e.target.value; l.tga = Math.max(l.tga, .5); buildLampUI(); };
       const i = add(`intensity <input type="range" id="opt-li" min="0" max="4" step="0.01" value="${l.ti}">`);
       i.querySelector('input').oninput = e => { l.ti = +e.target.value; buildLampUI(); };
     }
-    add(`<span class="desc">click to add a lamp · drag to move · click a lamp to remove · wheel on lamp = hue</span>`);
+    add(`<span class="desc">click to add a lamp · drag a light to move it · click it to remove · wheel over it = colour temperature</span>`);
   } else if (tool === 'field') {
     const a = add(`strength <input type="range" id="opt-bs" min="0.1" max="3" step="0.01" value="${P.brush}">`); a.querySelector('input').oninput = e => P.brush = +e.target.value;
     const r = add(`radius <input type="range" id="opt-br" min="30" max="300" step="1" value="${P.brushR}">`); r.querySelector('input').oninput = e => P.brushR = +e.target.value;
@@ -1585,7 +1662,7 @@ function buildToolOpts() {
     add(`<span class="desc">paint ⊙ · right-drag / alt ⊗</span>`);
   } else if (tool === 'target') {
     const a = add(`interaction <input type="range" id="opt-tp" min="0" max="1" step="0.01" value="${P.targetProb}">`); a.querySelector('input').oninput = e => P.targetProb = +e.target.value;
-    add(`<span class="desc">click to place nucleus · drag to move · click again to remove</span>`);
+    add(`<span class="desc">click to place a tantalum bead · drag to move · click it to remove</span>`);
   } else if (tool === 'source') {
     const s = add(`isotope <select id="opt-iso"><option value="mixed">α + β mixed</option><option value="beta">β emitter</option><option value="alpha">α emitter</option></select>`);
     s.querySelector('select').value = P.sourceType; s.querySelector('select').onchange = e => P.sourceType = e.target.value;
@@ -1597,11 +1674,11 @@ function buildToolOpts() {
     const sp = add(`spacing <input type="range" id="opt-fs" min="3" max="10" step="0.1" value="${P.floretSpacing}">`); sp.querySelector('input').oninput = e => P.floretSpacing = +e.target.value;
     const t = add(`Fibonacci electrons <span class="switch"><input type="checkbox" id="opt-fe" ${P.fibElectrons ? 'checked' : ''}><i></i></span>`);
     t.querySelector('input').onchange = e => P.fibElectrons = e.target.checked;
-    add(`<span class="desc">click to grow a seed head · drag the bindu to move the yantra and tree</span>`);
+    add(`<span class="desc">click to grow a seed head · hold the centre to change the yantra</span>`);
   } else if (tool === 'beam') {
     add(`<span class="desc">click inside to place a beam port, drag to aim · panel ▸ Beam line for species, rate, depth</span>`);
   } else if (tool === 'inspect') {
-    add(`<span class="desc">hover a track (focus follows) · click to pin and walk its decay tree</span>`);
+    add(`<span class="desc">hover a track · click to pin it and follow its decay tree</span>`);
     const t = document.createElement('label'); t.innerHTML = `show neutrals <span class="switch"><input type="checkbox" id="opt-neu" ${P.recon ? 'checked' : ''}><i></i></span>`;
     t.querySelector('input').onchange = e => { P.recon = e.target.checked; syncInputs(); }; o.appendChild(t);
   }
@@ -1612,7 +1689,9 @@ function buildTools() {
 }
 $('#paneltoggle').onclick = () => panel.classList.toggle('closed');
 $('#photo').onclick = () => $('#photo').hidden = true;
-if (innerWidth < 720) panel.classList.add('closed');
+panel.classList.add('closed');
+let idleT = 0;
+addEventListener('pointermove', () => { document.body.classList.remove('idle'); clearTimeout(idleT); idleT = setTimeout(() => document.body.classList.add('idle'), 2600); });
 
 addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
@@ -1630,6 +1709,8 @@ addEventListener('keydown', e => {
   else if (k === 'p') snapRequested = true;
   else if (k === 'b') emitters.forEach(em => fireEmitter(em, 8));
   else if (k === 'escape') pin(null);
+  else if (k === 'y') nextYantra();
+  else if (k === 't') setTree(TREE_KEYS[(TREE_KEYS.indexOf(P.tree) + 1) % TREE_KEYS.length]);
   else return;
   syncInputs();
 });
@@ -1638,15 +1719,13 @@ addEventListener('keydown', e => {
 function defaultScene(reset) {
   if (reset) { clearAll(); emitters.length = 0; targets.length = 0; sources.length = 0; lamps.length = 0; field.clear(); }
   const g = GRADES[P.grade];
-  addLamp(-2.35, g.lamps[0][0], g.lamps[0][1], g.lamps[0][2]);
-  addLamp(0.45, g.lamps[1][0], g.lamps[1][1], g.lamps[1][2]);
-  addLamp(2.2, g.lamps[2][0], g.lamps[2][1], g.lamps[2][2]);
+  addLamp(-2.35, ...g.lamps[0]); addLamp(0.45, ...g.lamps[1]); addLamp(2.2, ...g.lamps[2]);
   lamps.forEach(l => l.int = 0);   // fade the rig up
   buildLampUI();
   addEmitter(Math.PI, 'mix', 750, 1.3, .45);
   addEmitter(Math.PI * 1.16, 'K-', 420, 0.35, .7);
   targets.push({ x: W * 0.33, y: H * 0.56, r: 20 });
-  bindu.rx = .5; bindu.ry = .5; bindu.x = W / 2; bindu.y = H / 2; seedTree();
+  bindu.rx = .5; bindu.ry = .5; bindu.x = W / 2; bindu.y = H / 2; seedTree(P.tree);
   sources.push({ x: W * 0.72, y: H * 0.68, acc: 0, type: 'mixed', z: .3 });
 }
 
@@ -1666,7 +1745,7 @@ addEventListener('resize', () => {
 // ---------------------------------------------------------------- main loop
 resize();
 buildTools(); buildPanel(); setTool('shoot'); defaultScene(false);
-setTimeout(() => $('#hint').classList.add('gone'), 9000);
+setTimeout(() => $('#hint').classList.add('gone'), 7000);
 
 let last = performance.now(), realAcc = 0, fpsAcc = 0, fpsN = 0, statT = 0, slowT = 0;
 const root = document.documentElement;
@@ -1678,7 +1757,7 @@ function frame(now) {
   for (const st of pointers.values()) if (st.mode === 'field') field.paint(st.x, st.y, (st.neg ? -1 : 1) * P.brush * dt * 0.6, P.brushR);
   updateCamera(dt);
   if (!P.paused) updateWaves(dt);
-  packLights(dt);
+  packLights(dt); packObjects();
   render(time);
   drawOverlay(time);
   fpsAcc += dt; fpsN++; statT += dt;
@@ -1690,7 +1769,7 @@ function frame(now) {
     $('#sFps').textContent = Math.round(fps); fpsAcc = 0; fpsN = 0; statT = 0;
     $('#slens').textContent = `${P.aperture < .02 ? 'pinhole' : 'T' + (1.2 / Math.max(P.aperture, .05)).toFixed(1)} · ${(focusCur * 100).toFixed(0)} cm · ${GRADES[P.grade].name}`;
     // UI accent follows the key lamp
-    const key = lamps[0]; if (key) root.style.setProperty('--accent', cssHue(key.hue, Math.min(key.sat, .8), .74));
+    const key = lamps[0]; if (key) root.style.setProperty('--accent', lampCss(key));
     if (pinned) showInspector();
     if (tool === 'inspect' && mouse.x >= 0 && !pointers.size) updateHover(mouse.x, mouse.y);
     // adaptive resolution: step down if the GPU can't keep up, keeping the bubbles
